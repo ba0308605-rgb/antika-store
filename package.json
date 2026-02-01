@@ -1,0 +1,12 @@
+{
+  "name": "antika-store",
+  "version": "1.0.0",
+  "description": "متجر انتيكا استور - ديكور وأثاث منزلي",
+  "scripts": {
+    "start": "json-server --watch db.json --port 3000 --static ./",
+    "dev": "json-server --watch db.json --port 3000 --static ./ --delay 500"
+  },
+  "dependencies": {
+    "json-server": "^0.17.4"
+  }
+}

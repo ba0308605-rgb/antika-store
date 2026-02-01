@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول | انتيكا استور</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'antika-pink': '#FFB6C1',
+                        'antika-pink-dark': '#FF69B4',
+                        'antika-gold': '#D6C1A6',
+                        'antika-gold-dark': '#C4AC8E',
+                        'antika-gold-light': '#E8D9C5',
+                        'antika-beige': '#FAF0E6',
+                        'antika-lavender': '#FFF0F5',
+                    },
+                    fontFamily: {
+                        'tajawal': ['Tajawal', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Tajawal', sans-serif; }
+
+        .breadcrumb {
+            background: linear-gradient(135deg, rgba(255, 182, 193, 0.1), rgba(214, 193, 166, 0.1));
+            border-bottom: 1px solid rgba(255, 182, 193, 0.2);
+        }
+        .breadcrumb-item:not(:last-child)::after {
+            content: '›';
+            margin: 0 8px;
+            color: #D6C1A6;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-antika-lavender via-antika-beige to-antika-gold-light min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-20">
+                <a href="index.html" class="flex items-center gap-2">
+                    <img src="image/انتيكا استور لوقو.jpg" alt="انتيكا استور" class="w-12 h-12 rounded-full">
+                    <div>
+                        <h1 class="text-2xl font-bold text-antika-gold">انتيكا استور</h1>
+                    </div>
+                </a>
+                <a href="index.html" class="text-gray-600 hover:text-antika-pink-dark transition">
+                    <i class="fas fa-arrow-right ml-1"></i> العودة للمتجر
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb py-3">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center text-sm">
+                <a href="index.html" class="breadcrumb-item text-antika-gold hover:text-antika-pink-dark transition font-semibold">
+                    <i class="fas fa-home ml-1"></i> الرئيسية
+                </a>
+                <span class="text-gray-500">تسجيل الدخول</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Login Container -->
+    <div class="relative z-10 w-full max-w-md mx-auto px-4 py-12">
+        <!-- Logo -->
+        <div class="text-center mb-8">
+            <a href="index.html" class="inline-block">
+                <img src="image/انتيكا استور لوقو.jpg" alt="انتيكا استور" class="w-20 h-20 rounded-full mx-auto mb-4">
+                <h1 class="text-3xl font-bold text-antika-gold mt-2">انتيكا استور</h1>
+                <p class="text-gray-500 text-sm">أناقة منزلية بأسلوب عصري</p>
+            </a>
+        </div>
+
+        <!-- Login Form -->
+        <div class="bg-white rounded-3xl shadow-2xl p-8">
+            <h2 class="text-2xl font-bold text-center text-antika-gold mb-2">تسجيل الدخول</h2>
+            <p class="text-gray-500 text-center mb-8 text-sm">أهلاً بعودتك! سجل دخولك للمتابعة</p>
+
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2 text-sm">البريد الإلكتروني</label>
+                    <div class="relative">
+                        <input type="email" id="login-email" placeholder="your@email.com" 
+                               class="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 pr-12 focus:border-antika-gold focus:outline-none transition text-left">
+                        <i class="fas fa-envelope absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2 text-sm">كلمة المرور</label>
+                    <div class="relative">
+                        <input type="password" id="login-password" placeholder="••••••••" 
+                               class="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 pr-12 focus:border-antika-gold focus:outline-none transition">
+                        <i class="fas fa-lock absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <button type="button" onclick="togglePassword()" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-antika-gold transition">
+                            <i class="fas fa-eye" id="eye-icon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center text-sm">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" class="w-4 h-4 text-antika-gold rounded accent-antika-gold">
+                        <span class="text-gray-600">تذكرني</span>
+                    </label>
+                    <a href="#" class="text-antika-gold hover:underline">نسيت كلمة المرور؟</a>
+                </div>
+
+                <button type="submit" class="w-full bg-antika-gold text-white py-4 rounded-xl font-bold text-lg hover:bg-antika-gold-dark transition transform hover:scale-[1.02] shadow-lg">
+                    تسجيل الدخول
+                </button>
+            </form>
+
+            <div class="flex items-center gap-4 my-6">
+                <div class="flex-1 h-px bg-gray-200"></div>
+                <span class="text-gray-400 text-sm">أو</span>
+                <div class="flex-1 h-px bg-gray-200"></div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <button class="flex items-center justify-center gap-2 bg-white border-2 border-gray-200 py-3 rounded-xl hover:border-antika-gold transition">
+                    <i class="fab fa-google text-red-500"></i>
+                    <span class="text-sm font-semibold text-gray-600">Google</span>
+                </button>
+                <button class="flex items-center justify-center gap-2 bg-white border-2 border-gray-200 py-3 rounded-xl hover:border-antika-gold transition">
+                    <i class="fab fa-apple text-gray-800"></i>
+                    <span class="text-sm font-semibold text-gray-600">Apple</span>
+                </button>
+            </div>
+
+            <p class="text-center mt-6 text-gray-600">
+                ليس لديك حساب؟ 
+                <a href="#" onclick="showRegister()" class="text-antika-gold font-bold hover:underline">سجل الآن</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-antika-gold text-white py-8">
+        <div class="container mx-auto px-4 text-center">
+            <p>© 2025 انتيكا استور</p>
+        </div>
+    </footer>
+
+    <script>
+        function togglePassword() {
+            const passwordInput = document.getElementById('login-password');
+            const eyeIcon = document.getElementById('eye-icon');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        }
+
+        function showRegister() {
+            alert('سيتم فتح صفحة التسجيل قريباً!');
+        }
+
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            if (email === 'admin@antika.com' && password === 'admin123') {
+                localStorage.setItem('antika_user', JSON.stringify({ name: 'Admin', email: email, isAdmin: true }));
+                window.location.href = 'admin.html';
+            } else if (email && password) {
+                localStorage.setItem('antika_user', JSON.stringify({ name: email.split('@')[0], email: email }));
+                alert('تم تسجيل الدخول بنجاح! 🎉');
+                window.location.href = 'index.html';
+            } else {
+                alert('الرجاء إدخال البريد الإلكتروني وكلمة المرور');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الإدارة | انتيكا استور</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'antika-pink': '#FFB6C1',
+                        'antika-pink-dark': '#FF69B4',
+                        'antika-gold': '#D6C1A6',
+                        'antika-gold-dark': '#C4AC8E',
+                        'antika-gold-light': '#E8D9C5',
+                        'antika-beige': '#F5F5DC',
+                        'antika-lavender': '#FFF0F5',
+                    },
+                    fontFamily: {
+                        'tajawal': ['Tajawal', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Tajawal', sans-serif; }
+
+        .sidebar-item:hover { background: linear-gradient(90deg, rgba(255,182,193,0.2) 0%, transparent 100%); }
+        .stat-card { transition: all 0.3s ease; }
+        .stat-card:hover { transform: translateY(-5px); }
+
+        .breadcrumb {
+            background: linear-gradient(135deg, rgba(255, 182, 193, 0.1), rgba(214, 193, 166, 0.1));
+            border-bottom: 1px solid rgba(255, 182, 193, 0.2);
+        }
+        .breadcrumb-item:not(:last-child)::after {
+            content: '›';
+            margin: 0 8px;
+            color: #D6C1A6;
+            font-size: 1.2em;
+        }
+
+        /* Square Product Cards */
+        .product-square .product-image-container {
+            aspect-ratio: 1/1;
+            position: relative;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl m-4">
+            <div class="text-center mb-6">
+                <img src="image/انتيكا استور لوقو.jpg" alt="انتيكا استور" class="w-20 h-20 rounded-full mx-auto mb-4">
+                <h2 class="text-2xl font-bold text-antika-gold mt-2">تسجيل دخول الأدمن</h2>
+                <p class="text-gray-500 text-sm">لوحة تحكم انتيكا استور</p>
+            </div>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 mb-2 font-semibold">اسم المستخدم</label>
+                    <input type="text" id="username" value="admin" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2 font-semibold">كلمة المرور</label>
+                    <input type="password" id="password" value="123456" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none transition">
+                </div>
+                <button type="submit" class="w-full bg-antika-gold text-white py-3 rounded-lg font-bold hover:bg-antika-gold-dark transition">
+                    دخول
+                </button>
+            </form>
+            <p class="text-center text-gray-400 text-sm mt-4">جرب: admin / 123456</p>
+        </div>
+    </div>
+
+    <!-- Main Admin Panel -->
+    <div id="admin-panel" class="hidden">
+        <!-- Header -->
+        <header class="bg-white shadow-md sticky top-0 z-40">
+            <div class="flex items-center justify-between px-4 md:px-6 py-4">
+                <div class="flex items-center gap-3">
+                    <img src="image/انتيكا استور لوقو.jpg" alt="انتيكا استور" class="w-10 h-10 rounded-full">
+                    <h1 class="text-lg md:text-xl font-bold text-antika-gold">لوحة تحكم انتيكا</h1>
+                </div>
+                <div class="flex items-center gap-4">
+                    <a href="index.html" target="_blank" class="text-gray-600 hover:text-antika-pink transition text-sm md:text-base">
+                        <i class="fas fa-external-link-alt"></i> <span class="hidden md:inline">عرض المتجر</span>
+                    </a>
+                    <button onclick="logout()" class="text-red-500 hover:text-red-700 font-semibold text-sm md:text-base">
+                        <i class="fas fa-sign-out-alt"></i> <span class="hidden md:inline">خروج</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb py-3 px-4 md:px-6">
+            <div class="flex items-center text-sm">
+                <a href="index.html" class="breadcrumb-item text-antika-gold hover:text-antika-pink-dark transition font-semibold">
+                    <i class="fas fa-home ml-1"></i> الرئيسية
+                </a>
+                <span class="text-gray-500">لوحة التحكم</span>
+            </div>
+        </nav>
+
+        <div class="flex flex-col md:flex-row min-h-screen">
+            <!-- Sidebar -->
+            <aside class="w-full md:w-64 bg-white shadow-lg md:min-h-screen">
+                <nav class="p-4 space-y-2 flex md:block overflow-x-auto md:overflow-visible">
+                    <button onclick="showSection('dashboard')" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
+                        <i class="fas fa-home w-6"></i>
+                        <span>الرئيسية</span>
+                    </button>
+                    <button onclick="showSection('products')" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
+                        <i class="fas fa-box w-6"></i>
+                        <span>المنتجات</span>
+                    </button>
+                    <button onclick="showSection('categories')" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
+                        <i class="fas fa-tags w-6"></i>
+                        <span>التصنيفات</span>
+                    </button>
+                    <button onclick="showSection('bulk-discount')" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
+                        <i class="fas fa-percentage w-6"></i>
+                        <span>خصم جماعي</span>
+                    </button>
+                   
+                    <button onclick="showSection('footer')" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
+                        <i class="fas fa-address-card w-6"></i>
+                        <span>إعدادات الفوتر</span>
+                    </button>
+                </nav>
+            </aside>
+
+            <!-- Content -->
+            <main class="flex-1 p-4 md:p-8 pb-24 md:pb-8">
+                <!-- Dashboard Section -->
+                <section id="dashboard-section" class="space-y-6">
+                    <h2 class="text-2xl font-bold text-antika-gold mb-6">📊 لوحة المعلومات</h2>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                        <div class="stat-card bg-white p-4 md:p-6 rounded-2xl shadow-lg border-l-4 border-antika-pink">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 text-xs md:text-sm">المنتجات</p>
+                                    <h3 class="text-2xl md:text-3xl font-bold text-antika-gold mt-2" id="stat-products">0</h3>
+                                </div>
+                                <div class="bg-antika-pink/20 p-2 md:p-3 rounded-full text-antika-pink-dark">
+                                    <i class="fas fa-box text-lg md:text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card bg-white p-4 md:p-6 rounded-2xl shadow-lg border-l-4 border-antika-gold">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 text-xs md:text-sm">المخفضة</p>
+                                    <h3 class="text-2xl md:text-3xl font-bold text-antika-gold mt-2" id="stat-discounted">0</h3>
+                                </div>
+                                <div class="bg-antika-gold/20 p-2 md:p-3 rounded-full text-antika-gold">
+                                    <i class="fas fa-percentage text-lg md:text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card bg-white p-4 md:p-6 rounded-2xl shadow-lg border-l-4 border-green-500">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 text-xs md:text-sm">الطلبات</p>
+                                    <h3 class="text-2xl md:text-3xl font-bold text-antika-gold mt-2">12</h3>
+                                </div>
+                                <div class="bg-green-100 p-2 md:p-3 rounded-full text-green-600">
+                                    <i class="fas fa-shopping-cart text-lg md:text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card bg-white p-4 md:p-6 rounded-2xl shadow-lg border-l-4 border-blue-500">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 text-xs md:text-sm">الإيرادات</p>
+                                    <h3 class="text-2xl md:text-3xl font-bold text-antika-gold mt-2">3,450</h3>
+                                </div>
+                                <div class="bg-blue-100 p-2 md:p-3 rounded-full text-blue-600">
+                                    <i class="fas fa-money-bill-wave text-lg md:text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-lg p-6 mt-8">
+                        <h3 class="text-lg font-bold text-antika-gold mb-4">أحدث المنتجات</h3>
+                        <div id="recent-products-list" class="space-y-3">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Products Section -->
+                <section id="products-section" class="hidden space-y-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <h2 class="text-2xl font-bold text-antika-gold">📦 إدارة المنتجات</h2>
+                        <button onclick="openProductModal()" class="bg-antika-pink text-white px-6 py-3 rounded-full font-bold hover:bg-antika-pink-dark transition flex items-center gap-2">
+                            <i class="fas fa-plus"></i> منتج جديد
+                        </button>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-xl shadow flex flex-col md:flex-row gap-4">
+                        <input type="text" id="product-search" placeholder="🔍 بحث عن منتج..." class="border-2 border-gray-200 rounded-lg px-4 py-2 flex-1 focus:border-antika-pink focus:outline-none">
+                        <select id="product-category-filter" class="border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-antika-pink focus:outline-none">
+                            <option value="">جميع التصنيفات</option>
+                        </select>
+                    </div>
+
+                    <div id="admin-products-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                    </div>
+                </section>
+
+                <!-- Categories Section -->
+                <section id="categories-section" class="hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-antika-gold">🏷️ إدارة التصنيفات</h2>
+                        <button onclick="openCategoryModal()" class="bg-antika-pink text-white px-6 py-3 rounded-full font-bold hover:bg-antika-pink-dark transition flex items-center gap-2">
+                            <i class="fas fa-plus"></i> تصنيف جديد
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-antika-lavender">
+                                    <tr>
+                                        <th class="px-4 md:px-6 py-4 text-right text-antika-gold font-bold">الأيقونة</th>
+                                        <th class="px-4 md:px-6 py-4 text-right text-antika-gold font-bold">الاسم</th>
+                                        <th class="px-4 md:px-6 py-4 text-right text-antika-gold font-bold hidden md:table-cell">الفرعية</th>
+                                        <th class="px-4 md:px-6 py-4 text-right text-antika-gold font-bold">الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="categories-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Bulk Discount Section -->
+                <section id="bulk-discount-section" class="hidden space-y-6">
+                    <h2 class="text-2xl font-bold text-antika-gold">🎁 خصم جماعي</h2>
+
+                    <div class="bg-white rounded-2xl shadow-lg p-6">
+                        <div class="mb-6">
+                            <label class="block text-gray-700 font-bold mb-2">اختر المنتجات:</label>
+                            <div id="bulk-products-list" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto border-2 border-gray-200 rounded-lg p-4">
+                            </div>
+                        </div>
+
+                        <div class="grid md:grid-cols-3 gap-4 mb-6">
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">نوع الخصم:</label>
+                                <select id="bulk-discount-type" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+                                    <option value="percentage">نسبة %</option>
+                                    <option value="fixed">قيمة ثابتة</option>
+                                    <option value="newPrice">سعر جديد</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">القيمة:</label>
+                                <input type="number" id="bulk-discount-value" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="مثال: 20">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">تاريخ الانتهاء:</label>
+                                <input type="date" id="bulk-discount-end" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+                            </div>
+                        </div>
+
+                        <button onclick="applyBulkDiscount()" class="w-full bg-antika-gold text-white py-4 rounded-lg font-bold hover:bg-antika-gold-dark transition text-lg">
+                            🚀 تطبيق الخصم
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Banners Section -->
+                <section id="banners-section" class="hidden space-y-6">
+                    <h2 class="text-2xl font-bold text-antika-gold">🎨 تخصيص البانرات</h2>
+
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-2xl shadow-lg p-6">
+                            <h3 class="font-bold text-lg mb-4">البانر الرئيسي</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-gray-700 mb-2">العنوان:</label>
+                                    <input type="text" id="hero-title" class="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-antika-pink focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 mb-2">النص الفرعي:</label>
+                                    <textarea id="hero-subtitle" rows="2" class="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-antika-pink focus:outline-none"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 mb-2">اللون:</label>
+                                    <input type="color" id="hero-color" class="w-full h-10 rounded-lg">
+                                </div>
+                                <button onclick="saveBannerSettings()" class="w-full bg-antika-pink text-white py-2 rounded-lg font-bold hover:bg-antika-pink-dark transition">
+                                    حفظ
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl shadow-lg p-6">
+                            <h3 class="font-bold text-lg mb-4">بانر العروض</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-gray-700 mb-2">نص العرض:</label>
+                                    <input type="text" id="promo-text" class="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-antika-pink focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 mb-2">كود الخصم:</label>
+                                    <input type="text" id="promo-code" class="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-antika-pink focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 mb-2">اللون:</label>
+                                    <input type="color" id="promo-color" class="w-full h-10 rounded-lg">
+                                </div>
+                                <button onclick="savePromoSettings()" class="w-full bg-antika-gold text-white py-2 rounded-lg font-bold hover:bg-antika-gold-dark transition">
+                                    حفظ
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Footer Settings Section -->
+                <section id="footer-section" class="hidden space-y-6">
+                    <h2 class="text-2xl font-bold text-antika-gold">📞 إعدادات الفوتر وتواصل معنا</h2>
+                    <p class="text-gray-600">هذه المعلومات ستظهر في الفوتر لجميع صفحات المتجر</p>
+
+                    <div class="bg-white rounded-2xl shadow-lg p-6">
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">رقم الجوال:</label>
+                                <input type="text" id="footer-phone" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="+966 50 123 4567">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">البريد الإلكتروني:</label>
+                                <input type="email" id="footer-email" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="info@antika-store.com">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">رابط انستقرام:</label>
+                                <input type="url" id="footer-instagram" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="https://instagram.com/antika.store">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">رابط واتساب:</label>
+                                <input type="url" id="footer-whatsapp" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="https://wa.me/966501234567">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">رابط سناب شات:</label>
+                                <input type="url" id="footer-snapchat" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="https://snapchat.com/add/antika.store">
+                            </div>
+                        </div>
+
+                        <button onclick="saveFooterSettings()" class="w-full bg-antika-gold text-white py-4 rounded-lg font-bold hover:bg-antika-gold-dark transition text-lg mt-6">
+                            💾 حفظ إعدادات الفوتر
+                        </button>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+       <!-- Product Modal -->
+    <div id="product-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
+        <div class="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6 p-6 border-b">
+                <h3 class="text-2xl font-bold text-antika-gold" id="modal-title">إضافة منتج جديد</h3>
+                <button onclick="closeProductModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+
+            <form id="product-form" class="space-y-4 p-6">
+                <input type="hidden" id="product-id">
+
+                <div class="grid md:grid-cols-2 gap-4">
+                    <!-- Multiple Images Upload -->
+                    <div class="md:col-span-2">
+                        <label class="block text-gray-700 font-bold mb-2">صور المنتج:</label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-antika-pink transition">
+                            <input type="file" id="product-images" accept="image/*" multiple class="hidden" onchange="previewMultipleImages(this)">
+                            <button type="button" onclick="document.getElementById('product-images').click()" class="bg-antika-gold text-white px-4 py-2 rounded-lg mb-2">
+                                <i class="fas fa-images"></i> اختر الصور
+                            </button>
+                            <p class="text-gray-500 text-sm">يمكنك اختيار أكثر من صورة</p>
+                        </div>
+                        <div id="images-preview-container" class="flex gap-2 mt-4 flex-wrap">
+                            <!-- Preview images will appear here -->
+                        </div>
+                        <input type="hidden" id="product-images-data" value="[]">
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-gray-700 font-bold mb-2">اسم المنتج:</label>
+                        <input type="text" id="product-name" required class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+                    </div>
+
+                    <!-- Price Section -->
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">السعر الأصلي (ر.س):</label>
+                        <input type="number" id="product-original-price" required min="0" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" oninput="calculateSalePrice()">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">سعر البيع (ر.س):</label>
+                        <input type="number" id="product-sale-price" required min="0" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none bg-antika-lavender/30" oninput="calculateDiscount()">
+                        <p id="discount-display" class="text-sm text-antika-pink-dark mt-1 font-bold"></p>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">التصنيفات:</label>
+                        <div id="product-categories" class="border-2 border-gray-200 rounded-lg p-3 max-h-32 overflow-y-auto">
+                            <!-- Categories will be loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- Stock Section -->
+                    <div class="md:col-span-2 bg-antika-lavender/50 p-4 rounded-lg">
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">المخزون (رقم):</label>
+                                <input type="number" id="product-stock" required min="0" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">طريقة عرض الكمية:</label>
+                                <select id="stock-display" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" onchange="toggleStockText()">
+                                    <option value="number">عرض الرقم (مثال: 15 متبقي)</option>
+                                    <option value="text">عرض نصي مخصص</option>
+                                    <option value="hidden">إخفاء الكمية</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- Custom Stock Text (hidden by default) -->
+                        <div id="stock-text-container" class="mt-4 hidden">
+                            <label class="block text-gray-700 font-bold mb-2">نص عرض الكمية:</label>
+                            <input type="text" id="stock-text" placeholder="مثال: متوفر بكثرة، بقيت 3 قطع فقط، نفذت الكمية" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+                            <p class="text-sm text-gray-500 mt-1">اكتب أي نص يصف حالة المخزون</p>
+                        </div>
+                    </div>
+
+                    <!-- New Product with Auto Expiry -->
+                    <div class="md:col-span-2 flex items-center gap-4 bg-yellow-50 p-4 rounded-lg">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="product-new" class="w-5 h-5 text-antika-pink rounded" onchange="toggleNewProductDate()">
+                            <span class="font-bold text-antika-gold">منتج جديد</span>
+                        </label>
+                        <span class="text-sm text-gray-500">(يظهر لمدة 7 أيام تلقائياً)</span>
+                    </div>
+                    <div id="new-product-date" class="hidden md:col-span-2">
+                        <label class="block text-gray-700 font-bold mb-2">تاريخ إزالة علامة "جديد":</label>
+                        <input type="date" id="new-expiry-date" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none bg-gray-100" readonly>
+                    </div>
+
+                    <div class="flex gap-4 items-center">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="product-featured" class="w-5 h-5 text-antika-pink rounded">
+                            <span class="text-gray-700">مميز</span>
+                        </label>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-gray-700 font-bold mb-2">الوصف:</label>
+                        <textarea id="product-description" rows="3" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 pt-4">
+                    <button type="submit" class="flex-1 bg-antika-gold text-white py-3 rounded-lg font-bold hover:bg-antika-gold-dark transition">
+                        💾 حفظ
+                    </button>
+                    <button type="button" onclick="closeProductModal()" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300 transition">
+                        إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Category Modal -->
+    <div id="category-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6">
+            <h3 class="text-2xl font-bold text-antika-gold mb-6">إضافة تصنيف</h3>
+            <form id="category-form" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 font-bold mb-2">الأيقونة:</label>
+                    <input type="text" id="category-icon" placeholder="🕯️" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none text-2xl">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-bold mb-2">الاسم:</label>
+                    <input type="text" id="category-name" required class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-bold mb-2">فرعية (بفاصلة):</label>
+                    <input type="text" id="category-subcategories" placeholder="فرع1, فرع2, فرع3" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+                </div>
+                <div class="flex gap-4 pt-4">
+                    <button type="submit" class="flex-1 bg-antika-pink text-white py-3 rounded-lg font-bold hover:bg-antika-pink-dark transition">
+                        إضافة
+                    </button>
+                    <button type="button" onclick="closeCategoryModal()" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300 transition">
+                        إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

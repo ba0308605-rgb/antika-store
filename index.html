@@ -1,0 +1,1000 @@
+
+index_html = '''<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>انتيكا استور | ديكور وأثاث منزلي</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'antika-pink': '#FFB6C1',
+                        'antika-pink-dark': '#FF69B4',
+                        'antika-gold': '#D6C1A6',
+                        'antika-gold-dark': '#C4AC8E',
+                        'antika-gold-light': '#E8D9C5',
+                        'antika-beige': '#FAF0E6',
+                        'antika-lavender': '#FFF0F5',
+                    },
+                    fontFamily: {
+                        'tajawal': ['Tajawal', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Tajawal', sans-serif; }
+
+        /* Announcing Bar */
+        .announcing-bar {
+            background: #D6C1A6;
+            color: white;
+            padding: 8px 0;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .announcing-content {
+            display: inline-block;
+            animation: scroll 20s linear infinite;
+        }
+        @keyframes scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* Header Styles */
+        .main-header {
+            background: white;
+            border-bottom: 1px solid #eee;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        /* Search Expand */
+        .search-container {
+            position: relative;
+        }
+        .search-expand {
+            position: absolute;
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            background: white;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+        }
+        .search-expand.active {
+            width: 300px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 0 15px;
+        }
+        .search-expand input {
+            width: 0;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-family: 'Tajawal', sans-serif;
+            transition: width 0.3s ease;
+        }
+        .search-expand.active input {
+            width: 230px;
+            margin-left: 10px;
+        }
+
+        /* Logo Styles */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-image {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+            border-radius: 50%;
+        }
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .logo-text-ar {
+            font-size: 24px;
+            font-weight: 800;
+            color: #D6C1A6;
+            letter-spacing: 2px;
+        }
+        .logo-text-en {
+            font-size: 12px;
+            color: #999;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        /* Hamburger Menu */
+        .hamburger-lines {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            padding: 10px;
+        }
+        .hamburger-lines span {
+            width: 25px;
+            height: 2px;
+            background: #333;
+            transition: all 0.3s ease;
+        }
+
+        /* Mobile Menu */
+        .mobile-menu {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 80%;
+            max-width: 350px;
+            height: 100vh;
+            background: white;
+            z-index: 1000;
+            transition: right 0.3s ease;
+            box-shadow: -5px 0 30px rgba(0,0,0,0.2);
+        }
+        .mobile-menu.open {
+            right: 0;
+        }
+        .menu-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .menu-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Product Card Unified Style */
+        .product-card { 
+            transition: all 0.3s ease; 
+            cursor: pointer;
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+        .product-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 15px 30px rgba(0,0,0,0.15); 
+        }
+        .product-image-container {
+            aspect-ratio: 1/1;
+            position: relative;
+            overflow: hidden;
+            background: #f8f8f8;
+        }
+        .product-image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        .product-card:hover .product-image-container img {
+            transform: scale(1.05);
+        }
+        .eye-icon {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 36px;
+            height: 36px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #D6C1A6;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 10;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+        }
+        .eye-icon:hover {
+            background: #FFB6C1;
+            color: white;
+        }
+        .add-to-cart-btn {
+            background: #D6C1A6;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: none;
+            cursor: pointer;
+        }
+        .add-to-cart-btn:hover {
+            background: #C4AC8E;
+        }
+
+        /* Banner Slider */
+        .banner-slider {
+            position: relative;
+            overflow: hidden;
+            border-radius: 24px;
+        }
+        .banner-slide {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        .banner-slide.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .banner-dots {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+        .banner-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .banner-dot.active {
+            background: white;
+            width: 30px;
+            border-radius: 6px;
+        }
+
+        /* Large Banner */
+        .large-banner {
+            border-radius: 24px;
+            overflow: hidden;
+            position: relative;
+            height: 400px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        @media (min-width: 768px) {
+            .large-banner {
+                height: 500px;
+            }
+        }
+        .large-banner:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Payment Banner */
+        .payment-banner {
+            background: linear-gradient(135deg, #D6C1A6 0%, #C4AC8E 100%);
+            border-radius: 24px;
+            overflow: hidden;
+            height: 150px;
+        }
+
+        /* Footer Contact Box */
+        .contact-box {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #FFF0F5; }
+        ::-webkit-scrollbar-thumb { background: #FFB6C1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Announcing Bar -->
+    <div class="announcing-bar">
+        <div class="announcing-content">
+            🚚 تخفيضات و خصومات تصل الى 50% وتوصيل مجاني لجميع مدن المملكة &nbsp;&nbsp;&nbsp; 🚚 تخفيضات و خصومات تصل الى 50% وتوصيل مجاني لجميع مدن المملكة &nbsp;&nbsp;&nbsp; 🚚 تخفيضات و خصومات تصل الى 50% وتوصيل مجاني لجميع مدن المملكة &nbsp;&nbsp;&nbsp; 🚚 تخفيضات و خصومات تصل الى 50% وتوصيل مجاني لجميع مدن المملكة &nbsp;&nbsp;&nbsp;
+        </div>
+        <div class="announcing-content">
+            🚚 تخفيضات و خصومات تصل الى 50% وتوصيل مجاني لجميع مدن المملكة &nbsp;&nbsp;&nbsp; 🚚 تخفيضات و خصومات تصل الى 50% وتوصيل مجاني لجميع مدن المملكة &nbsp;&nbsp;&nbsp; 🚚 تخفيضات و خصومات تصل الى 50% وتوصيل مجاني لجميع مدن المملكة &nbsp;&nbsp;&nbsp; 🚚 تخفيضات و خصومات تصل الى 50% وتوصيل مجاني لجميع مدن المملكة &nbsp;&nbsp;&nbsp;
+        </div>
+    </div>
+
+    <!-- Main Header -->
+    <header class="main-header">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-20">
+                <!-- Right Side: Hamburger Menu (now on right for RTL) -->
+                <div class="hamburger-lines" onclick="toggleMenu()">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+
+                <!-- Center: Logo with Image -->
+                <a href="index.html" class="absolute left-1/2 transform -translate-x-1/2">
+                    <div class="logo-container">
+                        <img src="images/logo.jpg" alt="Antika Logo" class="logo-image">
+                        <div class="logo-text">
+                            <span class="logo-text-ar">أنتيكا</span>
+                            <span class="logo-text-en">Antika Store</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Left Side: Login, Cart, Search (now on left for RTL) -->
+                <div class="flex items-center gap-4">
+                    <!-- Search -->
+                    <div class="search-container">
+                        <div class="search-expand" id="search-expand">
+                            <input type="text" id="search-input" placeholder="أدخل كلمة البحث..." onkeypress="handleSearch(event)">
+                            <button onclick="toggleSearch()" class="w-10 h-10 flex items-center justify-center text-gray-600 hover:text-antika-gold">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Cart -->
+                    <a href="cart.html" class="relative text-gray-600 hover:text-antika-gold transition">
+                        <i class="fas fa-shopping-cart text-xl"></i>
+                        <span id="cart-count" class="absolute -top-2 -right-2 bg-antika-pink text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold hidden">0</span>
+                    </a>
+
+                    <!-- Login -->
+                    <a href="login.html" id="login-btn" class="text-gray-600 hover:text-antika-gold transition flex items-center gap-2">
+                        <span class="hidden sm:inline text-sm">تسجيل الدخول</span>
+                        <i class="fas fa-user text-lg"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="menu-overlay" id="menu-overlay" onclick="toggleMenu()"></div>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobile-menu">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-8">
+                <h3 class="text-xl font-bold text-antika-gold">القائمة</h3>
+                <button onclick="toggleMenu()" class="text-2xl text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <nav class="space-y-4">
+                <a href="index.html" class="block py-3 border-b border-gray-100 text-gray-800 hover:text-antika-gold font-semibold">الرئيسية</a>
+                <a href="products.html" class="block py-3 border-b border-gray-100 text-gray-800 hover:text-antika-gold">المنتجات</a>
+                <a href="products.html?discount=true" class="block py-3 border-b border-gray-100 text-gray-800 hover:text-antika-gold">العروض</a>
+                <a href="wishlist.html" class="block py-3 border-b border-gray-100 text-gray-800 hover:text-antika-gold">المفضلة</a>
+            </nav>
+            <div class="mt-8">
+                <h4 class="font-bold text-gray-700 mb-4">التصنيفات</h4>
+                <div id="mobile-categories" class="space-y-3">
+                    <!-- Categories loaded by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Banner Slider -->
+    <section class="container mx-auto px-4 py-8">
+        <div class="banner-slider relative h-[400px] md:h-[500px]">
+            <!-- Slide 1 -->
+            <div class="banner-slide active h-full">
+                <div class="relative h-full rounded-3xl overflow-hidden bg-gradient-to-br from-antika-gold/20 to-antika-pink/20">
+                    <div class="absolute inset-0 opacity-30">
+                        <div class="absolute top-10 left-10 w-32 h-32 bg-antika-pink rounded-full blur-3xl"></div>
+                        <div class="absolute bottom-10 right-10 w-40 h-40 bg-antika-gold rounded-full blur-3xl"></div>
+                    </div>
+                    <div class="relative h-full flex items-center">
+                        <div class="w-full md:w-1/2 h-full relative">
+                            <img src="https://images.pexels.com/photos/1090638/pexels-photo-1090638.jpeg?auto=compress&cs=tinysrgb&w=800" 
+                                 alt="Furniture" 
+                                 class="w-full h-full object-cover md:rounded-r-3xl">
+                        </div>
+                        <div class="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center text-right">
+                            <span class="inline-block bg-antika-pink text-white px-4 py-1 rounded-full text-sm font-semibold mb-4 w-fit">تشكيلة جديدة 2025</span>
+                            <h2 class="text-3xl md:text-5xl font-bold mb-4 leading-tight text-gray-800">أضف لمسة من الأناقة إلى منزلك</h2>
+                            <p class="text-lg mb-6 text-gray-600">مع تشكيلتنا الفريدة من الديكور والأثاث والشموع العطرية</p>
+                            <div class="flex gap-4 justify-end">
+                                <a href="products.html" class="bg-antika-gold text-white px-8 py-3 rounded-full font-bold hover:bg-antika-gold-dark transition">تسوق الآن</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Slide 2 -->
+            <div class="banner-slide h-full">
+                <div class="relative h-full rounded-3xl overflow-hidden bg-gradient-to-bl from-antika-pink/20 to-antika-gold/20">
+                    <div class="absolute inset-0 opacity-30">
+                        <div class="absolute top-20 right-20 w-32 h-32 bg-antika-gold rounded-full blur-3xl"></div>
+                        <div class="absolute bottom-20 left-20 w-40 h-40 bg-antika-pink rounded-full blur-3xl"></div>
+                    </div>
+                    <div class="relative h-full flex items-center">
+                        <div class="w-full md:w-1/2 h-full relative">
+                            <img src="https://images.pexels.com/photos/1571459/pexels-photo-1571459.jpeg?auto=compress&cs=tinysrgb&w=800" 
+                                 alt="Decor" 
+                                 class="w-full h-full object-cover md:rounded-r-3xl">
+                        </div>
+                        <div class="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center text-right">
+                            <span class="inline-block bg-antika-gold text-white px-4 py-1 rounded-full text-sm font-semibold mb-4 w-fit">خصم 30%</span>
+                            <h2 class="text-3xl md:text-5xl font-bold mb-4 leading-tight text-gray-800">تحف وانتيكات مختارة بعناية</h2>
+                            <p class="text-lg mb-6 text-gray-600">لأن التفاصيل تصنع روح المكان</p>
+                            <a href="products.html" class="bg-antika-gold text-white px-8 py-3 rounded-full font-bold hover:bg-antika-gold-dark transition w-fit">اكتشف المزيد</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dots -->
+            <div class="banner-dots">
+                <div class="banner-dot active" onclick="goToSlide(0)"></div>
+                <div class="banner-dot" onclick="goToSlide(1)"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Categories Section -->
+    <section class="py-16 bg-white">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center text-antika-gold mb-12">
+                <span class="border-b-4 border-antika-pink pb-2">تصنيفاتنا</span>
+            </h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6" id="categories-grid">
+            </div>
+        </div>
+    </section>
+
+    <!-- Large Banner 1 -->
+    <section class="container mx-auto px-4 mb-12">
+        <div class="large-banner" onclick="window.location.href='products.html?category=furniture'">
+            <img src="https://images.pexels.com/photos/1866149/pexels-photo-1866149.jpeg?auto=compress&cs=tinysrgb&w=1200" 
+                 alt="Furniture Collection" 
+                 class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex flex-col justify-end p-8">
+                <span class="text-antika-gold font-bold text-lg mb-2">تشكيلة 2025</span>
+                <h3 class="text-white text-3xl md:text-4xl font-bold mb-2">أثاث عصري بأناقة كلاسيكية</h3>
+                <p class="text-white/80 mb-4">اكتشفي قطعاً تُكمل جمال منزلك</p>
+                <span class="bg-antika-gold text-white px-6 py-3 rounded-full font-bold w-fit">تصفحي الآن</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Products -->
+    <section id="featured" class="py-16 bg-gray-50">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center mb-12">
+                <h2 class="text-2xl md:text-3xl font-bold text-antika-gold">
+                    <span class="border-b-4 border-antika-pink pb-2">🔥 عروض خاصة</span>
+                </h2>
+                <a href="products.html" class="text-antika-gold hover:text-antika-pink-dark transition font-semibold">
+                    عرض الكل <i class="fas fa-arrow-left mr-1"></i>
+                </a>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6" id="featured-products">
+            </div>
+        </div>
+    </section>
+
+    <!-- Large Banner 2 -->
+    <section class="container mx-auto px-4 mb-12">
+        <div class="large-banner" onclick="window.location.href='products.html?category=candles'">
+            <img src="https://images.pexels.com/photos/278664/pexels-photo-278664.jpeg?auto=compress&cs=tinysrgb&w=1200" 
+                 alt="Candles Collection" 
+                 class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex flex-col justify-end p-8">
+                <span class="text-antika-pink font-bold text-lg mb-2">شموع عطرية</span>
+                <h3 class="text-white text-3xl md:text-4xl font-bold mb-2">أضفي دفئاً وراحة لمنزلك</h3>
+                <p class="text-white/80 mb-4">روائح تبقى في الذاكرة</p>
+                <span class="bg-antika-pink text-white px-6 py-3 rounded-full font-bold w-fit">اكتشفي المزيد</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- New Arrivals -->
+    <section class="py-16 bg-white">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center text-antika-gold mb-12">
+                <span class="border-b-4 border-antika-pink pb-2">✨ وصل حديثاً</span>
+            </h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6" id="new-products">
+            </div>
+        </div>
+    </section>
+
+    <!-- Large Banner 3 -->
+    <section class="container mx-auto px-4 mb-6">
+        <div class="large-banner" onclick="window.location.href='products.html?category=decor'">
+            <img src="https://images.pexels.com/photos/6489117/pexels-photo-6489117.jpeg?auto=compress&cs=tinysrgb&w=1200" 
+                 alt="Decor Collection" 
+                 class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex flex-col justify-end p-8">
+                <span class="text-antika-gold font-bold text-lg mb-2">ديكورات فنية</span>
+                <h3 class="text-white text-2xl md:text-3xl font-bold mb-2">تفاصيل تُكمل جمال بيتك</h3>
+                <span class="bg-antika-gold text-white px-6 py-2 rounded-full font-bold w-fit text-sm">تسوقي الآن</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Payment Banner -->
+    <section class="container mx-auto px-4 mb-12">
+        <div class="payment-banner">
+            <div class="h-full flex items-center justify-between px-8">
+                <div class="text-white">
+                    <h3 class="text-xl font-bold mb-1">اشترِ الآن وادفع لاحقاً!</h3>
+                    <p class="text-white/80 text-sm">قسم فاتورتك على 4 دفعات بدون فوائد</p>
+                </div>
+                <div class="flex gap-3">
+                    <div class="bg-white rounded-lg px-4 py-2 flex items-center gap-2">
+                        <span class="text-purple-600 font-bold">tabby</span>
+                    </div>
+                    <div class="bg-white rounded-lg px-4 py-2 flex items-center gap-2">
+                        <span class="text-pink-600 font-bold">tamara</span>
+                    </div>
+                    <div class="bg-white rounded-lg px-4 py-2 flex items-center gap-2">
+                        <span class="text-blue-600 font-bold">مدفوع</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer with Contact Box -->
+    <footer class="bg-antika-gold text-white py-12">
+        <div class="container mx-auto px-4">
+            <!-- Contact Box -->
+            <div class="contact-box mb-12 max-w-4xl mx-auto">
+                <h3 class="text-xl font-bold text-antika-gold mb-6 text-center">تواصل معنا</h3>
+                <div class="grid md:grid-cols-3 gap-6 text-center">
+                    <div>
+                        <i class="fas fa-phone text-2xl text-antika-gold mb-2"></i>
+                        <p class="text-gray-600 text-sm">اتصل بنا</p>
+                        <p class="text-gray-800 font-bold" id="footer-phone">+966 50 123 4567</p>
+                    </div>
+                    <div>
+                        <i class="fas fa-envelope text-2xl text-antika-gold mb-2"></i>
+                        <p class="text-gray-600 text-sm">البريد الإلكتروني</p>
+                        <p class="text-gray-800 font-bold" id="footer-email">info@antika-store.com</p>
+                    </div>
+                    <div>
+                        <i class="fab fa-whatsapp text-2xl text-antika-gold mb-2"></i>
+                        <p class="text-gray-600 text-sm">واتساب</p>
+                        <p class="text-gray-800 font-bold">+966 50 123 4567</p>
+                    </div>
+                </div>
+                <div class="flex justify-center gap-4 mt-6">
+                    <a href="#" id="footer-instagram" class="w-12 h-12 bg-antika-gold/20 rounded-full flex items-center justify-center hover:bg-antika-pink transition text-antika-gold hover:text-white">
+                        <i class="fab fa-instagram text-xl"></i>
+                    </a>
+                    <a href="#" id="footer-whatsapp" class="w-12 h-12 bg-antika-gold/20 rounded-full flex items-center justify-center hover:bg-antika-pink transition text-antika-gold hover:text-white">
+                        <i class="fab fa-whatsapp text-xl"></i>
+                    </a>
+                    <a href="#" id="footer-snapchat" class="w-12 h-12 bg-antika-gold/20 rounded-full flex items-center justify-center hover:bg-antika-pink transition text-antika-gold hover:text-white">
+                        <i class="fab fa-snapchat text-xl"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-4 gap-8">
+                <div>
+                    <div class="text-center mb-4">
+                        <div class="text-3xl font-bold text-white" style="font-family: serif;">antika</div>
+                        <div class="text-xs text-white/70 tracking-widest">أنتيكا</div>
+                    </div>
+                    <p class="text-white/90 leading-relaxed text-center">وجهتك الأولى للديكور والأثاث المنزلي الفاخر.</p>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-4 text-white">روابط سريعة</h4>
+                    <ul class="space-y-2 text-white/90">
+                        <li><a href="index.html" class="hover:text-white transition">الرئيسية</a></li>
+                        <li><a href="products.html" class="hover:text-white transition">المنتجات</a></li>
+                        <li><a href="wishlist.html" class="hover:text-white transition">المفضلة</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-4 text-white">خدمة العملاء</h4>
+                    <ul class="space-y-2 text-white/90">
+                        <li><a href="#" class="hover:text-white transition">الأسئلة الشائعة</a></li>
+                        <li><a href="#" class="hover:text-white transition">سياسة الإرجاع</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-4 text-white">عن المتجر</h4>
+                    <ul class="space-y-2 text-white/90">
+                        <li><a href="#" class="hover:text-white transition">من نحن</a></li>
+                        <li><a href="#" class="hover:text-white transition">الشروط والأحكام</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-white/30 mt-8 pt-8 text-center text-white/90">
+                <p>© 2025 انتيكا استور. جميع الحقوق محفوظة.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script>
+        // Banner Slider
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.banner-slide');
+        const dots = document.querySelectorAll('.banner-dot');
+
+        function goToSlide(index) {
+            slides[currentSlide].classList.remove('active');
+            dots[currentSlide].classList.remove('active');
+            currentSlide = index;
+            slides[currentSlide].classList.add('active');
+            dots[currentSlide].classList.add('active');
+        }
+
+        function nextSlide() {
+            const next = (currentSlide + 1) % slides.length;
+            goToSlide(next);
+        }
+
+        setInterval(nextSlide, 5000);
+
+        // Toggle Search
+        function toggleSearch() {
+            const searchExpand = document.getElementById('search-expand');
+            searchExpand.classList.toggle('active');
+            if (searchExpand.classList.contains('active')) {
+                document.getElementById('search-input').focus();
+            }
+        }
+
+        function handleSearch(e) {
+            if (e.key === 'Enter') {
+                const query = e.target.value.trim();
+                if (query) {
+                    window.location.href = `products.html?search=${encodeURIComponent(query)}`;
+                }
+            }
+        }
+
+        // Toggle Mobile Menu
+        function toggleMenu() {
+            document.getElementById('mobile-menu').classList.toggle('open');
+            document.getElementById('menu-overlay').classList.toggle('open');
+        }
+
+        // UNIFIED PRODUCT CARD - Used everywhere
+        function createProductCard(product) {
+            const hasDiscount = product.discountPrice && product.discountPrice < product.price;
+            const imageUrl = product.images && product.images[0] ? product.images[0] : 'https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store';
+            const isNew = product.isNew && new Date(product.newExpiryDate) > new Date();
+            
+            // Stock display
+            let stockHtml = '';
+            if (product.stockDisplay !== 'hidden') {
+                let stockText = '';
+                let stockClass = product.stock < 5 ? 'text-red-500' : 'text-green-600';
+                
+                if (product.stockDisplay === 'text' && product.stockText) {
+                    stockText = product.stockText;
+                } else if (product.stockDisplay === 'number') {
+                    stockText = `متوفر: ${product.stock} قطعة`;
+                }
+                
+                if (stockText) {
+                    stockHtml = `<p class="${stockClass} text-xs mb-1"><i class="fas fa-box ml-1"></i>${stockText}</p>`;
+                }
+            }
+
+            // Rating display
+            let ratingHtml = '';
+            if (!product.reviews || product.reviews === 0) {
+                ratingHtml = '<span class="text-gray-300 text-sm">☆☆☆☆☆</span><span class="text-gray-400 mr-1 text-xs">(0)</span>';
+            } else {
+                let stars = '';
+                for (let i = 1; i <= 5; i++) {
+                    if (i <= Math.floor(product.rating)) {
+                        stars += '<span class="text-yellow-400">★</span>';
+                    } else if (i === Math.ceil(product.rating) && !Number.isInteger(product.rating)) {
+                        stars += '<span class="text-yellow-400 relative"><span class="absolute overflow-hidden w-1/2">★</span><span class="text-gray-300">☆</span></span>';
+                    } else {
+                        stars += '<span class="text-gray-300">☆</span>';
+                    }
+                }
+                ratingHtml = stars + `<span class="text-gray-400 mr-1 text-xs">(${product.reviews})</span>`;
+            }
+
+            // Price display with before/after
+            let priceHtml = '';
+            if (hasDiscount) {
+                priceHtml = `
+                    <div class="flex items-center gap-2">
+                        <span class="text-gray-400 line-through text-sm">${product.price} ر.س</span>
+                        <span class="text-antika-pink-dark font-bold text-lg">${product.discountPrice} ر.س</span>
+                    </div>
+                `;
+            } else {
+                priceHtml = `<span class="text-antika-gold font-bold text-lg">${product.price} ر.س</span>`;
+            }
+
+            return `
+                <div class="product-card" onclick="window.location.href='product.html?id=${product.id}'">
+                    <div class="product-image-container">
+                        <img src="${imageUrl}" alt="${product.name}">
+                        <button onclick="event.stopPropagation(); openQuickView(${product.id})" class="eye-icon" title="نظرة سريعة">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        ${isNew ? `<div class="absolute top-3 right-3 bg-antika-pink text-white px-3 py-1 rounded-full text-xs font-bold">جديد</div>` : ''}
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-bold text-gray-800 mb-2 text-sm truncate">${product.name}</h3>
+                        ${stockHtml}
+                        <div class="flex items-center gap-1 mb-2 text-sm">${ratingHtml}</div>
+                        <div class="flex items-center justify-between">
+                            ${priceHtml}
+                            <button onclick="event.stopPropagation(); addToCart(${product.id})" class="add-to-cart-btn">
+                                <i class="fas fa-shopping-bag"></i> أضف
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Load categories
+        async function loadCategories() {
+            try {
+                const categories = await API.getCategories();
+                
+                // Desktop grid
+                const grid = document.getElementById('categories-grid');
+                if (grid) {
+                    grid.innerHTML = categories.map(cat => `
+                        <a href="products.html?category=${cat.id}" class="group">
+                            <div class="bg-gray-50 rounded-2xl p-6 text-center hover:shadow-xl transition transform hover:-translate-y-2 border-2 border-transparent hover:border-antika-pink">
+                                <div class="text-5xl mb-4 group-hover:scale-110 transition">${cat.icon}</div>
+                                <h3 class="font-bold text-antika-gold text-lg mb-2">${cat.name}</h3>
+                                <p class="text-sm text-gray-500">${cat.subcategories ? cat.subcategories.length : 0} تصنيف فرعي</p>
+                            </div>
+                        </a>
+                    `).join('');
+                }
+
+                // Mobile menu categories
+                const mobileCats = document.getElementById('mobile-categories');
+                if (mobileCats) {
+                    mobileCats.innerHTML = categories.map(cat => `
+                        <a href="products.html?category=${cat.id}" class="flex items-center gap-3 py-2 text-gray-700 hover:text-antika-gold" onclick="toggleMenu()">
+                            <span class="text-2xl">${cat.icon}</span>
+                            <span>${cat.name}</span>
+                        </a>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading categories:', error);
+            }
+        }
+
+        // Load featured products
+        async function loadFeaturedProducts() {
+            try {
+                const products = await API.getProducts();
+                const featured = products.filter(p => p.isFeatured).slice(0, 4);
+                
+                const container = document.getElementById('featured-products');
+                if (!container) return;
+                
+                if (featured.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 col-span-full text-center">لا توجد منتجات مميزة</p>';
+                    return;
+                }
+
+                container.innerHTML = featured.map(product => createProductCard(product)).join('');
+            } catch (error) {
+                console.error('Error loading featured products:', error);
+            }
+        }
+
+        // Load new products
+        async function loadNewProducts() {
+            try {
+                const products = await API.getProducts();
+                const newProducts = products.filter(p => p.isNew).slice(0, 4);
+                
+                const container = document.getElementById('new-products');
+                if (!container) return;
+                
+                if (newProducts.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 col-span-full text-center">لا توجد منتجات جديدة</p>';
+                    return;
+                }
+
+                container.innerHTML = newProducts.map(product => createProductCard(product)).join('');
+            } catch (error) {
+                console.error('Error loading new products:', error);
+            }
+        }
+
+        // Quick View
+        async function openQuickView(productId) {
+            try {
+                const products = await API.getProducts();
+                const product = products.find(p => p.id == productId);
+                if (!product) return;
+
+                const hasDiscount = product.discountPrice && product.discountPrice < product.price;
+                const imageUrl = product.images && product.images[0] ? product.images[0] : 'https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store';
+
+                let ratingHtml = '';
+                if (!product.reviews || product.reviews === 0) {
+                    ratingHtml = '<span class="text-gray-300">☆☆☆☆☆</span>';
+                } else {
+                    let stars = '';
+                    for (let i = 1; i <= 5; i++) {
+                        if (i <= Math.floor(product.rating)) {
+                            stars += '<span class="text-yellow-400">★</span>';
+                        } else if (i === Math.ceil(product.rating) && !Number.isInteger(product.rating)) {
+                            stars += '<span class="text-yellow-400 relative"><span class="absolute overflow-hidden w-1/2">★</span><span class="text-gray-300">☆</span></span>';
+                        } else {
+                            stars += '<span class="text-gray-300">☆</span>';
+                        }
+                    }
+                    ratingHtml = stars;
+                }
+
+                const modalHtml = `
+                    <div id="quick-view-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div class="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
+                            <button onclick="closeQuickView()" class="absolute top-4 left-4 w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition z-10">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                            <div class="p-6 md:p-8">
+                                <div class="grid md:grid-cols-2 gap-8">
+                                    <div class="rounded-2xl overflow-hidden bg-gray-100">
+                                        <img src="${imageUrl}" alt="${product.name}" class="w-full aspect-square object-cover">
+                                    </div>
+                                    <div class="flex flex-col justify-center">
+                                        <h2 class="text-3xl font-bold text-gray-800 mb-4">${product.name}</h2>
+                                        <div class="flex items-center gap-2 mb-4">
+                                            <div class="text-xl">${ratingHtml}</div>
+                                            <span class="text-gray-500">(${product.reviews || 0} تقييم)</span>
+                                        </div>
+                                        <p class="text-gray-600 mb-6 leading-relaxed line-clamp-3">${product.description}</p>
+                                        <div class="flex items-center gap-4 mb-6">
+                                            ${hasDiscount ? `
+                                                <span class="text-gray-400 line-through text-2xl">${product.price} ر.س</span>
+                                                <span class="text-antika-pink-dark font-bold text-4xl">${product.discountPrice} ر.س</span>
+                                            ` : `
+                                                <span class="text-antika-gold font-bold text-4xl">${product.price} ر.س</span>
+                                            `}
+                                        </div>
+                                        <div class="flex gap-4">
+                                            <button onclick="addToCart(${product.id}); closeQuickView();" class="flex-1 bg-antika-gold text-white py-4 rounded-xl font-bold hover:bg-antika-gold-dark transition">
+                                                <i class="fas fa-shopping-bag ml-2"></i> أضف للسلة
+                                            </button>
+                                            <button onclick="window.location.href='product.html?id=${product.id}'" class="px-6 py-4 border-2 border-antika-gold text-antika-gold rounded-xl font-bold hover:bg-antika-gold hover:text-white transition">
+                                                التفاصيل
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                const modalDiv = document.createElement('div');
+                modalDiv.innerHTML = modalHtml;
+                document.body.appendChild(modalDiv);
+                document.body.style.overflow = 'hidden';
+            } catch (error) {
+                console.error('Error opening quick view:', error);
+            }
+        }
+
+        function closeQuickView() {
+            const modal = document.getElementById('quick-view-modal');
+            if (modal) {
+                modal.remove();
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Add to cart
+        async function addToCart(productId) {
+            try {
+                const products = await API.getProducts();
+                const product = products.find(p => p.id == productId);
+
+                if (product && product.stock > 0) {
+                    await API.addToCart({
+                        id: product.id,
+                        name: product.name,
+                        price: product.discountPrice || product.price,
+                        image: product.images && product.images[0] ? product.images[0] : 'https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store'
+                    });
+                    await updateCartCount();
+                    showNotification(`تمت إضافة "${product.name}" للسلة! 🛒`);
+                }
+            } catch (error) {
+                console.error('Error adding to cart:', error);
+            }
+        }
+
+        // Update cart count
+        async function updateCartCount() {
+            try {
+                const cart = await API.getCart();
+                const count = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
+                const badge = document.getElementById('cart-count');
+                if (badge) {
+                    badge.textContent = count;
+                    badge.classList.toggle('hidden', count === 0);
+                }
+            } catch (error) {
+                console.error('Error updating cart count:', error);
+            }
+        }
+
+        // Check login status
+        function checkLoginStatus() {
+            const isLoggedIn = localStorage.getItem('antika_user');
+            const loginBtn = document.getElementById('login-btn');
+            if (isLoggedIn && loginBtn) {
+                const user = JSON.parse(isLoggedIn);
+                loginBtn.innerHTML = `<span class="hidden sm:inline text-sm">${user.name || 'حسابي'}</span><i class="fas fa-user-circle text-lg"></i>`;
+                loginBtn.href = '#';
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-24 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full shadow-2xl font-bold animate-bounce ${type === 'success' ? 'bg-antika-pink text-white' : 'bg-red-500 text-white'}`;
+            notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} ml-2"></i> ${message}`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadCategories();
+            await loadFeaturedProducts();
+            await loadNewProducts();
+            await updateCartCount();
+            checkLoginStatus();
+        });
+    </script>
+</body>
+</html>'''
+
+# Save the file
+with open('/mnt/kimi/output/index.html', 'w', encoding='utf-8') as f:
+    f.write(index_html)
+
+print("✅ تم حفظ index.html بنجاح")
