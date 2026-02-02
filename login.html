@@ -4,7 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تسجيل الدخول | انتيكا استور</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com">
+        // Search Modal Functions
+        function openSearchModal() {
+            const modal = document.getElementById('search-modal');
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => {
+                document.getElementById('search-modal-input').focus();
+            }, 100);
+        }
+
+        function closeSearchModal(event) {
+            if (event && event.target !== event.currentTarget && event.target.closest('.search-modal-box')) {
+                return;
+            }
+            const modal = document.getElementById('search-modal');
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        function handleModalSearch(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        }
+
+        function performSearch() {
+            const query = document.getElementById('search-modal-input').value.trim();
+            if (query) {
+                window.location.href = `products.html?search=${encodeURIComponent(query)}`;
+            }
+        }
+
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
@@ -26,6 +59,39 @@
                 }
             }
         }
+    
+        // Search Modal Functions
+        function openSearchModal() {
+            const modal = document.getElementById('search-modal');
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => {
+                document.getElementById('search-modal-input').focus();
+            }, 100);
+        }
+
+        function closeSearchModal(event) {
+            if (event && event.target !== event.currentTarget && event.target.closest('.search-modal-box')) {
+                return;
+            }
+            const modal = document.getElementById('search-modal');
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        function handleModalSearch(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        }
+
+        function performSearch() {
+            const query = document.getElementById('search-modal-input').value.trim();
+            if (query) {
+                window.location.href = `products.html?search=${encodeURIComponent(query)}`;
+            }
+        }
+
     </script>
     <style>
         body { font-family: 'Tajawal', sans-serif; }
@@ -39,6 +105,90 @@
             margin: 0 8px;
             color: #D6C1A6;
             font-size: 1.2em;
+        }
+    /* Search Modal Styles */
+        .search-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 100px;
+        }
+        .search-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .search-modal-box {
+            background: white;
+            border-radius: 50px;
+            padding: 8px 24px;
+            width: 90%;
+            max-width: 600px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+        }
+        .search-modal-overlay.active .search-modal-box {
+            transform: translateY(0);
+        }
+        .search-modal-box input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 16px;
+            padding: 12px 0;
+            color: #333;
+        }
+        .search-modal-box input::placeholder {
+            color: #999;
+        }
+        .search-modal-box button {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #D6C1A6;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .search-modal-box button:hover {
+            background: #C4AC8E;
+        }
+        .search-modal-close {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: white;
+            color: #333;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.3s ease;
+        }
+        .search-modal-close:hover {
+            background: #f0f0f0;
         }
     </style>
 </head>
@@ -78,7 +228,7 @@
         <!-- Logo -->
         <div class="text-center mb-8">
             <a href="index.html" class="inline-block">
-                <img src="image/انتيكا استور لوقو.jpg" alt="انتيكا استور" class="w-20 h-20 rounded-full mx-auto mb-4">
+                <img src="images/logo.jpg" alt="انتيكا استور" class="w-20 h-20 rounded-full mx-auto mb-4">
                 <h1 class="text-3xl font-bold text-antika-gold mt-2">انتيكا استور</h1>
                 <p class="text-gray-500 text-sm">أناقة منزلية بأسلوب عصري</p>
             </a>
@@ -175,22 +325,112 @@
             alert('سيتم فتح صفحة التسجيل قريباً!');
         }
 
+        // Admin credentials - Use strong password
+        const ADMIN_CREDENTIALS = {
+            email: 'BDR-FIRST',
+            password: 'B1-a2d3e4r5'
+        };
+
+        // Track login attempts for security
+        let loginAttempts = parseInt(sessionStorage.getItem('loginAttempts') || '0');
+        const MAX_ATTEMPTS = 5;
+        const LOCKOUT_TIME = 15 * 60 * 1000; // 15 minutes
+
+        function isLockedOut() {
+            const lockoutEnd = sessionStorage.getItem('lockoutEnd');
+            if (lockoutEnd && new Date().getTime() < parseInt(lockoutEnd)) {
+                return true;
+            }
+            return false;
+        }
+
+        function lockAccount() {
+            const lockoutEnd = new Date().getTime() + LOCKOUT_TIME;
+            sessionStorage.setItem('lockoutEnd', lockoutEnd.toString());
+            alert('تم قفل الحساب مؤقتاً لأسباب أمنية. الرجاء المحاولة بعد 15 دقيقة.');
+        }
+
         document.getElementById('login-form').addEventListener('submit', function(e) {
             e.preventDefault();
-            const email = document.getElementById('login-email').value;
+            
+            // Check if account is locked
+            if (isLockedOut()) {
+                alert('الحساب مقفل مؤقتاً. الرجاء المحاولة لاحقاً.');
+                return;
+            }
+            
+            const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('login-password').value;
 
-            if (email === 'admin@antika.com' && password === 'admin123') {
-                localStorage.setItem('antika_user', JSON.stringify({ name: 'Admin', email: email, isAdmin: true }));
+            // Admin login with secure credentials
+            if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
+                // Reset login attempts on success
+                sessionStorage.removeItem('loginAttempts');
+                sessionStorage.removeItem('lockoutEnd');
+                
+                // Generate secure token
+                const token = 'admin_' + btoa(Date.now() + '_' + Math.random().toString(36).substr(2, 9));
+                localStorage.setItem('antika_token', token);
+                localStorage.setItem('antika_user', JSON.stringify({ 
+                    name: 'المسؤول', 
+                    email: email, 
+                    isAdmin: true,
+                    loginTime: new Date().toISOString()
+                }));
                 window.location.href = 'admin.html';
             } else if (email && password) {
-                localStorage.setItem('antika_user', JSON.stringify({ name: email.split('@')[0], email: email }));
+                // Regular user login
+                localStorage.setItem('antika_user', JSON.stringify({ 
+                    name: email.split('@')[0], 
+                    email: email 
+                }));
                 alert('تم تسجيل الدخول بنجاح! 🎉');
                 window.location.href = 'index.html';
             } else {
-                alert('الرجاء إدخال البريد الإلكتروني وكلمة المرور');
+                // Failed login attempt
+                loginAttempts++;
+                sessionStorage.setItem('loginAttempts', loginAttempts.toString());
+                
+                if (loginAttempts >= MAX_ATTEMPTS) {
+                    lockAccount();
+                } else {
+                    alert(`بيانات الدخول غير صحيحة! محاولات متبقية: ${MAX_ATTEMPTS - loginAttempts}`);
+                }
             }
         });
+    
+        // Search Modal Functions
+        function openSearchModal() {
+            const modal = document.getElementById('search-modal');
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => {
+                document.getElementById('search-modal-input').focus();
+            }, 100);
+        }
+
+        function closeSearchModal(event) {
+            if (event && event.target !== event.currentTarget && event.target.closest('.search-modal-box')) {
+                return;
+            }
+            const modal = document.getElementById('search-modal');
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        function handleModalSearch(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        }
+
+        function performSearch() {
+            const query = document.getElementById('search-modal-input').value.trim();
+            if (query) {
+                window.location.href = `products.html?search=${encodeURIComponent(query)}`;
+            }
+        }
+
     </script>
 </body>
 </html>

@@ -51,6 +51,92 @@
             position: relative;
             overflow: hidden;
         }
+    
+        /* Search Modal Styles */
+        .search-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 100px;
+        }
+        .search-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .search-modal-box {
+            background: white;
+            border-radius: 50px;
+            padding: 8px 24px;
+            width: 90%;
+            max-width: 600px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+        }
+        .search-modal-overlay.active .search-modal-box {
+            transform: translateY(0);
+        }
+        .search-modal-box input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 16px;
+            padding: 12px 0;
+            color: #333;
+        }
+        .search-modal-box input::placeholder {
+            color: #999;
+        }
+        .search-modal-box button {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #D6C1A6;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .search-modal-box button:hover {
+            background: #C4AC8E;
+        }
+        .search-modal-close {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: white;
+            color: #333;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.3s ease;
+        }
+        .search-modal-close:hover {
+            background: #f0f0f0;
+        }
+
     </style>
 </head>
 <body class="bg-gray-50">
@@ -59,24 +145,29 @@
     <div id="login-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl m-4">
             <div class="text-center mb-6">
-                <img src="image/انتيكا استور لوقو.jpg" alt="انتيكا استور" class="w-20 h-20 rounded-full mx-auto mb-4">
+                <img src="images/logo.jpg" alt="انتيكا استور" class="w-20 h-20 rounded-full mx-auto mb-4">
                 <h2 class="text-2xl font-bold text-antika-gold mt-2">تسجيل دخول الأدمن</h2>
                 <p class="text-gray-500 text-sm">لوحة تحكم انتيكا استور</p>
             </div>
             <form id="login-form" class="space-y-4">
                 <div>
                     <label class="block text-gray-700 mb-2 font-semibold">اسم المستخدم</label>
-                    <input type="text" id="username" value="admin" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none transition">
+                    <input type="text" id="username" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none transition" placeholder="أدخل اسم المستخدم">
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-2 font-semibold">كلمة المرور</label>
-                    <input type="password" id="password" value="123456" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none transition">
+                    <input type="password" id="password" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none transition" placeholder="أدخل كلمة المرور">
                 </div>
                 <button type="submit" class="w-full bg-antika-gold text-white py-3 rounded-lg font-bold hover:bg-antika-gold-dark transition">
                     دخول
                 </button>
             </form>
-            <p class="text-center text-gray-400 text-sm mt-4">جرب: admin / 123456</p>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
+                <p class="text-yellow-700 text-sm text-center">
+                    <i class="fas fa-shield-alt ml-1"></i>
+                    تسجيل الدخول للمسؤول فقط
+                </p>
+            </div>
         </div>
     </div>
 
@@ -86,7 +177,7 @@
         <header class="bg-white shadow-md sticky top-0 z-40">
             <div class="flex items-center justify-between px-4 md:px-6 py-4">
                 <div class="flex items-center gap-3">
-                    <img src="image/انتيكا استور لوقو.jpg" alt="انتيكا استور" class="w-10 h-10 rounded-full">
+                    <img src="images/logo.jpg" alt="انتيكا استور" class="w-10 h-10 rounded-full">
                     <h1 class="text-lg md:text-xl font-bold text-antika-gold">لوحة تحكم انتيكا</h1>
                 </div>
                 <div class="flex items-center gap-4">
@@ -134,6 +225,18 @@
                     <button onclick="showSection('footer')" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
                         <i class="fas fa-address-card w-6"></i>
                         <span>إعدادات الفوتر</span>
+                    </button>
+                    <button onclick="showSection('wallet')" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
+                        <i class="fas fa-wallet w-6"></i>
+                        <span>المحفظة الإلكترونية</span>
+                    </button>
+                    <button onclick="showSection('footer-pages')" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
+                        <i class="fas fa-file-alt w-6"></i>
+                        <span>صفحات الفوتر</span>
+                    </button>
+                    <button onclick="showSection('product-features')" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
+                        <i class="fas fa-star w-6"></i>
+                        <span>ميزات المنتج</span>
                     </button>
                 </nav>
             </aside>
@@ -333,6 +436,116 @@
                     </div>
                 </section>
 
+                <!-- Wallet Section -->
+                <section id="wallet-section" class="hidden space-y-6">
+                    <h2 class="text-2xl font-bold text-antika-gold">💳 المحفظة الإلكترونية</h2>
+                    <p class="text-gray-600">إدارة رصيد المحفظة وشحنها للعملاء</p>
+
+                    <!-- Wallet Stats -->
+                    <div class="grid md:grid-cols-3 gap-6">
+                        <div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-antika-gold">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 text-sm">إجمالي الرصيد</p>
+                                    <h3 class="text-3xl font-bold text-antika-gold mt-2" id="wallet-total">0 ر.س</h3>
+                                </div>
+                                <div class="bg-antika-gold/20 p-3 rounded-full text-antika-gold">
+                                    <i class="fas fa-wallet text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-green-500">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 text-sm">الشحنات هذا الشهر</p>
+                                    <h3 class="text-3xl font-bold text-green-600 mt-2" id="wallet-recharges">0</h3>
+                                </div>
+                                <div class="bg-green-100 p-3 rounded-full text-green-600">
+                                    <i class="fas fa-plus-circle text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-blue-500">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 text-sm">العملاء النشطين</p>
+                                    <h3 class="text-3xl font-bold text-blue-600 mt-2" id="wallet-users">0</h3>
+                                </div>
+                                <div class="bg-blue-100 p-3 rounded-full text-blue-600">
+                                    <i class="fas fa-users text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recharge Form -->
+                    <div class="bg-white rounded-2xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-antika-gold mb-4">🔋 شحن محفظة عميل</h3>
+                        <div class="grid md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">رقم الجوال / البريد:</label>
+                                <input type="text" id="wallet-user-id" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="أدخل رقم الجوال أو البريد">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">المبلغ (ر.س):</label>
+                                <input type="number" id="wallet-amount" min="1" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="0.00">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">سبب الشحن:</label>
+                                <select id="wallet-reason" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+                                    <option value="purchase">شراء منتجات</option>
+                                    <option value="gift">هدية</option>
+                                    <option value="refund">استرداد مبلغ</option>
+                                    <option value="promo">عرض ترويجي</option>
+                                    <option value="other">أخرى</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button onclick="rechargeWallet()" class="w-full bg-antika-gold text-white py-4 rounded-lg font-bold hover:bg-antika-gold-dark transition text-lg mt-6">
+                            💳 شحن المحفظة
+                        </button>
+                    </div>
+
+                    <!-- Wallet Transactions -->
+                    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div class="p-6 border-b">
+                            <h3 class="text-lg font-bold text-antika-gold">📋 سجل المعاملات</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-antika-lavender">
+                                    <tr>
+                                        <th class="px-6 py-4 text-right text-antika-gold font-bold">التاريخ</th>
+                                        <th class="px-6 py-4 text-right text-antika-gold font-bold">العميل</th>
+                                        <th class="px-6 py-4 text-right text-antika-gold font-bold">النوع</th>
+                                        <th class="px-6 py-4 text-right text-antika-gold font-bold">المبلغ</th>
+                                        <th class="px-6 py-4 text-right text-antika-gold font-bold">الرصيد بعد</th>
+                                        <th class="px-6 py-4 text-right text-antika-gold font-bold">الحالة</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="wallet-transactions-table">
+                                    <tr class="border-b">
+                                        <td class="px-6 py-4 text-gray-600">2025-02-01</td>
+                                        <td class="px-6 py-4 font-semibold">أحمد محمد</td>
+                                        <td class="px-6 py-4"><span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">شحن</span></td>
+                                        <td class="px-6 py-4 font-bold text-green-600">+500 ر.س</td>
+                                        <td class="px-6 py-4 font-bold">1,250 ر.س</td>
+                                        <td class="px-6 py-4"><span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">✓ ناجح</span></td>
+                                    </tr>
+                                    <tr class="border-b">
+                                        <td class="px-6 py-4 text-gray-600">2025-02-01</td>
+                                        <td class="px-6 py-4 font-semibold">سارة عبدالله</td>
+                                        <td class="px-6 py-4"><span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm">شراء</span></td>
+                                        <td class="px-6 py-4 font-bold text-red-600">-320 ر.س</td>
+                                        <td class="px-6 py-4 font-bold">430 ر.س</td>
+                                        <td class="px-6 py-4"><span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">✓ ناجح</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Footer Settings Section -->
                 <section id="footer-section" class="hidden space-y-6">
                     <h2 class="text-2xl font-bold text-antika-gold">📞 إعدادات الفوتر وتواصل معنا</h2>
@@ -368,11 +581,167 @@
                     </div>
                 </section>
 
+                <!-- Product Features Section -->
+                <section id="product-features-section" class="hidden space-y-6">
+                    <h2 class="text-2xl font-bold text-antika-gold">⭐ ميزات صفحة المنتج</h2>
+                    <p class="text-gray-600">تحكم في عرض ميزات المنتج (الشحن، الإرجاع، الضمان)</p>
+
+                    <div class="bg-white rounded-2xl shadow-lg p-6 space-y-6">
+                        <!-- Free Shipping -->
+                        <div class="border-b border-gray-100 pb-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-lg text-antika-gold"><i class="fas fa-truck ml-2"></i>الشحن المجاني</h3>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="feature-shipping-enabled" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-antika-pink"></div>
+                                    <span class="mr-3 text-sm font-medium text-gray-700">تفعيل</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">نص العرض:</label>
+                                <input type="text" id="feature-shipping-text" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="مثال: شحن مجاني">
+                            </div>
+                        </div>
+
+                        <!-- Easy Returns -->
+                        <div class="border-b border-gray-100 pb-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-lg text-antika-gold"><i class="fas fa-undo ml-2"></i>الإرجاع السهل</h3>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="feature-returns-enabled" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-antika-pink"></div>
+                                    <span class="mr-3 text-sm font-medium text-gray-700">تفعيل</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">نص العرض:</label>
+                                <input type="text" id="feature-returns-text" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="مثال: إرجاع سهل">
+                            </div>
+                        </div>
+
+                        <!-- Quality Guarantee -->
+                        <div class="pb-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-lg text-antika-gold"><i class="fas fa-shield-alt ml-2"></i>ضمان الجودة</h3>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="feature-quality-enabled" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-antika-pink"></div>
+                                    <span class="mr-3 text-sm font-medium text-gray-700">تفعيل</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">نص العرض:</label>
+                                <input type="text" id="feature-quality-text" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="مثال: ضمان جودة">
+                            </div>
+                        </div>
+
+                        <button onclick="saveProductFeaturesSettings()" class="w-full bg-antika-gold text-white py-4 rounded-lg font-bold hover:bg-antika-gold-dark transition text-lg">
+                            💾 حفظ إعدادات الميزات
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Footer Pages Section -->
+                <section id="footer-pages-section" class="hidden space-y-6">
+                    <h2 class="text-2xl font-bold text-antika-gold">📄 تخصيص صفحات الفوتر</h2>
+                    <p class="text-gray-600">قم بتخصيص محتوى صفحات (من نحن، سياسة الإرجاع، الشروط والأحكام، الأسئلة الشائعة)</p>
+
+                    <!-- About Page -->
+                    <div class="bg-white rounded-2xl shadow-lg p-6">
+                        <h3 class="font-bold text-lg mb-4 text-antika-gold"><i class="fas fa-info-circle ml-2"></i>صفحة "من نحن"</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">عنوان الصفحة:</label>
+                                <input type="text" id="page-about-title" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">المحتوى (اكتب النص هنا، استخدم سطر فارق بين الفقرات):</label>
+                                <textarea id="page-about-content" rows="6" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="مثال:
+أهلاً بك في انتيكا استور
+
+نحن وجهتك الأولى للديكور والأثاث المنزلي الفاخر...
+
+فريقنا يعمل بشغف لاختيار أفضل المنتجات..."></textarea>
+                                <p class="text-sm text-gray-500 mt-1">💡 اكتب النص بشكل طبيعي، وسيتم تنسيقه تلقائياً</p>
+                            </div>
+                            <button onclick="savePageSettings('about')" class="w-full bg-antika-pink text-white py-3 rounded-lg font-bold hover:bg-antika-pink-dark transition">
+                                💾 حفظ صفحة "من نحن"
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Returns Page -->
+                    <div class="bg-white rounded-2xl shadow-lg p-6">
+                        <h3 class="font-bold text-lg mb-4 text-antika-gold"><i class="fas fa-undo ml-2"></i>صفحة "سياسة الإرجاع"</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">عنوان الصفحة:</label>
+                                <input type="text" id="page-returns-title" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">المحتوى:</label>
+                                <textarea id="page-returns-content" rows="6" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="مثال:
+فترة الإرجاع: يمكنك إرجاع المنتج خلال 14 يوماً...
+
+حالة المنتج: يجب أن يكون المنتج في حالته الأصلية..."></textarea>
+                            </div>
+                            <button onclick="savePageSettings('returns')" class="w-full bg-antika-pink text-white py-3 rounded-lg font-bold hover:bg-antika-pink-dark transition">
+                                💾 حفظ صفحة "سياسة الإرجاع"
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Terms Page -->
+                    <div class="bg-white rounded-2xl shadow-lg p-6">
+                        <h3 class="font-bold text-lg mb-4 text-antika-gold"><i class="fas fa-file-contract ml-2"></i>صفحة "الشروط والأحكام"</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">عنوان الصفحة:</label>
+                                <input type="text" id="page-terms-title" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">المحتوى:</label>
+                                <textarea id="page-terms-content" rows="6" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="مثال:
+الاستخدام: باستخدامك للموقع، فإنك توافق على هذه الشروط...
+
+الطلبات: جميع الطلبات خاضعة للتوفر والتأكيد..."></textarea>
+                            </div>
+                            <button onclick="savePageSettings('terms')" class="w-full bg-antika-pink text-white py-3 rounded-lg font-bold hover:bg-antika-pink-dark transition">
+                                💾 حفظ صفحة "الشروط والأحكام"
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- FAQ Page -->
+                    <div class="bg-white rounded-2xl shadow-lg p-6">
+                        <h3 class="font-bold text-lg mb-4 text-antika-gold"><i class="fas fa-question-circle ml-2"></i>صفحة "الأسئلة الشائعة"</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">عنوان الصفحة:</label>
+                                <input type="text" id="page-faq-title" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">المحتوى:</label>
+                                <textarea id="page-faq-content" rows="6" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="مثال:
+ما مدة التوصيل؟ التوصيل خلال 3-5 أيام عمل...
+
+هل يمكنني إلغاء الطلب؟ نعم، يمكن الإلغاء قبل الشحن..."></textarea>
+                            </div>
+                            <button onclick="savePageSettings('faq')" class="w-full bg-antika-pink text-white py-3 rounded-lg font-bold hover:bg-antika-pink-dark transition">
+                                💾 حفظ صفحة "الأسئلة الشائعة"
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
             </main>
         </div>
     </div>
 
        <!-- Product Modal -->
+
+        
+
     <div id="product-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
         <div class="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-6 p-6 border-b">
@@ -449,6 +818,29 @@
                     </div>
 
                     <!-- New Product with Auto Expiry -->
+
+                    <!-- ✅ مميزات المنتج - خاصة بكل منتج على حدة -->
+                    <div class="border-t border-gray-200 pt-4 mt-4">
+                        <h4 class="font-bold text-gray-700 mb-3">مميزات المنتج</h4>
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="feature-freeShipping" class="w-5 h-5 text-antika-pink rounded accent-antika-pink">
+                                <span class="text-gray-700">شحن مجاني</span>
+                                <i class="fas fa-truck text-antika-gold"></i>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="feature-easyReturns" class="w-5 h-5 text-antika-pink rounded accent-antika-pink">
+                                <span class="text-gray-700">إرجاع سهل</span>
+                                <i class="fas fa-undo text-antika-gold"></i>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="feature-qualityGuarantee" class="w-5 h-5 text-antika-pink rounded accent-antika-pink">
+                                <span class="text-gray-700">ضمان جودة</span>
+                                <i class="fas fa-shield-alt text-antika-gold"></i>
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="md:col-span-2 flex items-center gap-4 bg-yellow-50 p-4 rounded-lg">
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" id="product-new" class="w-5 h-5 text-antika-pink rounded" onchange="toggleNewProductDate()">
@@ -517,5 +909,52 @@
 
     <script src="js/api.js"></script>
     <script src="js/admin.js"></script>
+    <script>
+        // Wallet Functions
+        function rechargeWallet() {
+            const userId = document.getElementById('wallet-user-id').value.trim();
+            const amount = parseFloat(document.getElementById('wallet-amount').value);
+            const reason = document.getElementById('wallet-reason').value;
+            
+            if (!userId) {
+                alert('⚠️ الرجاء إدخال رقم الجوال أو البريد الإلكتروني');
+                return;
+            }
+            
+            if (!amount || amount <= 0) {
+                alert('⚠️ الرجاء إدخال مبلغ صحيح');
+                return;
+            }
+            
+            // Simulate recharge success
+            alert(`✅ تم شحن محفظة ${userId} بمبلغ ${amount} ر.س بنجاح!`);
+            
+            // Clear form
+            document.getElementById('wallet-user-id').value = '';
+            document.getElementById('wallet-amount').value = '';
+            document.getElementById('wallet-reason').value = 'purchase';
+            
+            // Update stats (simulated)
+            updateWalletStats();
+        }
+        
+        function updateWalletStats() {
+            // This would normally fetch from API
+            const total = Math.floor(Math.random() * 50000) + 10000;
+            const recharges = Math.floor(Math.random() * 100) + 50;
+            const users = Math.floor(Math.random() * 500) + 100;
+            
+            document.getElementById('wallet-total').textContent = total.toLocaleString() + ' ر.س';
+            document.getElementById('wallet-recharges').textContent = recharges;
+            document.getElementById('wallet-users').textContent = users;
+        }
+        
+        // Initialize wallet stats on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.getElementById('wallet-total')) {
+                updateWalletStats();
+            }
+        });
+    </script>
 </body>
 </html>

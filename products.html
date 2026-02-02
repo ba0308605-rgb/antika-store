@@ -1,5 +1,4 @@
-
-products_html = '''<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -65,7 +64,7 @@ products_html = '''<!DOCTYPE html>
         .search-expand {
             position: absolute;
             top: 50%;
-            right: 0;
+            left: 0;
             transform: translateY(-50%);
             width: 40px;
             height: 40px;
@@ -91,18 +90,10 @@ products_html = '''<!DOCTYPE html>
         }
         .search-expand.active input {
             width: 230px;
-            margin-left: 10px;
+            margin-right: 10px;
         }
 
-        /* Hamburger Menu */
-        .hamburger-lines {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            cursor: pointer;
-            padding: 10px;
-        }
-                /* Logo Styles */
+        /* Logo Styles */
         .logo-container {
             display: flex;
             align-items: center;
@@ -130,6 +121,15 @@ products_html = '''<!DOCTYPE html>
             color: #999;
             letter-spacing: 3px;
             text-transform: uppercase;
+        }
+
+        /* Hamburger Menu */
+        .hamburger-lines {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            padding: 10px;
         }
         .hamburger-lines span {
             width: 25px;
@@ -300,6 +300,90 @@ products_html = '''<!DOCTYPE html>
             padding: 24px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
+    /* Search Modal Styles */
+        .search-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 100px;
+        }
+        .search-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .search-modal-box {
+            background: white;
+            border-radius: 50px;
+            padding: 8px 24px;
+            width: 90%;
+            max-width: 600px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+        }
+        .search-modal-overlay.active .search-modal-box {
+            transform: translateY(0);
+        }
+        .search-modal-box input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 16px;
+            padding: 12px 0;
+            color: #333;
+        }
+        .search-modal-box input::placeholder {
+            color: #999;
+        }
+        .search-modal-box button {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #D6C1A6;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .search-modal-box button:hover {
+            background: #C4AC8E;
+        }
+        .search-modal-close {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: white;
+            color: #333;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.3s ease;
+        }
+        .search-modal-close:hover {
+            background: #f0f0f0;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -318,7 +402,7 @@ products_html = '''<!DOCTYPE html>
     <header class="main-header">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between h-20">
-                <!-- Right Side: Hamburger Menu (now on right for RTL) -->
+                <!-- Right Side: Hamburger Menu -->
                 <div class="hamburger-lines" onclick="toggleMenu()">
                     <span></span>
                     <span></span>
@@ -336,17 +420,12 @@ products_html = '''<!DOCTYPE html>
                     </div>
                 </a>
 
-                <!-- Left Side: Login, Cart, Search (now on left for RTL) -->
+                <!-- Left Side: Search, Cart, Login -->
                 <div class="flex items-center gap-4">
-                    <!-- Search -->
-                    <div class="search-container">
-                        <div class="search-expand" id="search-expand">
-                            <input type="text" id="search-input" placeholder="أدخل كلمة البحث..." onkeypress="handleSearch(event)">
-                            <button onclick="toggleSearch()" class="w-10 h-10 flex items-center justify-center text-gray-600 hover:text-antika-gold">
-                                <i class="fas fa-search"></i>
-                            </button>
-                        </div>
-                    </div>
+                    <!-- Search Icon -->
+                    <button onclick="openSearchModal()" class="w-10 h-10 flex items-center justify-center text-gray-600 hover:text-antika-gold transition">
+                        <i class="fas fa-search text-lg"></i>
+                    </button>
 
                     <!-- Cart -->
                     <a href="cart.html" class="relative text-gray-600 hover:text-antika-gold transition">
@@ -363,6 +442,20 @@ products_html = '''<!DOCTYPE html>
             </div>
         </div>
     </header>
+
+    <!-- Search Modal -->
+    <div id="search-modal" class="search-modal-overlay">
+        <button onclick="closeSearchModal()" class="search-modal-close">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="search-modal-box">
+            <i class="fas fa-search text-gray-400 text-xl"></i>
+            <input type="text" id="search-modal-input" placeholder="ابحث عن منتج..." onkeypress="handleSearchModal(event)">
+            <button onclick="performSearch()">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+        </div>
+    </div>
 
     <!-- Mobile Menu Overlay -->
     <div class="menu-overlay" id="menu-overlay" onclick="toggleMenu()"></div>
@@ -517,15 +610,15 @@ products_html = '''<!DOCTYPE html>
                 <div>
                     <h4 class="font-bold mb-4 text-white">خدمة العملاء</h4>
                     <ul class="space-y-2 text-white/90">
-                        <li><a href="#" class="hover:text-white transition">الأسئلة الشائعة</a></li>
-                        <li><a href="#" class="hover:text-white transition">سياسة الإرجاع</a></li>
+                        <li><a href="pages.html?page=faq" class="hover:text-white transition">الأسئلة الشائعة</a></li>
+                        <li><a href="pages.html?page=returns" class="hover:text-white transition">سياسة الإرجاع</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="font-bold mb-4 text-white">عن المتجر</h4>
                     <ul class="space-y-2 text-white/90">
-                        <li><a href="#" class="hover:text-white transition">من نحن</a></li>
-                        <li><a href="#" class="hover:text-white transition">الشروط والأحكام</a></li>
+                        <li><a href="pages.html?page=about" class="hover:text-white transition">من نحن</a></li>
+                        <li><a href="pages.html?page=terms" class="hover:text-white transition">الشروط والأحكام</a></li>
                     </ul>
                 </div>
             </div>
@@ -541,23 +634,39 @@ products_html = '''<!DOCTYPE html>
         let allCategories = [];
         let filteredProducts = [];
 
-        // Toggle Search
-        function toggleSearch() {
-            const searchExpand = document.getElementById('search-expand');
-            searchExpand.classList.toggle('active');
-            if (searchExpand.classList.contains('active')) {
-                document.getElementById('search-input').focus();
+        // Search Modal Functions
+        function openSearchModal() {
+            const modal = document.getElementById('search-modal');
+            modal.classList.add('active');
+            document.getElementById('search-modal-input').focus();
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSearchModal() {
+            const modal = document.getElementById('search-modal');
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        function handleSearchModal(e) {
+            if (e.key === 'Enter') {
+                performSearch();
             }
         }
 
-        function handleSearch(e) {
-            if (e.key === 'Enter') {
-                const query = e.target.value.trim();
-                if (query) {
-                    window.location.href = `products.html?search=${encodeURIComponent(query)}`;
-                }
+        function performSearch() {
+            const query = document.getElementById('search-modal-input').value.trim();
+            if (query) {
+                window.location.href = `products.html?search=${encodeURIComponent(query)}`;
             }
         }
+
+        // Close search modal on backdrop click
+        document.getElementById('search-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeSearchModal();
+            }
+        });
 
         // Toggle Mobile Menu
         function toggleMenu() {
@@ -599,7 +708,28 @@ products_html = '''<!DOCTYPE html>
                 const categoryFilter = urlParams.get('category');
                 
                 if (searchQuery) {
-                    filteredProducts = allProducts.filter(p => p.name.includes(searchQuery) || p.description.includes(searchQuery));
+                    // Use enhanced search from API
+                    filteredProducts = await API.searchProducts(searchQuery);
+                    
+                    // Show search results message
+                    const searchTitle = document.getElementById('page-title');
+                    if (searchTitle) {
+                        const count = filteredProducts.length;
+                        const message = count === 0 
+                            ? `لا توجد نتائج للبحث عن: "${searchQuery}"`
+                            : `نتائج البحث عن: "${searchQuery}" <span class="text-lg text-gray-500">(${count} منتج)</span>`;
+                        searchTitle.innerHTML = message;
+                    }
+                    
+                    // Update breadcrumb
+                    const breadcrumb = document.getElementById('breadcrumb-nav');
+                    if (breadcrumb) {
+                        breadcrumb.innerHTML = `
+                            <a href="index.html" class="breadcrumb-item text-antika-gold hover:text-antika-pink-dark transition font-semibold"><i class="fas fa-home ml-1"></i> الرئيسية</a>
+                            <a href="products.html" class="breadcrumb-item text-antika-gold hover:text-antika-pink-dark transition font-semibold">المنتجات</a>
+                            <span class="text-gray-500">نتائج البحث</span>
+                        `;
+                    }
                 }
                 if (categoryFilter) {
                     filteredProducts = allProducts.filter(p => p.categories && p.categories.includes(categoryFilter));
@@ -811,13 +941,13 @@ products_html = '''<!DOCTYPE html>
             }
         }
 
+        // Check login status - ALWAYS show "تسجيل الدخول"
         function checkLoginStatus() {
-            const isLoggedIn = localStorage.getItem('antika_user');
             const loginBtn = document.getElementById('login-btn');
-            if (isLoggedIn && loginBtn) {
-                const user = JSON.parse(isLoggedIn);
-                loginBtn.innerHTML = `<span class="hidden sm:inline text-sm">${user.name || 'حسابي'}</span><i class="fas fa-user-circle text-lg"></i>`;
-                loginBtn.href = '#';
+            if (loginBtn) {
+                loginBtn.innerHTML = '<span class="hidden sm:inline text-sm">تسجيل الدخول</span><i class="fas fa-user text-lg"></i>';
+                loginBtn.href = 'login.html';
+                loginBtn.onclick = null;
             }
         }
 
@@ -914,9 +1044,4 @@ products_html = '''<!DOCTYPE html>
         }
     </script>
 </body>
-</html>'''
-
-with open('/mnt/kimi/output/products.html', 'w', encoding='utf-8') as f:
-    f.write(products_html)
-
-print("✅ تم حفظ products.html بنجاح")
+</html>

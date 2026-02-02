@@ -1,5 +1,4 @@
-
-index_html = '''<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -65,7 +64,7 @@ index_html = '''<!DOCTYPE html>
         .search-expand {
             position: absolute;
             top: 50%;
-            right: 0;
+            left: 0;
             transform: translateY(-50%);
             width: 40px;
             height: 40px;
@@ -91,7 +90,7 @@ index_html = '''<!DOCTYPE html>
         }
         .search-expand.active input {
             width: 230px;
-            margin-left: 10px;
+            margin-right: 10px;
         }
 
         /* Logo Styles */
@@ -314,6 +313,90 @@ index_html = '''<!DOCTYPE html>
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #FFF0F5; }
         ::-webkit-scrollbar-thumb { background: #FFB6C1; border-radius: 4px; }
+    /* Search Modal Styles */
+        .search-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 100px;
+        }
+        .search-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .search-modal-box {
+            background: white;
+            border-radius: 50px;
+            padding: 8px 24px;
+            width: 90%;
+            max-width: 600px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+        }
+        .search-modal-overlay.active .search-modal-box {
+            transform: translateY(0);
+        }
+        .search-modal-box input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 16px;
+            padding: 12px 0;
+            color: #333;
+        }
+        .search-modal-box input::placeholder {
+            color: #999;
+        }
+        .search-modal-box button {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #D6C1A6;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .search-modal-box button:hover {
+            background: #C4AC8E;
+        }
+        .search-modal-close {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: white;
+            color: #333;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.3s ease;
+        }
+        .search-modal-close:hover {
+            background: #f0f0f0;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -328,11 +411,11 @@ index_html = '''<!DOCTYPE html>
         </div>
     </div>
 
-    <!-- Main Header -->
+        <!-- Main Header -->
     <header class="main-header">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between h-20">
-                <!-- Right Side: Hamburger Menu (now on right for RTL) -->
+                <!-- Right Side: Hamburger Menu -->
                 <div class="hamburger-lines" onclick="toggleMenu()">
                     <span></span>
                     <span></span>
@@ -350,17 +433,12 @@ index_html = '''<!DOCTYPE html>
                     </div>
                 </a>
 
-                <!-- Left Side: Login, Cart, Search (now on left for RTL) -->
+                <!-- Left Side: Search, Cart, Login -->
                 <div class="flex items-center gap-4">
-                    <!-- Search -->
-                    <div class="search-container">
-                        <div class="search-expand" id="search-expand">
-                            <input type="text" id="search-input" placeholder="أدخل كلمة البحث..." onkeypress="handleSearch(event)">
-                            <button onclick="toggleSearch()" class="w-10 h-10 flex items-center justify-center text-gray-600 hover:text-antika-gold">
-                                <i class="fas fa-search"></i>
-                            </button>
-                        </div>
-                    </div>
+                    <!-- Search Icon -->
+                    <button onclick="openSearchModal()" class="w-10 h-10 flex items-center justify-center text-gray-600 hover:text-antika-gold transition">
+                        <i class="fas fa-search text-lg"></i>
+                    </button>
 
                     <!-- Cart -->
                     <a href="cart.html" class="relative text-gray-600 hover:text-antika-gold transition">
@@ -377,6 +455,20 @@ index_html = '''<!DOCTYPE html>
             </div>
         </div>
     </header>
+
+    <!-- Search Modal -->
+    <div id="search-modal" class="search-modal-overlay">
+        <button onclick="closeSearchModal()" class="search-modal-close">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="search-modal-box">
+            <i class="fas fa-search text-gray-400 text-xl"></i>
+            <input type="text" id="search-modal-input" placeholder="ابحث عن منتج..." onkeypress="handleSearchModal(event)">
+            <button onclick="performSearch()">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+        </div>
+    </div>
 
     <!-- Mobile Menu Overlay -->
     <div class="menu-overlay" id="menu-overlay" onclick="toggleMenu()"></div>
@@ -575,31 +667,31 @@ index_html = '''<!DOCTYPE html>
             <!-- Contact Box -->
             <div class="contact-box mb-12 max-w-4xl mx-auto">
                 <h3 class="text-xl font-bold text-antika-gold mb-6 text-center">تواصل معنا</h3>
-                <div class="grid md:grid-cols-3 gap-6 text-center">
-                    <div>
+                <div class="grid md:grid-cols-3 gap-6 text-center" id="footer-contact-info">
+                    <div id="footer-phone-container">
                         <i class="fas fa-phone text-2xl text-antika-gold mb-2"></i>
                         <p class="text-gray-600 text-sm">اتصل بنا</p>
                         <p class="text-gray-800 font-bold" id="footer-phone">+966 50 123 4567</p>
                     </div>
-                    <div>
+                    <div id="footer-email-container">
                         <i class="fas fa-envelope text-2xl text-antika-gold mb-2"></i>
                         <p class="text-gray-600 text-sm">البريد الإلكتروني</p>
                         <p class="text-gray-800 font-bold" id="footer-email">info@antika-store.com</p>
                     </div>
-                    <div>
+                    <div id="footer-whatsapp-container">
                         <i class="fab fa-whatsapp text-2xl text-antika-gold mb-2"></i>
                         <p class="text-gray-600 text-sm">واتساب</p>
-                        <p class="text-gray-800 font-bold">+966 50 123 4567</p>
+                        <p class="text-gray-800 font-bold" id="footer-whatsapp-text">+966 50 123 4567</p>
                     </div>
                 </div>
-                <div class="flex justify-center gap-4 mt-6">
-                    <a href="#" id="footer-instagram" class="w-12 h-12 bg-antika-gold/20 rounded-full flex items-center justify-center hover:bg-antika-pink transition text-antika-gold hover:text-white">
+                <div class="flex justify-center gap-4 mt-6" id="footer-social-links">
+                    <a href="#" id="footer-instagram" class="w-12 h-12 bg-antika-gold/20 rounded-full flex items-center justify-center hover:bg-antika-pink transition text-antika-gold hover:text-white hidden">
                         <i class="fab fa-instagram text-xl"></i>
                     </a>
-                    <a href="#" id="footer-whatsapp" class="w-12 h-12 bg-antika-gold/20 rounded-full flex items-center justify-center hover:bg-antika-pink transition text-antika-gold hover:text-white">
+                    <a href="#" id="footer-whatsapp" class="w-12 h-12 bg-antika-gold/20 rounded-full flex items-center justify-center hover:bg-antika-pink transition text-antika-gold hover:text-white hidden">
                         <i class="fab fa-whatsapp text-xl"></i>
                     </a>
-                    <a href="#" id="footer-snapchat" class="w-12 h-12 bg-antika-gold/20 rounded-full flex items-center justify-center hover:bg-antika-pink transition text-antika-gold hover:text-white">
+                    <a href="#" id="footer-snapchat" class="w-12 h-12 bg-antika-gold/20 rounded-full flex items-center justify-center hover:bg-antika-pink transition text-antika-gold hover:text-white hidden">
                         <i class="fab fa-snapchat text-xl"></i>
                     </a>
                 </div>
@@ -624,15 +716,15 @@ index_html = '''<!DOCTYPE html>
                 <div>
                     <h4 class="font-bold mb-4 text-white">خدمة العملاء</h4>
                     <ul class="space-y-2 text-white/90">
-                        <li><a href="#" class="hover:text-white transition">الأسئلة الشائعة</a></li>
-                        <li><a href="#" class="hover:text-white transition">سياسة الإرجاع</a></li>
+                        <li><a href="pages.html?page=faq" class="hover:text-white transition">الأسئلة الشائعة</a></li>
+                        <li><a href="pages.html?page=returns" class="hover:text-white transition">سياسة الإرجاع</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="font-bold mb-4 text-white">عن المتجر</h4>
                     <ul class="space-y-2 text-white/90">
-                        <li><a href="#" class="hover:text-white transition">من نحن</a></li>
-                        <li><a href="#" class="hover:text-white transition">الشروط والأحكام</a></li>
+                        <li><a href="pages.html?page=about" class="hover:text-white transition">من نحن</a></li>
+                        <li><a href="pages.html?page=terms" class="hover:text-white transition">الشروط والأحكام</a></li>
                     </ul>
                 </div>
             </div>
@@ -641,7 +733,7 @@ index_html = '''<!DOCTYPE html>
             </div>
         </div>
     </footer>
-
+   
     <script src="js/api.js"></script>
     <script>
         // Banner Slider
@@ -664,23 +756,39 @@ index_html = '''<!DOCTYPE html>
 
         setInterval(nextSlide, 5000);
 
-        // Toggle Search
-        function toggleSearch() {
-            const searchExpand = document.getElementById('search-expand');
-            searchExpand.classList.toggle('active');
-            if (searchExpand.classList.contains('active')) {
-                document.getElementById('search-input').focus();
+        // Search Modal Functions
+        function openSearchModal() {
+            const modal = document.getElementById('search-modal');
+            modal.classList.add('active');
+            document.getElementById('search-modal-input').focus();
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSearchModal() {
+            const modal = document.getElementById('search-modal');
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        function handleSearchModal(e) {
+            if (e.key === 'Enter') {
+                performSearch();
             }
         }
 
-        function handleSearch(e) {
-            if (e.key === 'Enter') {
-                const query = e.target.value.trim();
-                if (query) {
-                    window.location.href = `products.html?search=${encodeURIComponent(query)}`;
-                }
+        function performSearch() {
+            const query = document.getElementById('search-modal-input').value.trim();
+            if (query) {
+                window.location.href = `products.html?search=${encodeURIComponent(query)}`;
             }
         }
+
+        // Close search modal on backdrop click
+        document.getElementById('search-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeSearchModal();
+            }
+        });
 
         // Toggle Mobile Menu
         function toggleMenu() {
@@ -961,14 +1069,75 @@ index_html = '''<!DOCTYPE html>
             }
         }
 
-        // Check login status
+        // Check login status - ALWAYS show "تسجيل الدخول"
         function checkLoginStatus() {
-            const isLoggedIn = localStorage.getItem('antika_user');
             const loginBtn = document.getElementById('login-btn');
-            if (isLoggedIn && loginBtn) {
-                const user = JSON.parse(isLoggedIn);
-                loginBtn.innerHTML = `<span class="hidden sm:inline text-sm">${user.name || 'حسابي'}</span><i class="fas fa-user-circle text-lg"></i>`;
-                loginBtn.href = '#';
+            if (loginBtn) {
+                loginBtn.innerHTML = '<span class="hidden sm:inline text-sm">تسجيل الدخول</span><i class="fas fa-user text-lg"></i>';
+                loginBtn.href = 'login.html';
+                loginBtn.onclick = null;
+            }
+        }
+
+        // Load footer settings
+        async function loadFooterSettings() {
+            try {
+                const settings = await API.getSettings();
+                if (settings.footer) {
+                    const phoneEl = document.getElementById('footer-phone');
+                    const emailEl = document.getElementById('footer-email');
+                    const instagramEl = document.getElementById('footer-instagram');
+                    const whatsappEl = document.getElementById('footer-whatsapp');
+                    const snapchatEl = document.getElementById('footer-snapchat');
+
+                    // Phone - show value or hide parent if empty
+                    if (phoneEl) {
+                        if (settings.footer.phone && settings.footer.phone.trim() !== '') {
+                            phoneEl.textContent = settings.footer.phone;
+                            phoneEl.parentElement.style.display = 'block';
+                        } else {
+                            phoneEl.parentElement.style.display = 'none';
+                        }
+                    }
+
+                    // Email - show value or hide parent if empty
+                    if (emailEl) {
+                        if (settings.footer.email && settings.footer.email.trim() !== '') {
+                            emailEl.textContent = settings.footer.email;
+                            emailEl.parentElement.style.display = 'block';
+                        } else {
+                            emailEl.parentElement.style.display = 'none';
+                        }
+                    }
+
+                    // Social links - show or hide based on value
+                    if (instagramEl) {
+                        if (settings.footer.instagram && settings.footer.instagram.trim() !== '') {
+                            instagramEl.href = settings.footer.instagram;
+                            instagramEl.style.display = 'flex';
+                        } else {
+                            instagramEl.style.display = 'none';
+                        }
+                    }
+                    if (whatsappEl) {
+                        if (settings.footer.whatsapp && settings.footer.whatsapp.trim() !== '') {
+                            whatsappEl.href = settings.footer.whatsapp;
+                            whatsappEl.style.display = 'flex';
+                        } else {
+                            whatsappEl.style.display = 'none';
+                        }
+                    }
+                    if (snapchatEl) {
+                        if (settings.footer.snapchat && settings.footer.snapchat.trim() !== '') {
+                            snapchatEl.href = settings.footer.snapchat;
+                            snapchatEl.style.display = 'flex';
+                        } else {
+                            snapchatEl.style.display = 'none';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading footer settings:', error);
             }
         }
 
@@ -988,13 +1157,8 @@ index_html = '''<!DOCTYPE html>
             await loadNewProducts();
             await updateCartCount();
             checkLoginStatus();
+            await loadFooterSettings();
         });
     </script>
 </body>
-</html>'''
-
-# Save the file
-with open('/mnt/kimi/output/index.html', 'w', encoding='utf-8') as f:
-    f.write(index_html)
-
-print("✅ تم حفظ index.html بنجاح")
+</html>
