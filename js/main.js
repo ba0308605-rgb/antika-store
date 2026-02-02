@@ -12,14 +12,67 @@ async function initApp() {
     await loadNewProducts();
 }
 
-// Check login status and update UI - ALWAYS show "تسجيل الدخول"
+// Check login status and update UI
 function checkLoginStatus() {
+    const isLoggedIn = localStorage.getItem('antika_user');
     const loginBtn = document.getElementById('login-btn');
-    if (loginBtn) {
-        loginBtn.innerHTML = '<i class="fas fa-user text-lg"></i><span class="hidden sm:inline text-sm">تسجيل الدخول</span>';
-        loginBtn.href = 'login.html';
-        loginBtn.onclick = null;
+    if (isLoggedIn && loginBtn) {
+        const user = JSON.parse(isLoggedIn);
+        loginBtn.innerHTML = `<i class="fas fa-user-circle"></i><span class="hidden sm:inline">${user.name || 'حسابي'}</span>`;
+        loginBtn.href = '#';
+        loginBtn.onclick = function(e) {
+            e.preventDefault();
+            showAccountMenu(user);
+        };
     }
+}
+
+// Show account menu
+function showAccountMenu(user) {
+    const menu = document.createElement('div');
+    menu.className = 'absolute top-full left-0 mt-2 w-48 bg-white shadow-xl rounded-lg border border-antika-pink/20 z-50';
+    menu.innerHTML = `
+        <div class="p-3 border-b border-gray-100">
+            <p class="font-bold text-gray-800">${user.name}</p>
+            <p class="text-sm text-gray-500">${user.email}</p>
+        </div>
+        <a href="#" class="block px-4 py-2 hover:bg-antika-lavender transition text-gray-700">
+            <i class="fas fa-user ml-2"></i> الملف الشخصي
+        </a>
+        <a href="#" class="block px-4 py-2 hover:bg-antika-lavender transition text-gray-700">
+            <i class="fas fa-shopping-bag ml-2"></i> طلباتي
+        </a>
+        <a href="wishlist.html" class="block px-4 py-2 hover:bg-antika-lavender transition text-gray-700">
+            <i class="fas fa-heart ml-2"></i> المفضلة
+        </a>
+        <div class="border-t border-gray-100">
+            <button onclick="logout()" class="w-full text-right px-4 py-2 hover:bg-red-50 text-red-500 transition">
+                <i class="fas fa-sign-out-alt ml-2"></i> تسجيل الخروج
+            </button>
+        </div>
+    `;
+
+    const rect = document.getElementById('login-btn').getBoundingClientRect();
+    menu.style.position = 'fixed';
+    menu.style.top = (rect.bottom + 5) + 'px';
+    menu.style.left = rect.left + 'px';
+
+    document.body.appendChild(menu);
+
+    setTimeout(() => {
+        document.addEventListener('click', function closeMenu(e) {
+            if (!menu.contains(e.target) && e.target !== document.getElementById('login-btn')) {
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        });
+    }, 100);
+}
+
+// Logout function
+function logout() {
+    localStorage.removeItem('antika_user');
+    window.location.reload();
 }
 
 // Update cart count in header

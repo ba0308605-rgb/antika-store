@@ -384,6 +384,17 @@
         .search-modal-close:hover {
             background: #f0f0f0;
         }
+    
+        /* Wishlist Button Active State */
+        #wishlist-btn.active {
+            background: #FFB6C1;
+            color: white;
+            border-color: #FFB6C1;
+        }
+        #wishlist-btn.active i {
+            color: white;
+        }
+
     </style>
 </head>
 <body class="bg-gray-50">
@@ -693,6 +704,7 @@
             checkLoginStatus();
             await loadFooterSettings();
             await loadProductFeatures();
+                checkWishlistStatus();
         });
 
         async function loadProductDetails(productId) {
@@ -812,14 +824,14 @@
                                 <button onclick="addToCartWithQuantity()" class="flex-1 bg-antika-gold text-white py-4 rounded-xl font-bold hover:bg-antika-gold-dark transition text-lg">
                                     <i class="fas fa-shopping-bag ml-2"></i> أضف إلى السلة
                                 </button>
-                                <button onclick="addToWishlist()" class="px-6 py-4 border-2 border-antika-pink text-antika-pink rounded-xl font-bold hover:bg-antika-pink hover:text-white transition">
+                                <button onclick="addToWishlist()" id="wishlist-btn" class="px-6 py-4 border-2 border-antika-pink text-antika-pink rounded-xl font-bold transition">
                                     <i class="fas fa-heart"></i>
                                 </button>
                             </div>
 
                             <!-- Additional Info -->
                             <div class="mt-8 pt-8 border-t border-gray-200">
-                                <div class="grid grid-cols-3 gap-4 text-center" id="product-features">
+                                <div class="flex flex-wrap justify-center gap-4" id="product-features">
                                     <!-- Features will be loaded dynamically -->
                                 </div>
                             </div>

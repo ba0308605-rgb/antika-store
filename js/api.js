@@ -1,4 +1,4 @@
-// 🌸 Antika Store API Layer - LocalStorage Version (Enhanced with Footer Pages & Search)
+// 🌸 Antika Store API Layer - LocalStorage Version (Enhanced with Multiple Images Support)
 
 const API = {
     init() {
@@ -172,93 +172,29 @@ const API = {
                     "text": "خصم 20% على الشموع هذا الأسبوع فقط!",
                     "code": "ANT20",
                     "color": "#8B4513"
-                },
-                "footer": {
-                    "phone": "+966 50 123 4567",
-                    "email": "info@antika-store.com",
-                    "instagram": "https://instagram.com/antika_store",
-                    "whatsapp": "https://wa.me/966501234567",
-                    "snapchat": "https://snapchat.com/add/antika_store"
-                },
-                "productFeatures": {
-                    "freeShipping": {
-                        "enabled": true,
-                        "text": "شحن مجاني",
-                        "icon": "fa-truck"
-                    },
-                    "easyReturns": {
-                        "enabled": true,
-                        "text": "إرجاع سهل",
-                        "icon": "fa-undo"
-                    },
-                    "qualityGuarantee": {
-                        "enabled": true,
-                        "text": "ضمان جودة",
-                        "icon": "fa-shield-alt"
-                    }
                 }
             };
             localStorage.setItem('antika_settings', JSON.stringify(defaultSettings));
-        }
-
-        // Initialize footer pages if not exist
-        if (!localStorage.getItem('antika_pages')) {
-            const defaultPages = {
-                "about": {
-                    "title": "من نحن",
-                    "content": "<h2 class='text-2xl font-bold text-antika-gold mb-4'>أهلاً بك في انتيكا استور</h2><p class='mb-4'>نحن وجهتك الأولى للديكور والأثاث المنزلي الفاخر. نؤمن بأن التفاصيل الصغيرة تصنع الفرق الكبير في منزلك.</p><p class='mb-4'>بدأنا رحلتنا عام 2020 بهدف تقديم منتجات عالية الجودة بتصاميم فريدة تلبي ذوق كل عميل.</p><p>فريقنا يعمل بشغف لاختيار أفضل المنتجات من حول العالم لنقدمها لك بأفضل الأسعار.</p>",
-                    "lastUpdated": new Date().toISOString()
-                },
-                "returns": {
-                    "title": "سياسة الإرجاع",
-                    "content": "<h2 class='text-2xl font-bold text-antika-gold mb-4'>سياسة الإرجاع والاستبدال</h2><div class='space-y-4'><p><strong>1. فترة الإرجاع:</strong> يمكنك إرجاع المنتج خلال 14 يوماً من تاريخ الاستلام.</p><p><strong>2. حالة المنتج:</strong> يجب أن يكون المنتج في حالته الأصلية مع جميع الملحقات والتغليف.</p><p><strong>3. طريقة الإرجاع:</strong> تواصل مع خدمة العملاء لترتيب عملية الإرجاع.</p><p><strong>4. استرداد المبلغ:</strong> يتم استرداد المبلغ خلال 5-7 أيام عمل بعد استلام المنتج.</p></div>",
-                    "lastUpdated": new Date().toISOString()
-                },
-                "terms": {
-                    "title": "الشروط والأحكام",
-                    "content": "<h2 class='text-2xl font-bold text-antika-gold mb-4'>الشروط والأحكام</h2><div class='space-y-4'><p><strong>1. الاستخدام:</strong> باستخدامك للموقع، فإنك توافق على هذه الشروط.</p><p><strong>2. الطلبات:</strong> جميع الطلبات خاضعة للتوفر والتأكيد.</p><p><strong>3. الأسعار:</strong> الأسعار قابلة للتغيير دون إشعار مسبق.</p><p><strong>4. الخصوصية:</strong> نحترم خصوصيتك ونحمي بياناتك الشخصية.</p></div>",
-                    "lastUpdated": new Date().toISOString()
-                },
-                "faq": {
-                    "title": "الأسئلة الشائعة",
-                    "content": "<h2 class='text-2xl font-bold text-antika-gold mb-4'>الأسئلة الشائعة</h2><div class='space-y-4'><div class='bg-gray-50 p-4 rounded-lg'><h3 class='font-bold mb-2'>ما مدة التوصيل؟</h3><p>التوصيل خلال 3-5 أيام عمل داخل المدن الرئيسية.</p></div><div class='bg-gray-50 p-4 rounded-lg'><h3 class='font-bold mb-2'>هل يمكنني إلغاء الطلب؟</h3><p>نعم، يمكن الإلغاء قبل شحن الطلب.</p></div><div class='bg-gray-50 p-4 rounded-lg'><h3 class='font-bold mb-2'>ما طرق الدفع المتاحة؟</h3><p>نقبل الدفع عند الاستلام، البطاقات الائتمانية، وTabby وTamara.</p></div></div>",
-                    "lastUpdated": new Date().toISOString()
-                }
-            };
-            localStorage.setItem('antika_pages', JSON.stringify(defaultPages));
         }
     },
 
     // Products
     async getProducts() {
-        this.init();
-        let products = JSON.parse(localStorage.getItem('antika_products') || '[]');
+        const products = JSON.parse(localStorage.getItem('antika_products') || '[]');
         
-        // Migrate old products with 'category' to 'categories'
-        let needsUpdate = false;
+        // Check and clear expired new products
+        const now = new Date();
         products.forEach(product => {
-            // Convert single category to array
-            if (product.category && !product.categories) {
-                product.categories = [product.category];
-                delete product.category;
-                needsUpdate = true;
-            }
-            // Ensure categories is always an array
-            if (!product.categories) {
-                product.categories = [];
-                needsUpdate = true;
-            }
-            // Check and clear expired new products
-            if (product.isNew && product.newExpiryDate && new Date(product.newExpiryDate) < new Date()) {
+            if (product.isNew && product.newExpiryDate && new Date(product.newExpiryDate) < now) {
                 product.isNew = false;
-                needsUpdate = true;
             }
+            // Clear old reviews - start fresh
+            product.reviewsList = [];
+            product.reviews = 0;
+            product.rating = 5; // Default rating
         });
         
-        if (needsUpdate) {
-            localStorage.setItem('antika_products', JSON.stringify(products));
-        }
-        
+        localStorage.setItem('antika_products', JSON.stringify(products));
         return products;
     },
 
@@ -277,13 +213,6 @@ const API = {
         product.createdAt = new Date().toISOString().split('T')[0];
         product.updatedAt = product.createdAt;
         product.reviewsList = product.reviewsList || [];
-
-        // ✅ إضافة مميزات المنتج (افتراضياً false)
-        product.features = product.features || {
-            freeShipping: false,
-            easyReturns: false,
-            qualityGuarantee: false
-        };
         
         if (!product.images || !Array.isArray(product.images)) {
             product.images = ['https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store'];
@@ -415,28 +344,6 @@ const API = {
         return newSettings;
     },
 
-    // Footer Pages
-    async getPages() {
-        this.init();
-        return JSON.parse(localStorage.getItem('antika_pages')) || {};
-    },
-
-    async getPage(pageId) {
-        const pages = await this.getPages();
-        return pages[pageId] || null;
-    },
-
-    async updatePage(pageId, pageData) {
-        const pages = await this.getPages();
-        pages[pageId] = { 
-            ...pages[pageId], 
-            ...pageData,
-            lastUpdated: new Date().toISOString()
-        };
-        localStorage.setItem('antika_pages', JSON.stringify(pages));
-        return pages[pageId];
-    },
-
     // Reviews
     async addReview(productId, review) {
         const products = await this.getProducts();
@@ -482,47 +389,6 @@ const API = {
         return related.slice(0, limit);
     },
 
-    // Enhanced Search - Fuzzy search with similarity matching
-    async searchProducts(query, options = {}) {
-        const products = await this.getProducts();
-        if (!query || query.trim() === '') return products;
-        
-        const searchTerm = query.toLowerCase().trim();
-        const searchWords = searchTerm.split(/\s+/).filter(w => w.length > 1);
-        
-        return products.filter(product => {
-            const name = (product.name || '').toLowerCase();
-            const description = (product.description || '').toLowerCase();
-            const subcategory = (product.subcategory || '').toLowerCase();
-            const categoryNames = (product.categories || []).map(c => c.toLowerCase()).join(' ');
-            
-            // Exact match gets highest priority
-            if (name.includes(searchTerm) || 
-                description.includes(searchTerm) || 
-                subcategory.includes(searchTerm)) {
-                return true;
-            }
-            
-            // Word-by-word matching for fuzzy search
-            const matchCount = searchWords.filter(word => 
-                name.includes(word) || 
-                description.includes(word) || 
-                subcategory.includes(word) ||
-                categoryNames.includes(word)
-            ).length;
-            
-            // Return true if at least half the words match
-            return matchCount >= Math.ceil(searchWords.length / 2) || matchCount >= 1;
-        }).sort((a, b) => {
-            // Sort by relevance - exact matches first
-            const aName = (a.name || '').toLowerCase();
-            const bName = (b.name || '').toLowerCase();
-            const aExact = aName.includes(searchTerm) ? 2 : 0;
-            const bExact = bName.includes(searchTerm) ? 2 : 0;
-            return bExact - aExact;
-        });
-    },
-
     // Bulk Operations
     async applyBulkDiscount(productIds, discountType, discountValue, endDate = null) {
         const products = await this.getProducts();
@@ -562,7 +428,6 @@ const API = {
         localStorage.removeItem('antika_categories');
         localStorage.removeItem('antika_cart');
         localStorage.removeItem('antika_settings');
-        localStorage.removeItem('antika_pages');
         localStorage.removeItem('antika_user');
         this.init();
     }

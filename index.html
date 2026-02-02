@@ -397,6 +397,67 @@
         .search-modal-close:hover {
             background: #f0f0f0;
         }
+    
+        /* Mobile Responsive Fixes */
+        @media (max-width: 768px) {
+            /* Smaller fonts */
+            body { font-size: 14px; }
+            h1 { font-size: 1.5rem !important; }
+            h2 { font-size: 1.25rem !important; }
+            h3 { font-size: 1.1rem !important; }
+
+            /* Smaller logo */
+            .logo-image {
+                width: 35px;
+                height: 35px;
+            }
+            .logo-text-ar {
+                font-size: 16px;
+            }
+            .logo-text-en {
+                font-size: 10px;
+            }
+
+            /* Smaller header height */
+            .main-header .h-20 {
+                height: 60px;
+            }
+
+            /* Horizontal scroll products */
+            .products-scroll {
+                display: flex;
+                overflow-x: auto;
+                scroll-snap-type: x mandatory;
+                -webkit-overflow-scrolling: touch;
+                gap: 12px;
+                padding-bottom: 10px;
+            }
+            .products-scroll .product-card {
+                flex: 0 0 45%;
+                min-width: 150px;
+                scroll-snap-align: start;
+            }
+            .products-scroll::-webkit-scrollbar {
+                display: none;
+            }
+
+            /* Smaller product card text */
+            .products-scroll .product-card h3 {
+                font-size: 12px;
+            }
+            .products-scroll .product-card .text-lg {
+                font-size: 14px;
+            }
+
+            /* Banner text smaller */
+            .banner-slide h2 {
+                font-size: 1.25rem !important;
+            }
+            .banner-slide p {
+                font-size: 14px !important;
+            }
+        }
+
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -593,7 +654,7 @@
                     عرض الكل <i class="fas fa-arrow-left mr-1"></i>
                 </a>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6" id="featured-products">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 products-scroll md:grid" id="featured-products">
             </div>
         </div>
     </section>
@@ -619,7 +680,7 @@
             <h2 class="text-3xl font-bold text-center text-antika-gold mb-12">
                 <span class="border-b-4 border-antika-pink pb-2">✨ وصل حديثاً</span>
             </h2>
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6" id="new-products">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 products-scroll md:grid" id="new-products">
             </div>
         </div>
     </section>
