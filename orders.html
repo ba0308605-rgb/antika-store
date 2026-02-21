@@ -1,0 +1,265 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الطلبات - انتيكا ستور</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'antika-pink': '#FFB6C1',
+                        'antika-pink-dark': '#FF69B4',
+                        'antika-gold': '#D6C1A6',
+                        'antika-gold-dark': '#C4AC8E'
+                    },
+                    fontFamily: {
+                        'tajawal': ['Tajawal', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html { overflow-y: scroll; }
+        body { font-family: 'Tajawal', sans-serif; }
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            color: #4b5563;
+            transition: all 0.2s;
+            border-radius: 8px;
+            margin-bottom: 4px;
+        }
+        .sidebar-item:hover {
+            background-color: #f9fafb;
+            color: #D6C1A6;
+        }
+        .sidebar-item.active {
+            background-color: #f3f4f6;
+            color: #D6C1A6;
+            font-weight: 600;
+        }
+        .sidebar-item i { width: 20px; text-align: center; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <antika-announcement-bar></antika-announcement-bar>
+    <antika-header></antika-header>
+
+    <main>
+        <nav class="bg-white border-b py-3">
+            <div class="container mx-auto px-4">
+                <div class="flex items-center text-sm">
+                    <a href="index.html" class="text-antika-gold font-semibold">الرئيسية</a>
+                    <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
+                    <a href="account.html" class="text-antika-gold font-semibold">حسابي</a>
+                    <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
+                    <span class="text-gray-600">الطلبات</span>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container mx-auto px-4 py-8">
+            <div class="flex flex-col lg:flex-row gap-6">
+                <aside class="w-full lg:w-64 flex-shrink-0">
+                    <div class="bg-white rounded-xl shadow-sm border p-4">
+                        <a href="notifications.html" class="sidebar-item">
+                            <i class="fas fa-bell"></i>
+                            <span>الإشعارات</span>
+                        </a>
+                        <a href="orders.html" class="sidebar-item active">
+                            <i class="fas fa-shopping-bag"></i>
+                            <span>الطلبات</span>
+                        </a>
+                        <a href="wishlist.html" class="sidebar-item">
+                            <i class="fas fa-heart"></i>
+                            <span>المفضلة</span>
+                        </a>
+                        <a href="account.html" class="sidebar-item">
+                            <i class="fas fa-user-circle"></i>
+                            <span>حسابي</span>
+                        </a>
+                        <a href="addresses.html" class="sidebar-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>عناويني</span>
+                        </a>
+                        <a href="settings.html" class="sidebar-item">
+                            <i class="fas fa-cog"></i>
+                            <span>الإعدادات</span>
+                        </a>
+                        <div class="border-t my-3"></div>
+                        <button onclick="logout()" class="sidebar-item w-full text-right text-red-500 hover:bg-red-50 hover:text-red-600">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>تسجيل الخروج</span>
+                        </button>
+                    </div>
+                </aside>
+
+                <div class="flex-1">
+                    <div id="orders-container" class="bg-white rounded-xl shadow-sm border p-12 text-center min-h-[400px] flex flex-col items-center justify-center">
+                        <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+                            <i class="fas fa-spinner fa-spin text-4xl text-gray-300"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-gray-800 mb-2">جاري تحميل الطلبات...</h2>
+                        <p class="text-gray-500 mb-6">يرجى الانتظار</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <antika-footer></antika-footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/header.js"></script>
+    <script src="js/auth-sync.js"></script>
+    <script src="js/announcement-bar.js"></script>
+    <script src="js/footer.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', loadOrdersPage);
+
+        function formatDate(value) {
+            const dt = value ? new Date(value) : new Date();
+            if (Number.isNaN(dt.getTime())) return '-';
+            return dt.toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        function normalizeOrder(order) {
+            return {
+                id: order.id || order._id || ('order_' + Date.now()),
+                date: order.date || order.createdAt || new Date().toISOString(),
+                status: order.status || 'processing',
+                total: Number(order.total || 0),
+                items: Array.isArray(order.items) ? order.items : [],
+                customerEmail: (order.customerEmail || '').toLowerCase()
+            };
+        }
+
+        function getStatusText(status) {
+            if (status === 'delivered') return 'تم التسليم';
+            if (status === 'shipped') return 'تم الشحن';
+            if (status === 'processing') return 'قيد المعالجة';
+            if (status === 'pending') return 'قيد المراجعة';
+            return status || 'قيد المعالجة';
+        }
+
+        function getStatusClass(status) {
+            if (status === 'delivered') return 'bg-green-100 text-green-700';
+            if (status === 'shipped') return 'bg-yellow-100 text-yellow-700';
+            if (status === 'processing') return 'bg-blue-100 text-blue-700';
+            return 'bg-gray-100 text-gray-700';
+        }
+
+        function renderEmptyState() {
+            const container = document.getElementById('orders-container');
+            container.className = 'bg-white rounded-xl shadow-sm border p-12 text-center min-h-[400px] flex flex-col items-center justify-center';
+            container.innerHTML = `
+                <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+                    <i class="fas fa-shopping-bag text-4xl text-gray-300"></i>
+                </div>
+                <h2 class="text-xl font-bold text-gray-800 mb-2">لا توجد طلبات</h2>
+                <p class="text-gray-500 mb-6">لم تقم بأي طلبات حتى الآن</p>
+                <a href="products.html" class="inline-flex items-center gap-2 bg-antika-gold hover:bg-antika-gold-dark text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span>تسوق الآن</span>
+                </a>
+            `;
+        }
+
+        function renderOrders(orders) {
+            const container = document.getElementById('orders-container');
+            container.className = 'bg-white rounded-xl shadow-sm border p-4 md:p-6';
+            container.innerHTML = `
+                <div class="space-y-4">
+                    ${orders.map(order => `
+                        <div class="border border-gray-200 rounded-xl p-4">
+                            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                                <div>
+                                    <p class="font-bold text-gray-900">طلب #${order.id}</p>
+                                    <p class="text-sm text-gray-500">${formatDate(order.date)}</p>
+                                </div>
+                                <span class="px-3 py-1 rounded-full text-sm font-semibold ${getStatusClass(order.status)}">${getStatusText(order.status)}</span>
+                            </div>
+                            <div class="space-y-2 mb-3">
+                                ${order.items.map(item => `
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-gray-700">${item.name || 'منتج'}</span>
+                                        <span class="text-gray-600">x${item.quantity || 1}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="border-t pt-3 flex items-center justify-between">
+                                <span class="text-gray-600 text-sm">عدد المنتجات: ${order.items.length}</span>
+                                <span class="font-bold text-antika-gold">${order.total} ر.س</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        async function loadOrdersPage() {
+            const userRaw = localStorage.getItem('antika_user');
+            if (!userRaw) {
+                renderEmptyState();
+                return;
+            }
+
+            const user = JSON.parse(userRaw);
+            const email = (user.email || '').toLowerCase();
+
+            try {
+                const allOrders = await API.getOrders();
+                const fromApi = (Array.isArray(allOrders) ? allOrders : [])
+                    .map(normalizeOrder)
+                    .filter(o => !email || o.customerEmail === email);
+
+                if (fromApi.length > 0) {
+                    renderOrders(fromApi);
+                    return;
+                }
+            } catch (e) {
+                console.warn('Could not load orders from API:', e);
+            }
+
+            try {
+                const localOrders = JSON.parse(localStorage.getItem('antika_orders') || '[]')
+                    .map(normalizeOrder)
+                    .filter(o => !email || o.customerEmail === email);
+
+                if (localOrders.length > 0) {
+                    renderOrders(localOrders);
+                } else {
+                    renderEmptyState();
+                }
+            } catch (e) {
+                console.warn('Could not load local orders:', e);
+                renderEmptyState();
+            }
+        }
+
+        async function logout() {
+            try {
+                if (window.Auth && typeof Auth.logout === 'function') {
+                    await Auth.logout();
+                }
+            } catch (e) {
+                console.warn('Logout error:', e);
+            }
+            localStorage.removeItem('antika_user');
+            localStorage.removeItem('antika_token');
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>
+

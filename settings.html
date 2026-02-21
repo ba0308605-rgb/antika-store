@@ -1,0 +1,301 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الإعدادات - انتيكا ستور</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'antika-pink': '#FFB6C1',
+                        'antika-pink-dark': '#FF69B4',
+                        'antika-gold': '#D6C1A6',
+                        'antika-gold-dark': '#C4AC8E',
+                        'antika-gold-light': '#E8D9C5',
+                        'antika-beige': '#FAF0E6',
+                        'antika-lavender': '#FFF0F5'
+                    },
+                    fontFamily: {
+                        'tajawal': ['Tajawal', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html { overflow-y: scroll; }
+        body { font-family: 'Tajawal', sans-serif; }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            color: #4b5563;
+            transition: all 0.2s;
+            border-radius: 8px;
+            margin-bottom: 4px;
+        }
+        .sidebar-item:hover {
+            background-color: #f9fafb;
+            color: #D6C1A6;
+        }
+        .sidebar-item.active {
+            background-color: #f3f4f6;
+            color: #D6C1A6;
+            font-weight: 600;
+        }
+        .sidebar-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .settings-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            border-bottom: 1px solid #f3f4f6;
+            transition: background-color 0.2s;
+        }
+        .settings-item:hover {
+            background-color: #f9fafb;
+        }
+        .settings-item:last-child {
+            border-bottom: none;
+        }
+
+        .night-mode {
+            background-color: #111827 !important;
+            color: #e5e7eb !important;
+        }
+        .night-mode main,
+        .night-mode .bg-white {
+            background-color: #1f2937 !important;
+            color: #e5e7eb !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <antika-announcement-bar></antika-announcement-bar>
+    <antika-header></antika-header>
+
+    <main class="flex-1">
+        <nav class="bg-white border-b py-3">
+            <div class="container mx-auto px-4">
+                <div class="flex items-center text-sm">
+                    <a href="index.html" class="text-antika-gold hover:text-antika-pink-dark transition font-semibold">الرئيسية</a>
+                    <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
+                    <a href="account.html" class="text-antika-gold hover:text-antika-pink-dark transition font-semibold">حسابي</a>
+                    <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
+                    <span class="text-gray-600">الإعدادات</span>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container mx-auto px-4 py-8">
+            <div class="flex flex-col lg:flex-row gap-6">
+                <aside class="w-full lg:w-64 flex-shrink-0">
+                    <div class="bg-white rounded-xl shadow-sm border p-4">
+                        <a href="notifications.html" class="sidebar-item">
+                            <i class="fas fa-bell"></i>
+                            <span>الإشعارات</span>
+                        </a>
+                        <a href="orders.html" class="sidebar-item">
+                            <i class="fas fa-shopping-bag"></i>
+                            <span>الطلبات</span>
+                        </a>
+                        <a href="wishlist.html" class="sidebar-item">
+                            <i class="fas fa-heart"></i>
+                            <span>المفضلة</span>
+                        </a>
+                        <a href="account.html" class="sidebar-item">
+                            <i class="fas fa-user-circle"></i>
+                            <span>حسابي</span>
+                        </a>
+                        <a href="addresses.html" class="sidebar-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>عناويني</span>
+                        </a>
+                        <a href="settings.html" class="sidebar-item active">
+                            <i class="fas fa-cog"></i>
+                            <span>الإعدادات</span>
+                        </a>
+                        <div class="border-t my-3"></div>
+                        <button onclick="logout()" class="sidebar-item w-full text-right text-red-500 hover:bg-red-50 hover:text-red-600">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>تسجيل الخروج</span>
+                        </button>
+                    </div>
+                </aside>
+
+                <div class="flex-1">
+                    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div id="settings-notifications" class="settings-item cursor-pointer">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
+                                    <i class="fas fa-bell"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-gray-800">الإشعارات</h3>
+                                    <p class="text-sm text-gray-500">إدارة إعدادات الإشعارات</p>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-left text-gray-400"></i>
+                        </div>
+
+                        <div id="settings-privacy" class="settings-item cursor-pointer">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center text-green-500">
+                                    <i class="fas fa-lock"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-gray-800">الخصوصية والأمان</h3>
+                                    <p class="text-sm text-gray-500">إرسال رابط تغيير كلمة المرور</p>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-left text-gray-400"></i>
+                        </div>
+
+                        <div id="settings-language" class="settings-item cursor-pointer">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center text-purple-500">
+                                    <i class="fas fa-language"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-gray-800">اللغة</h3>
+                                    <p id="language-current" class="text-sm text-gray-500">العربية</p>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-left text-gray-400"></i>
+                        </div>
+
+                        <div id="settings-dark-mode" class="settings-item cursor-pointer">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600">
+                                    <i class="fas fa-moon"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-gray-800">الوضع الليلي</h3>
+                                    <p class="text-sm text-gray-500">تفعيل الوضع الليلي لهذه الصفحة</p>
+                                </div>
+                            </div>
+                            <div id="dark-mode-track" class="w-12 h-6 bg-gray-200 rounded-full relative transition-colors">
+                                <div id="dark-mode-thumb" class="w-5 h-5 bg-white rounded-full absolute right-0.5 top-0.5 shadow transition-all"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <antika-footer></antika-footer>
+
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/header.js"></script>
+    <script src="js/auth-sync.js"></script>
+    <script src="js/announcement-bar.js"></script>
+    <script src="js/footer.js"></script>
+    <script>
+        const SETTINGS_KEY = 'antika_user_settings';
+
+        function readSettings() {
+            try {
+                return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+            } catch (e) {
+                return {};
+            }
+        }
+
+        function saveSettings(next) {
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+        }
+
+        function applyDarkMode(enabled) {
+            document.body.classList.toggle('night-mode', !!enabled);
+            const track = document.getElementById('dark-mode-track');
+            const thumb = document.getElementById('dark-mode-thumb');
+            if (!track || !thumb) return;
+            track.classList.toggle('bg-gray-200', !enabled);
+            track.classList.toggle('bg-antika-gold', !!enabled);
+            thumb.classList.toggle('right-0.5', !enabled);
+            thumb.classList.toggle('right-6', !!enabled);
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-24 left-1/2 -translate-x-1/2 bg-antika-gold text-white px-5 py-2 rounded-full shadow-lg z-50';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2200);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const settings = readSettings();
+            const languageCurrent = document.getElementById('language-current');
+            if (languageCurrent) {
+                languageCurrent.textContent = (settings.language || 'ar') === 'ar' ? 'العربية' : 'English';
+            }
+            applyDarkMode(!!settings.darkMode);
+
+            document.getElementById('settings-notifications')?.addEventListener('click', () => {
+                window.location.href = 'notifications.html';
+            });
+
+            document.getElementById('settings-privacy')?.addEventListener('click', async () => {
+                const user = JSON.parse(localStorage.getItem('antika_user') || '{}');
+                if (!user.email) {
+                    showToast('يرجى تسجيل الدخول أولاً');
+                    return;
+                }
+
+                if (window.Auth && typeof Auth.resetPassword === 'function') {
+                    const result = await Auth.resetPassword(user.email);
+                    showToast(result.success ? 'تم إرسال رابط تغيير كلمة المرور' : (result.error || 'تعذر إرسال الرابط'));
+                } else {
+                    showToast('الميزة غير متاحة حالياً');
+                }
+            });
+
+            document.getElementById('settings-language')?.addEventListener('click', () => {
+                const now = readSettings();
+                const nextLanguage = (now.language || 'ar') === 'ar' ? 'en' : 'ar';
+                saveSettings({ ...now, language: nextLanguage });
+                if (languageCurrent) {
+                    languageCurrent.textContent = nextLanguage === 'ar' ? 'العربية' : 'English';
+                }
+                showToast(nextLanguage === 'ar' ? 'تم حفظ اللغة: العربية' : 'Language set to English');
+            });
+
+            document.getElementById('settings-dark-mode')?.addEventListener('click', () => {
+                const now = readSettings();
+                const nextEnabled = !now.darkMode;
+                saveSettings({ ...now, darkMode: nextEnabled });
+                applyDarkMode(nextEnabled);
+                showToast(nextEnabled ? 'تم تفعيل الوضع الليلي' : 'تم إيقاف الوضع الليلي');
+            });
+        });
+
+        async function logout() {
+            try {
+                if (window.Auth && typeof Auth.logout === 'function') {
+                    await Auth.logout();
+                }
+            } catch (e) {
+                console.warn('Logout error:', e);
+            }
+            localStorage.removeItem('antika_user');
+            localStorage.removeItem('antika_token');
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>
+

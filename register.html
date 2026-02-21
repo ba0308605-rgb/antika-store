@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إنشاء حساب - انتيكا استور</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'antika-pink': '#FFB6C1',
+                        'antika-pink-dark': '#FF69B4',
+                        'antika-gold': '#D6C1A6',
+                        'antika-gold-dark': '#C4AC8E',
+                        'antika-gold-light': '#E8D9C5',
+                        'antika-beige': '#FAF0E6',
+                    },
+                    fontFamily: {
+                        'tajawal': ['Tajawal', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { 
+            font-family: 'Tajawal', sans-serif;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            min-height: 100vh;
+        }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+        }
+        
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            position: relative;
+        }
+        
+        .step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 24px;
+            right: -50%;
+            width: calc(100% - 20px);
+            height: 2px;
+            background: #e5e7eb;
+            z-index: 0;
+        }
+        
+        .step.active:not(:last-child)::after {
+            background: #D6C1A6;
+        }
+        
+        .step-number {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            background: white;
+            color: #999;
+            border: 2px solid #e5e7eb;
+            position: relative;
+            z-index: 1;
+            transition: all 0.3s ease;
+        }
+        
+        .step.active .step-number {
+            background: #D6C1A6;
+            color: white;
+            border-color: #D6C1A6;
+        }
+        
+        .step.completed .step-number {
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
+        }
+        
+        .step-title {
+            margin-top: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+        }
+        
+        .step.active .step-title {
+            color: #D6C1A6;
+        }
+        
+        .step-form {
+            display: none;
+        }
+        
+        .step-form.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .antika-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        
+        .antika-input:focus {
+            outline: none;
+            border-color: #D6C1A6;
+            box-shadow: 0 0 0 3px rgba(214, 193, 166, 0.1);
+        }
+        
+        .password-strength {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+        }
+        
+        .strength-bar {
+            flex: 1;
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+        }
+        
+        .strength-bar.weak { background: #ef4444; }
+        .strength-bar.medium { background: #f59e0b; }
+        .strength-bar.strong { background: #10b981; }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #D6C1A6 0%, #C4AC8E 100%);
+            color: white;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(214, 193, 166, 0.5);
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: #D6C1A6;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-weight: 700;
+            border: 2px solid #D6C1A6;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: #faf7f4;
+        }
+
+        /* Prevent connector lines from overflowing the rounded card */
+        .bg-white.rounded-2xl {
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .success-animation {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: #10b981;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: white;
+            animation: scaleIn 0.5s ease;
+        }
+        
+        @keyframes scaleIn {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen flex items-center justify-center py-12 px-4">
+        <div class="w-full max-w-2xl">
+            <div class="bg-white rounded-2xl shadow-lg p-8">
+                <!-- Logo -->
+                <div class="text-center mb-8">
+                    <h1 class="text-3xl font-bold text-antika-gold">انتيكا استور</h1>
+                    <p class="text-gray-500 mt-2">إنشاء حساب جديد</p>
+                </div>
+                
+                <!-- Step Indicator -->
+                <div class="step-indicator mb-12">
+                    <div class="step active" id="step-1-indicator">
+                        <div class="step-number">1</div>
+                        <div class="step-title">البريد والجوال</div>
+                    </div>
+                    <div class="step" id="step-2-indicator">
+                        <div class="step-number">2</div>
+                        <div class="step-title">التحقق</div>
+                    </div>
+                    <div class="step" id="step-3-indicator">
+                        <div class="step-number">3</div>
+                        <div class="step-title">كلمة المرور</div>
+                    </div>
+                    <div class="step" id="step-4-indicator">
+                        <div class="step-number">4</div>
+                        <div class="step-title">البيانات</div>
+                    </div>
+                    <div class="step" id="step-5-indicator">
+                        <div class="step-number">5</div>
+                        <div class="step-title">إكمال</div>
+                    </div>
+                </div>
+                
+                <!-- Step 1: Email and Phone -->
+                <form id="step-1-form" class="step-form active space-y-4">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">البريد الإلكتروني ورقم الجوال</h2>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">البريد الإلكتروني</label>
+                        <input type="email" id="step1-email" class="antika-input" 
+                               placeholder="example@email.com">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">رقم الجوال</label>
+                        <input type="tel" id="step1-phone" class="antika-input" 
+                               placeholder="05xxxxxxxx">
+                        <p class="text-sm text-gray-400 mt-2">يمكنك إدخال البريد أو الجوال أو كليهما</p>
+                    </div>
+                    
+                    <div class="pt-4 flex gap-4">
+                        <button type="button" class="btn-primary" onclick="nextStep(1)">
+                            التالي <i class="fas fa-arrow-left ml-2"></i>
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Step 2: Email Verification -->
+                <form id="step-2-form" class="step-form space-y-4">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">التحقق من البريد الإلكتروني</h2>
+                    
+                    <div class="text-center mb-6">
+                        <p class="text-gray-600 mb-2">تم إرسال رمز التحقق إلى:</p>
+                        <p id="verification-email" class="font-bold text-antika-gold"></p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">رمز التحقق</label>
+                        <input type="text" id="step2-verification-code" class="antika-input text-center text-lg tracking-widest" 
+                               placeholder="000000" maxlength="6" inputmode="numeric">
+                    </div>
+                    
+                    <p class="text-sm text-gray-500 text-center">
+                        لم تستقبل الرمز؟ 
+                        <button type="button" class="text-antika-gold font-bold hover:text-antika-gold-dark" onclick="resendVerificationCode()">
+                            أعد الإرسال
+                        </button>
+                    </p>
+                    
+                    <div class="pt-4 flex gap-4">
+                        <button type="button" class="btn-secondary flex-1" onclick="prevStep(2)">
+                            <i class="fas fa-arrow-right ml-2"></i> السابق
+                        </button>
+                        <button type="button" class="btn-primary flex-1" onclick="nextStep(2)">
+                            التحقق <i class="fas fa-arrow-left ml-2"></i>
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Step 3: Password -->
+                <form id="step-3-form" class="step-form space-y-4">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">كلمة المرور</h2>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">كلمة المرور</label>
+                        <div class="relative">
+                            <input type="password" id="step2-password" class="antika-input pr-12" 
+                                   placeholder="كلمة قوية" oninput="validatePasswordStrength()">
+                            <button type="button" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-antika-pink"
+                                    onclick="togglePasswordVisibility('step2-password')">
+                                <i class="fas fa-eye" id="step2-password-icon"></i>
+                            </button>
+                        </div>
+                        <div class="password-strength" id="password-strength"></div>
+                    </div>
+                    
+                    <!-- Password Requirements -->
+                    <div class="p-3 bg-gray-50 rounded-lg text-sm space-y-2">
+                        <div id="req-length" class="flex items-center gap-2 text-gray-500">
+                            <span>☐</span> 6 أحرف على الأقل
+                        </div>
+                        <div id="req-english" class="flex items-center gap-2 text-gray-500">
+                            <span>☐</span> أحرف إنجليزية فقط
+                        </div>
+                        <div id="req-letter" class="flex items-center gap-2 text-gray-500">
+                            <span>☐</span> حرف واحد على الأقل (كبير أو صغير)
+                        </div>
+                        <div id="req-symbol" class="flex items-center gap-2 text-gray-500">
+                            <span>☐</span> رمز واحد على الأقل (!@#$%^&*)
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">تأكيد كلمة المرور</label>
+                        <div class="relative">
+                            <input type="password" id="step2-password-confirm" class="antika-input pr-12" 
+                                   placeholder="أعد إدخال كلمة المرور" oninput="validatePasswordMatch()">
+                            <button type="button" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-antika-pink"
+                                    onclick="togglePasswordVisibility('step2-password-confirm')">
+                                <i class="fas fa-eye" id="step2-password-confirm-icon"></i>
+                            </button>
+                        </div>
+                        <p id="password-match-msg" class="text-sm text-gray-400 mt-2"></p>
+                    </div>
+                    
+                    <div class="pt-4 flex gap-4">
+                        <button type="button" class="btn-secondary flex-1" onclick="prevStep(3)">
+                            <i class="fas fa-arrow-right ml-2"></i> السابق
+                        </button>
+                        <button type="button" class="btn-primary flex-1" onclick="nextStep(3)">
+                            التالي <i class="fas fa-arrow-left ml-2"></i>
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Step 4: Personal Info -->
+                <form id="step-4-form" class="step-form space-y-4">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">البيانات الشخصية</h2>
+                    
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2">الاسم الأول <span class="text-red-500">*</span></label>
+                            <input type="text" id="step3-first-name" class="antika-input" 
+                                   placeholder="أدخل اسمك الأول" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2">الاسم الأخير</label>
+                            <input type="text" id="step3-last-name" class="antika-input" 
+                                   placeholder="الاسم الأخير (اختياري)">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">تاريخ الميلاد</label>
+                        <input type="date" id="step3-birth-date" class="antika-input">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-3">الجنس</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <button type="button" class="gender-option" onclick="selectGender('male')" id="gender-male">
+                                <i class="fas fa-mars text-lg mb-2"></i>
+                                <div>ذكر</div>
+                            </button>
+                            <button type="button" class="gender-option" onclick="selectGender('female')" id="gender-female">
+                                <i class="fas fa-venus text-lg mb-2"></i>
+                                <div>أنثى</div>
+                            </button>
+                        </div>
+                        <input type="hidden" id="step3-gender" value="">
+                    </div>
+                    
+                    <div class="pt-4 flex gap-4">
+                        <button type="button" class="btn-secondary flex-1" onclick="prevStep(4)">
+                            <i class="fas fa-arrow-right ml-2"></i> السابق
+                        </button>
+                        <button type="button" class="btn-primary flex-1" onclick="nextStep(4)">
+                            التالي <i class="fas fa-arrow-left ml-2"></i>
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Step 5: Confirmation -->
+                <div id="step-5-form" class="step-form">
+                    <div class="success-animation" id="loading-state">
+                        <div class="success-icon">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </div>
+                        <p class="text-xl font-bold text-gray-800">جاري إنشاء حسابك...</p>
+                        <p class="text-gray-500 mt-2">يرجى الانتظار قليلاً</p>
+                    </div>
+                    
+                    <div class="success-animation hidden" id="success-state">
+                        <div class="success-icon" style="background: #10b981;">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">تم إنشاء الحساب بنجاح!</h3>
+                        <p class="text-gray-600 mb-6">سيتم نقلك إلى الصفحة الرئيسية خلال قليل</p>
+                        <div class="w-full bg-gray-200 rounded-full h-1 overflow-hidden">
+                            <div class="bg-antika-gold h-full" id="countdown-bar" style="width: 100%; animation: countdown 3s linear forwards;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    
+    <script>
+        let currentStep = 1;
+        let formData = {};
+        
+        // Navigate to next step
+        async function nextStep(step) {
+            if (step === 1) {
+                const email = document.getElementById('step1-email').value.trim();
+                const phone = document.getElementById('step1-phone').value.trim();
+                
+                if (!email && !phone) {
+                    showNotification('الرجاء إدخال البريد الإلكتروني أو رقم الجوال', 'error');
+                    return;
+                }
+                
+                // Show loading
+                showLoadingOverlay('جاري التحقق من البريد...');
+                
+                formData.email = email;
+                formData.phone = phone;
+                
+                // If email provided, check if it's already registered + send verification code
+                if (email) {
+                    try {
+                        // Check if email exists ONLY in Firebase Auth
+                        console.log('🔍 Checking Firebase Auth only...');
+                        showLoadingOverlay('جاري التحقق من البريد...');
+                        
+                        try {
+                            // Check Firebase Auth - if email exists, it will return sign-in methods
+                            const methods = await firebase.auth().fetchSignInMethodsForEmail(email);
+                            if (methods && methods.length > 0) {
+                                hideLoadingOverlay();
+                                showNotification('هذا البريد الإلكتروني مسجل بالفعل! 📧', 'error');
+                                return;
+                            }
+                        } catch (firebaseErr) {
+                            console.log('Firebase check:', firebaseErr.code);
+                            // If error, email doesn't exist - continue
+                        }
+                        
+                        showLoadingOverlay('جاري إرسال رمز التحقق...');
+                        
+                        // Send verification email
+                        const response = await fetch(`${API.baseURL}/send-verification-email`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (!response.ok) {
+                            hideLoadingOverlay();
+                            showNotification(data.error || 'فشل إرسال رمز التحقق', 'error');
+                            return;
+                        }
+                        
+                        hideLoadingOverlay();
+                        showNotification('✅ تم إرسال رمز التحقق إلى بريدك! 📧', 'success');
+                        document.getElementById('verification-email').textContent = email;
+                        
+                    } catch (err) {
+                        hideLoadingOverlay();
+                        console.error('Error sending verification email:', err);
+                        showNotification('خطأ في الاتصال بالخادم', 'error');
+                        return;
+                    }
+                }
+            }
+            
+            if (step === 2) {
+                // If email exists, verify the OTP code
+                if (formData.email) {
+                    const code = document.getElementById('step2-verification-code').value.trim();
+                    
+                    if (!code || code.length !== 6) {
+                        showNotification('الرجاء إدخال رمز التحقق المكون من 6 أرقام', 'error');
+                        return;
+                    }
+                    
+                    showLoadingOverlay('جاري التحقق من الرمز...');
+                    
+                    try {
+                        const response = await fetch(`${API.baseURL}/verify-email-code`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: formData.email, code })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (!response.ok) {
+                            hideLoadingOverlay();
+                            showNotification(data.error || 'فشل التحقق من الرمز', 'error');
+                            return;
+                        }
+                        
+                        hideLoadingOverlay();
+                        showNotification('✅ تم التحقق من البريد بنجاح! ✓', 'success');
+                        formData.emailVerified = true;
+                        
+                    } catch (err) {
+                        hideLoadingOverlay();
+                        console.error('Error verifying code:', err);
+                        showNotification('خطأ في الاتصال بالخادم', 'error');
+                        return;
+                    }
+                }
+                
+                // Proceed to password step
+                goToStep(3);
+                return;
+            }
+            
+            if (step === 3) {
+                const password = document.getElementById('step2-password').value;
+                const confirmPassword = document.getElementById('step2-password-confirm').value;
+                
+                if (!isPasswordValid()) {
+                    showNotification('كلمة المرور لا تحقق جميع الشروط', 'error');
+                    return;
+                }
+                
+                if (password !== confirmPassword) {
+                    showNotification('كلمات المرور غير متطابقة', 'error');
+                    return;
+                }
+                
+                formData.password = password;
+            }
+            
+            if (step === 4) {
+                const firstName = document.getElementById('step3-first-name').value.trim();
+                
+                if (!firstName) {
+                    showNotification('الرجاء إدخال الاسم الأول', 'error');
+                    return;
+                }
+                
+                formData.firstName = firstName;
+                formData.lastName = document.getElementById('step3-last-name').value.trim();
+                formData.birthDate = document.getElementById('step3-birth-date').value;
+                formData.gender = document.getElementById('step3-gender').value;
+                
+                // Proceed to final step
+                completeRegistration();
+                return;
+            }
+            
+            goToStep(step + 1);
+        }
+        
+        // Navigate to previous step
+        function prevStep(step) {
+            goToStep(step - 1);
+        }
+        
+        // Change to specific step
+        function goToStep(step) {
+            // Hide current step
+            document.getElementById(`step-${currentStep}-form`).classList.remove('active');
+            document.getElementById(`step-${currentStep}-indicator`).classList.remove('active');
+            
+            // Show new step
+            currentStep = step;
+            document.getElementById(`step-${currentStep}-form`).classList.add('active');
+            document.getElementById(`step-${currentStep}-indicator`).classList.add('active');
+            
+            // Mark completed steps
+            for (let i = 1; i < currentStep; i++) {
+                document.getElementById(`step-${i}-indicator`).classList.add('completed');
+            }
+            
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+        
+        // Complete registration with timeout
+        async function completeRegistration() {
+            showLoadingOverlay('جاري إنشاء حسابك... ⏳');
+            
+            // Set a timeout of 5 seconds
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('انتهت مهلة الانتظار - جرب مرة أخرى')), 5000);
+            });
+            
+            try {
+                const { firstName, lastName, email, phone, password } = formData;
+                const fullName = firstName + (lastName ? ' ' + lastName : '');
+                
+                // Generate auth email if only phone provided
+                let authEmail = email;
+                let originalEmail = email || '';
+                if (!email && phone) {
+                    const digits = phone.replace(/\D/g, '') || Date.now().toString();
+                    authEmail = `${digits}@phone.antika`;
+                    originalEmail = '';
+                }
+                
+                // Register with Firebase with timeout
+                console.log('🚀 Registering user with Firebase...');
+                const registrationPromise = Auth.userRegister(fullName, authEmail, password, phone, originalEmail);
+                const result = await Promise.race([registrationPromise, timeoutPromise]);
+                
+                console.log('✅ Registration result:', result);
+                
+                if (result.success) {
+                    // Save additional data
+                    const userData = {
+                        ...result.user,
+                        firstName,
+                        lastName,
+                        birthDate: formData.birthDate,
+                        gender: formData.gender,
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    localStorage.setItem('antika_user', JSON.stringify(userData));
+                    localStorage.setItem('isRegistered', 'true');
+                    localStorage.setItem('userEmail', originalEmail || authEmail);
+                    
+                    hideLoadingOverlay();
+                    console.log('✅ Registration successful. Redirecting to index...');
+                    
+                    // Redirect immediately to index.html
+                    window.location.href = 'index.html';
+                } else {
+                    hideLoadingOverlay();
+                    console.error('❌ Registration failed:', result.error);
+                    
+                    // Show specific error message
+                    if (result.error.includes('already in use')) {
+                        showNotification('هذا البريد مسجل بالفعل! جرّب تسجيل الدخول بدلاً من ذلك.', 'error');
+                    } else if (result.error.includes('weak')) {
+                        showNotification('كلمة المرور ضعيفة جداً. استخدم حروف وأرقام ورموز.', 'error');
+                    } else {
+                        showNotification(result.error, 'error');
+                    }
+                    goToStep(1);
+                }
+            } catch (error) {
+                hideLoadingOverlay();
+                console.error('❌ Registration error:', error);
+                
+                // Check if it's a timeout error
+                if (error.message.includes('مهلة')) {
+                    showNotification('انتهت مهلة الانتظار. قد يكون الخادم بطيء. جرّب مرة أخرى.', 'error');
+                } else {
+                    showNotification(error.message || 'حدث خطأ أثناء إنشاء الحساب', 'error');
+                }
+                goToStep(1);
+            }
+        }
+        
+        // Password validation
+        function validatePasswordStrength() {
+            const password = document.getElementById('step2-password').value;
+            
+            if (!password) {
+                document.querySelectorAll('.strength-bar').forEach(bar => bar.classList.remove('weak', 'medium', 'strong'));
+                return;
+            }
+            
+            let strength = 0;
+            if (password.length >= 6) strength++;
+            if (/[a-z]/.test(password)) strength++;
+            if (/[A-Z]/.test(password)) strength++;
+            if (/[0-9]/.test(password)) strength++;
+            if (/[!@#$%^&*]/.test(password)) strength++;
+            
+            // Update requirements
+            updateRequirement('length', password.length >= 6);
+            updateRequirement('english', /^[a-zA-Z0-9!@#$%^&*]*$/.test(password));
+            updateRequirement('letter', /[a-zA-Z]/.test(password));
+            updateRequirement('symbol', /[!@#$%^&*]/.test(password));
+            
+            // Update strength bars
+            const bars = document.querySelectorAll('.strength-bar');
+            bars.forEach((bar, i) => {
+                bar.classList.remove('weak', 'medium', 'strong');
+                if (i < strength) {
+                    if (strength <= 2) bar.classList.add('weak');
+                    else if (strength <= 3) bar.classList.add('medium');
+                    else bar.classList.add('strong');
+                }
+            });
+            
+            if (document.getElementById('step2-password-confirm').value) {
+                validatePasswordMatch();
+            }
+        }
+        
+        function validatePasswordMatch() {
+            const password = document.getElementById('step2-password').value;
+            const confirm = document.getElementById('step2-password-confirm').value;
+            const msg = document.getElementById('password-match-msg');
+            
+            if (!confirm) {
+                msg.textContent = '';
+                return;
+            }
+            
+            if (password === confirm) {
+                msg.textContent = '✓ كلمات المرور متطابقة';
+                msg.className = 'text-sm text-green-600 font-bold mt-2';
+            } else {
+                msg.textContent = '✗ كلمات المرور غير متطابقة';
+                msg.className = 'text-sm text-red-600 font-bold mt-2';
+            }
+        }
+        
+        function updateRequirement(reqType, isMet) {
+            const elem = document.getElementById('req-' + reqType);
+            if (!elem) return;
+            const icon = elem.querySelector('span');
+            
+            if (isMet) {
+                elem.classList.remove('text-gray-500');
+                elem.classList.add('text-green-600');
+                icon.textContent = '☑';
+            } else {
+                elem.classList.remove('text-green-600');
+                elem.classList.add('text-gray-500');
+                icon.textContent = '☐';
+            }
+        }
+        
+        function isPasswordValid() {
+            const password = document.getElementById('step2-password').value;
+            return /^[a-zA-Z0-9!@#$%^&*]{6,}$/.test(password) && 
+                   /[a-zA-Z]/.test(password) && 
+                   /[!@#$%^&*]/.test(password);
+        }
+        
+        function togglePasswordVisibility(fieldId) {
+            const field = document.getElementById(fieldId);
+            const icon = document.getElementById(fieldId + '-icon');
+            
+            if (field.type === 'password') {
+                field.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                field.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+            
+            // Sync confirmation field if changing main password
+            if (fieldId === 'step2-password') {
+                const confirmField = document.getElementById('step2-password-confirm');
+                if (confirmField) {
+                    confirmField.type = field.type;
+                }
+            }
+        }
+        
+        function selectGender(gender) {
+            document.getElementById('step3-gender').value = gender;
+            document.getElementById('gender-male').classList.remove('selected');
+            document.getElementById('gender-female').classList.remove('selected');
+            
+            if (gender === 'male') {
+                document.getElementById('gender-male').classList.add('selected');
+            } else {
+                document.getElementById('gender-female').classList.add('selected');
+            }
+        }
+        
+        // Resend verification code
+        async function resendVerificationCode() {
+            if (!formData.email) {
+                showNotification('البريد الإلكتروني مفقود', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API.baseURL}/send-verification-email`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: formData.email })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    showNotification(data.error || 'فشل إعادة إرسال الرمز', 'error');
+                    return;
+                }
+                
+                showNotification('تم إرسال رمز جديد إلى بريدك الإلكتروني', 'success');
+                // Clear previous OTP input
+                document.getElementById('step2-verification-code').value = '';
+                
+            } catch (err) {
+                console.error('Error resending code:', err);
+                showNotification('خطأ في الاتصال بالخادم', 'error');
+            }
+        }
+        
+        // Gender option styling
+        const style = document.createElement('style');
+        style.textContent = `
+            .gender-option {
+                padding: 16px 24px;
+                border: 2px solid #e5e7eb;
+                border-radius: 12px;
+                text-align: center;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-weight: 500;
+                background: white;
+                color: #333;
+            }
+            .gender-option:hover {
+                border-color: #D6C1A6;
+                background: #faf7f4;
+            }
+            .gender-option.selected {
+                border-color: #D6C1A6;
+                background: linear-gradient(135deg, #D6C1A6 0%, #C4AC8E 100%);
+                color: white;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Show loading overlay
+        function showLoadingOverlay(message = 'جاري المعالجة...') {
+            let overlay = document.getElementById('loading-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'loading-overlay';
+                overlay.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+                overlay.innerHTML = `
+                    <div class="bg-white rounded-2xl p-8 text-center">
+                        <div class="animate-spin text-6xl text-antika-gold mb-4">
+                            <i class="fas fa-spinner"></i>
+                        </div>
+                        <p class="text-xl font-bold text-gray-800" id="loading-message">${message}</p>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+            } else {
+                document.getElementById('loading-message').textContent = message;
+            }
+        }
+        
+        // Hide loading overlay
+        function hideLoadingOverlay() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+        
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-6 right-6 px-6 py-3 rounded-full shadow-2xl font-bold ${type === 'success' ? 'bg-antika-pink text-white' : 'bg-red-500 text-white'} z-50 animate-bounce`;
+            notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} ml-2"></i> ${message}`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 4000);
+        }
+        
+        // Resend verification code
+        async function resendVerificationCode() {
+            if (!formData.email) {
+                showNotification('لم يتم العثور على بريد إلكتروني', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API.baseURL}/send-verification-email`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: formData.email })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    showNotification(data.error || 'فشل إعادة إرسال الرمز', 'error');
+                    return;
+                }
+                
+                showNotification('تم إعادة إرسال الرمز بنجاح', 'success');
+                // Clear the code field
+                document.getElementById('step2-verification-code').value = '';
+                
+            } catch (err) {
+                console.error('Error resending code:', err);
+                showNotification('خطأ في الاتصال بالخادم', 'error');
+            }
+        }
+        
+        // Initialize password strength display
+        const strengthHtml = `
+            <div class="strength-bar"></div>
+            <div class="strength-bar"></div>
+            <div class="strength-bar"></div>
+            <div class="strength-bar"></div>
+            <div class="strength-bar"></div>
+        `;
+        document.getElementById('password-strength').innerHTML = strengthHtml;
+    </script>
+</body>
+</html>

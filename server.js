@@ -1,27 +1,132 @@
-// require('dotenv').config();  // علّق هذا مؤقتاً
+// 🌸 Antika Store Server - MongoDB Backend
+// Local server for products, categories, cart, and orders
 
-// ✅ قاعدة بيانات MongoDB محلية
-process.env.MONGODB_URI = 'mongodb://localhost:27017/mystore';
-process.env.JWT_SECRET = 'your-secret-key-12345';
-process.env.PORT = '3000';
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const path = require('path');
+const fs = require('fs');
+const nodemailer = require('nodemailer');
+require('dotenv').config();
 
 const app = express();
 
+// 📧 Email Configuration (Gmail SMTP with Nodemailer)
+const emailTransporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER || 'your-email@gmail.com',
+    pass: process.env.GMAIL_APP_PASSWORD || 'your-app-password'
+  }
+});
+
+// In-memory OTP storage (email -> {code, timestamp, attempts})
+const otpStore = new Map();
+const OTP_EXPIRY = 10 * 60 * 1000; // 10 minutes
+const MAX_OTP_ATTEMPTS = 5;
+
+// Helper: Generate random 6-digit OTP
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// JSON DB fallback helpers
+const DB_FILE = path.join(__dirname, 'db.json');
+
+function readJsonDB() {
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('Error reading db.json:', e);
+  }
+  return { products: [], categories: [], cart: [], orders: [], pages: {}, settings: {}, users: [] };
+}
+
+function writeJsonDB(data) {
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Error writing db.json:', e);
+  }
+}
+
+// Check MongoDB connection status
+let mongoConnected = false;
+function isMongoConnected() {
+  return mongoose.connection.readyState === 1;
+}
+
+// Helper function to find product by ID (supports both ObjectId and custom id)
+async function findByIdOrFallback(Model, id) {
+  if (!isMongoConnected()) {
+    const db = readJsonDB();
+    return db.products.find(p => p._id === id || p.id === id);
+  }
+  
+  let doc = null;
+  
+  // Try MongoDB ObjectId first (only if format is valid)
+  if (id.match(/^[0-9a-fA-F]{24}$/)) {
+    try {
+      doc = await Model.findById(id);
+    } catch (e) {
+      // Invalid ObjectId format, continue to try other methods
+      console.log('   ObjectId lookup failed, trying id field...');
+    }
+  }
+  
+  // If not found, try by custom 'id' field
+  if (!doc) {
+    doc = await Model.findOne({ id: id });
+  }
+  
+  return doc;
+}
+
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static('.'));
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ Connected to MongoDB'))
-  .catch(err => console.error('❌ MongoDB Error:', err));
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/antika_store';
+console.log('🔌 Attempting to connect to MongoDB:', MONGODB_URI);
+
+mongoose.connect(MONGODB_URI)
+  .then(() => {
+    console.log('✅ Connected to MongoDB successfully!');
+    console.log('📊 Database:', mongoose.connection.db.databaseName);
+    mongoConnected = true;
+  })
+  .catch(err => {
+    console.error('❌ MongoDB Connection Error:', err.message);
+    console.log('⚠️ Running in JSON fallback mode');
+    mongoConnected = false;
+  });
+
+// Monitor connection events
+mongoose.connection.on('connected', async () => {
+  console.log('🟢 MongoDB connection established');
+  mongoConnected = true;
+  
+  // Show database stats
+  try {
+    const collections = await mongoose.connection.db.listCollections().toArray();
+    console.log('📁 Collections in database:', collections.map(c => c.name).join(', '));
+    
+    const productCount = await Product.countDocuments();
+    console.log('📦 Products count:', productCount);
+  } catch (e) {
+    console.log('⚠️ Could not fetch database stats');
+  }
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('🔴 MongoDB connection lost');
+  mongoConnected = false;
+});
 
 // ============================================
 // SCHEMAS (نماذج البيانات)
@@ -30,50 +135,58 @@ mongoose.connect(process.env.MONGODB_URI)
 // Product Schema
 const productSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  description: String,
+  sku: { type: String, default: '' },
+  description: { type: String, default: '' },
   price: { type: Number, required: true },
-  discountPrice: Number,
-  discountPercentage: Number,
+  discountPrice: { type: Number, default: null },
+  discountPercentage: { type: Number, default: null },
   categories: [{ type: String }],
-  subcategory: String,
   images: [{ type: String }],
   stock: { type: Number, default: 0 },
   stockDisplay: { type: String, default: 'number' },
-  stockText: String,
+  stockText: { type: String, default: '' },
   rating: { type: Number, default: 5 },
   reviews: { type: Number, default: 0 },
-  reviewsList: [{
-    user: String,
-    rating: Number,
-    comment: String,
-    date: Date
-  }],
-  isNewProduct: { type: Boolean, default: false },
-  productExpiryDate: Date,
+  isNew: { type: Boolean, default: false },
+  newExpiryDate: { type: Date, default: null },
   isFeatured: { type: Boolean, default: false },
-  // ✅ مميزات المنتج - خاصة بكل منتج على حدة
+  freeShipping: { type: Boolean, default: true },
   features: {
     freeShipping: { type: Boolean, default: false },
     easyReturns: { type: Boolean, default: false },
     qualityGuarantee: { type: Boolean, default: false }
   },
+  // 🌟 Custom Product Features
+  customFeatures: [{ type: String }],
+  // 🎨 Advanced Variants System
+  hasVariants: { type: Boolean, default: false },
+  variantOptions: [{
+    name: { type: String, required: true }, // مثل: اللون، المقاس
+    values: [{ type: String }] // مثل: أحمر، أزرق، S، M، L
+  }],
+  variants: [{
+    id: { type: String, required: true }, // معرف فريد للمتغير
+    options: [{ type: String }], // القيم المختارة ["أحمر", "S"]
+    price: { type: Number, default: null }, // سعر خاص (اختياري)
+    stock: { type: Number, default: 0 }, // مخزون هذا المتغير
+    sku: { type: String, default: '' }, // رمز SKU
+    images: [{ type: String }] // صور خاصة بالمتغير
+  }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
-});
+}, { suppressReservedKeysWarning: true });
 
 // Category Schema
 const categorySchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
-  icon: String,
-  color: String,
+  icon: { type: String, default: '📦' },
   subcategories: [{ type: String }]
 });
 
-// Cart Schema
+// Cart Schema (Session-based)
 const cartSchema = new mongoose.Schema({
-  sessionId: String,
-  userId: String,
+  sessionId: { type: String, required: true },
   items: [{
     productId: String,
     name: String,
@@ -84,113 +197,83 @@ const cartSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
-// User Schema
-const userSchema = new mongoose.Schema({
-  name: String,
-  email: { type: String, unique: true },
-  password: String,
-  phone: String,
-  isAdmin: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now }
+// Order Schema
+const orderSchema = new mongoose.Schema({
+  customerName: { type: String, required: true },
+  customerEmail: { type: String, required: true },
+  customerPhone: { type: String, required: true },
+  customerAddress: { type: String, required: true },
+  // 📍 GeoJSON location for maps integration
+  location: {
+    type: { type: String, default: 'Point' },
+    coordinates: { type: [Number], default: [34.5, 31.5] } // [longitude, latitude] per GeoJSON spec
+  },
+  items: [{
+    productId: String,
+    name: String,
+    price: Number,
+    image: String,
+    quantity: { type: Number, default: 1 }
+  }],
+  total: { type: Number, required: true },
+  status: { 
+    type: String, 
+    enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
+    default: 'processing'
+  },
+  paymentMethod: { type: String, default: 'cash' },
+  date: { type: Date, default: Date.now }
 });
 
 // Settings Schema
 const settingsSchema = new mongoose.Schema({
-  key: { type: String, unique: true },
+  key: { type: String, unique: true, required: true },
   value: mongoose.Schema.Types.Mixed
 });
 
 const Product = mongoose.model('Product', productSchema);
 const Category = mongoose.model('Category', categorySchema);
 const Cart = mongoose.model('Cart', cartSchema);
-const User = mongoose.model('User', userSchema);
+const Order = mongoose.model('Order', orderSchema);
 const Settings = mongoose.model('Settings', settingsSchema);
 
-// ============================================
-// MIDDLEWARE
-// ============================================
-
-const authMiddleware = async (req, res, next) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'No token' });
-    
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    res.status(401).json({ error: 'Invalid token' });
-  }
-};
-
-const adminMiddleware = async (req, res, next) => {
-  if (!req.user?.isAdmin) {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  next();
-};
-
-// ============================================
-// AUTH ROUTES
-// ============================================
-
-// Login
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    
-    // Check for admin credentials
-    if (email === 'BDR-FIRST' && password === 'B1-a2d3e4r5') {
-      const token = jwt.sign(
-        { email, isAdmin: true, name: 'Admin' },
-        process.env.JWT_SECRET,
-        { expiresIn: '7d' }
-      );
-      return res.json({ token, user: { email, isAdmin: true, name: 'Admin' } });
+// User Schema (for saved addresses)
+const userSchema = new mongoose.Schema({
+  name: { type: String, default: '' },
+  email: { type: String, required: true, unique: true },
+  phone: { type: String, default: '' },
+  // addresses stored with optional location { lat, lng }
+  addresses: [{
+    label: { type: String, default: '' },
+    address: { type: String, default: '' },
+    location: {
+      lat: { type: Number },
+      lng: { type: Number }
     }
-    
-    // Regular user login
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ error: 'User not found' });
-    
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ error: 'Invalid password' });
-    
-    const token = jwt.sign(
-      { userId: user._id, isAdmin: user.isAdmin, name: user.name },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-    
-    res.json({ token, user: { name: user.name, email: user.email, isAdmin: user.isAdmin } });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  }],
+  // Saved default location (for one-tap checkout)
+  defaultLocation: {
+    lat: { type: Number },
+    lng: { type: Number }
+  },
+  locationLabel: { type: String, default: 'موقعي' }, // label like "المنزل"
+  createdAt: { type: Date, default: Date.now }
 });
 
-// Register
-app.post('/api/auth/register', async (req, res) => {
-  try {
-    const { name, email, password, phone } = req.body;
-    
-    const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ error: 'Email already exists' });
-    
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ name, email, password: hashedPassword, phone });
-    await user.save();
-    
-    const token = jwt.sign(
-      { userId: user._id, isAdmin: false, name: user.name },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-    
-    res.json({ token, user: { name: user.name, email: user.email, isAdmin: false } });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+const User = mongoose.model('User', userSchema);
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+// Get or create session ID
+function getSessionId(req) {
+  let sessionId = req.headers['x-session-id'];
+  if (!sessionId) {
+    sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   }
-});
+  return sessionId;
+}
 
 // ============================================
 // PRODUCTS ROUTES
@@ -199,22 +282,66 @@ app.post('/api/auth/register', async (req, res) => {
 // Get all products
 app.get('/api/products', async (req, res) => {
   try {
+    // Use JSON fallback if MongoDB not connected
+    if (!isMongoConnected()) {
+      const db = readJsonDB();
+      let products = db.products || [];
+      
+      const { category, search, featured, discount } = req.query;
+      
+      if (category) {
+        products = products.filter(p => 
+          (p.categories && p.categories.includes(category)) ||
+          p.category === category
+        );
+      }
+      if (featured === 'true') products = products.filter(p => p.isFeatured);
+      // ✅ Only show products with actual discount (discountPrice < price)
+      if (discount === 'true') products = products.filter(p => p.discountPrice && p.discountPrice < p.price);
+      if (search) {
+        const searchLower = search.toLowerCase();
+        products = products.filter(p => 
+          (p.name && p.name.toLowerCase().includes(searchLower)) ||
+          (p.description && p.description.toLowerCase().includes(searchLower))
+        );
+      }
+      
+      return res.json(products);
+    }
+    
     const { category, search, featured, discount } = req.query;
     let query = {};
     
-    if (category) query.categories = category;
-    if (featured) query.isFeatured = true;
-    if (discount) query.discountPrice = { $exists: true, $ne: null };
-    if (search) {
+    // Support both 'category' (old) and 'categories' (new) fields
+    if (category) {
       query.$or = [
+        { categories: category },
+        { category: category }
+      ];
+    }
+    if (featured === 'true') query.isFeatured = true;
+    if (discount === 'true') {
+      // ✅ Only show products with actual discount (discountPrice < price)
+      // Use $expr to compare fields: discountPrice < price
+      query.$expr = { $lt: ["$discountPrice", "$price"] };
+    }
+    if (search) {
+      const searchQuery = [
         { name: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } }
       ];
+      if (query.$or) {
+        query.$and = [{ $or: query.$or }, { $or: searchQuery }];
+        delete query.$or;
+      } else {
+        query.$or = searchQuery;
+      }
     }
     
     const products = await Product.find(query).sort({ createdAt: -1 });
     res.json(products);
   } catch (err) {
+    console.error('Error fetching products:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -222,52 +349,218 @@ app.get('/api/products', async (req, res) => {
 // Get single product
 app.get('/api/products/:id', async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ error: 'Product not found' });
+    const { id } = req.params;
+    console.log('🔍 Looking for product with ID:', id);
+    
+    // Use JSON fallback if MongoDB not connected
+    if (!isMongoConnected()) {
+      const db = readJsonDB();
+      const product = db.products.find(p => p._id === id || p.id === id);
+      if (!product) return res.status(404).json({ error: 'Product not found' });
+      return res.json(product);
+    }
+    
+    // Try to find by _id (support both ObjectId and string)
+    let product = null;
+    try {
+      product = await Product.findById(id);
+    } catch (e) {
+      // If findById fails (e.g., invalid ObjectId format), try findOne
+      product = await Product.findOne({ _id: id });
+    }
+    
+    // If not found, try searching in id field
+    if (!product) {
+      product = await Product.findOne({ id: id });
+    }
+    
+    if (!product) {
+      console.log('❌ Product not found with ID:', id);
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    console.log('✅ Product found:', product.name);
     res.json(product);
   } catch (err) {
+    console.error('Error fetching product:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Create product (Admin only)
-app.post('/api/products', authMiddleware, adminMiddleware, async (req, res) => {
+// Create product
+app.post('/api/products', async (req, res) => {
   try {
+    // Use JSON fallback if MongoDB not connected
+    if (!isMongoConnected()) {
+      const db = readJsonDB();
+      const newProduct = {
+        ...req.body,
+        _id: 'prod_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      db.products.push(newProduct);
+      writeJsonDB(db);
+      return res.json(newProduct);
+    }
+    
     const product = new Product(req.body);
     await product.save();
     res.json(product);
   } catch (err) {
+    console.error('Error creating product:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Update product (Admin only)
-app.put('/api/products/:id', authMiddleware, adminMiddleware, async (req, res) => {
+// Delete user and related data (orders) by email
+app.delete('/api/users/:email', async (req, res) => {
   try {
+    const email = decodeURIComponent(req.params.email).toLowerCase();
+
+    if (!isMongoConnected()) {
+      const db = readJsonDB();
+      // Remove orders for this email
+      db.orders = (db.orders || []).filter(o => (o.customerEmail || '').toLowerCase() !== email);
+      // Remove user records
+      db.users = (db.users || []).filter(u => (u.email || '').toLowerCase() !== email);
+      writeJsonDB(db);
+      return res.json({ success: true, message: 'User and related orders removed (json mode)' });
+    }
+
+    // MongoDB mode
+    await Order.deleteMany({ customerEmail: { $regex: new RegExp('^' + email + '$', 'i') } });
+    await User.deleteOne({ email: { $regex: new RegExp('^' + email + '$', 'i') } });
+
+    return res.json({ success: true, message: 'User and related orders removed' });
+  } catch (err) {
+    console.error('Error deleting user:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Update product
+app.put('/api/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('📝 Updating product with ID:', id);
+    
+    // Use JSON fallback if MongoDB not connected
+    if (!isMongoConnected()) {
+      const db = readJsonDB();
+      const index = db.products.findIndex(p => p._id === id || p.id === id);
+      if (index === -1) return res.status(404).json({ error: 'Product not found' });
+      
+      db.products[index] = { ...db.products[index], ...req.body, _id: id, updatedAt: new Date() };
+      writeJsonDB(db);
+      return res.json(db.products[index]);
+    }
+    
     req.body.updatedAt = new Date();
-    const product = await Product.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
+    
+    // Try to find and update by _id first
+    let product = await Product.findByIdAndUpdate(id, req.body, { new: true });
+    
+    // If not found, try by id field
+    if (!product) {
+      product = await Product.findOneAndUpdate(
+        { id: id },
+        req.body,
+        { new: true }
+      );
+    }
+    
+    if (!product) {
+      console.log('❌ Product not found for update with ID:', id);
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    console.log('✅ Product updated:', product.name);
     res.json(product);
   } catch (err) {
+    console.error('Error updating product:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Delete product (Admin only)
-app.delete('/api/products/:id', authMiddleware, adminMiddleware, async (req, res) => {
+// Delete product (supports both MongoDB ObjectId and numeric id)
+app.delete('/api/products/:id', async (req, res) => {
   try {
-    await Product.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Product deleted' });
+    let product;
+    const rawId = req.params.id;
+    const id = rawId.trim();
+    
+    console.log('🗑️ Delete request for product ID:', id, '| Length:', id.length);
+    
+    // JSON fallback first (always try this if MongoDB might not find it)
+    if (!isMongoConnected()) {
+      console.log('   Using JSON fallback...');
+      const db = readJsonDB();
+      const index = db.products.findIndex(p => (p._id === id || p.id === id));
+      if (index !== -1) {
+        product = db.products.splice(index, 1)[0];
+        writeJsonDB(db);
+        console.log('   ✅ Deleted from JSON');
+        return res.json({ message: 'Product deleted successfully' });
+      }
+    }
+    
+    // Try to find product first to see what type of ID it has
+    const foundProduct = await findByIdOrFallback(Product, id);
+    if (foundProduct) {
+      // Found it - now delete using the correct method
+      const foundId = foundProduct._id || foundProduct.id;
+      console.log('   Found product with ID:', foundId);
+      
+      // Check if it's a MongoDB ObjectId or custom id
+      if (foundProduct._id && foundProduct._id.toString().match(/^[0-9a-fA-F]{24}$/)) {
+        product = await Product.findByIdAndDelete(foundProduct._id);
+      } else {
+        product = await Product.findOneAndDelete({ id: foundProduct.id || id });
+      }
+      
+      if (product) {
+        console.log('   ✅ Deleted from MongoDB');
+        return res.json({ message: 'Product deleted successfully' });
+      }
+    }
+    
+    console.log('   ❌ Product not found');
+    return res.status(404).json({ error: 'Product not found' });
+    
   } catch (err) {
+    console.error('❌ Error deleting product:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Bulk discount (Admin only)
-app.post('/api/products/bulk-discount', authMiddleware, adminMiddleware, async (req, res) => {
+// 🧹 DELETE ALL PRODUCTS - Admin only
+app.delete('/api/products', async (req, res) => {
+  try {
+    console.log('🗑️ Deleting ALL products...');
+    
+    // Clear from MongoDB
+    if (isMongoConnected()) {
+      const result = await Product.deleteMany({});
+      console.log(`   ✅ Deleted ${result.deletedCount} products from MongoDB`);
+    }
+    
+    // Clear from JSON fallback
+    const db = readJsonDB();
+    const count = db.products.length;
+    db.products = [];
+    writeJsonDB(db);
+    console.log(`   ✅ Deleted ${count} products from JSON`);
+    
+    res.json({ message: `All products deleted successfully`, count: count });
+  } catch (err) {
+    console.error('❌ Error deleting all products:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Bulk discount
+app.post('/api/products/bulk-discount', async (req, res) => {
   try {
     const { productIds, discountType, discountValue, endDate } = req.body;
     
@@ -282,7 +575,7 @@ app.post('/api/products/bulk-discount', authMiddleware, adminMiddleware, async (
         discountPrice = Math.round(product.price * (1 - discountValue / 100));
         discountPercentage = discountValue;
       } else if (discountType === 'fixed') {
-        discountPrice = product.price - discountValue;
+        discountPrice = Math.max(0, product.price - discountValue);
         discountPercentage = Math.round((discountValue / product.price) * 100);
       } else if (discountType === 'newPrice') {
         discountPrice = discountValue;
@@ -291,7 +584,6 @@ app.post('/api/products/bulk-discount', authMiddleware, adminMiddleware, async (
       
       product.discountPrice = discountPrice;
       product.discountPercentage = discountPercentage;
-      if (endDate) product.discountEndDate = endDate;
       product.updatedAt = new Date();
       
       await product.save();
@@ -299,6 +591,34 @@ app.post('/api/products/bulk-discount', authMiddleware, adminMiddleware, async (
     
     res.json({ message: 'Bulk discount applied' });
   } catch (err) {
+    console.error('Error applying bulk discount:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// User Statistics API
+app.get('/api/users/stats', async (req, res) => {
+  try {
+    // Use JSON fallback if MongoDB not connected
+    if (!isMongoConnected()) {
+      // Read from localStorage backup (users are stored in localStorage, not in db.json)
+      // Return empty stats for now
+      return res.json({
+        genderStats: { male: 0, female: 0, unknown: 0 },
+        ageStats: { under18: 0, age18to25: 0, age26to35: 0, age36to50: 0, over50: 0, unknown: 0 },
+        totalUsers: 0
+      });
+    }
+    
+    // For now, return sample data structure
+    // In production, this would query a User collection
+    res.json({
+      genderStats: { male: 0, female: 0, unknown: 0 },
+      ageStats: { under18: 0, age18to25: 0, age26to35: 0, age36to50: 0, over50: 0, unknown: 0 },
+      totalUsers: 0
+    });
+  } catch (err) {
+    console.error('Error fetching user stats:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -310,40 +630,52 @@ app.post('/api/products/bulk-discount', authMiddleware, adminMiddleware, async (
 // Get all categories
 app.get('/api/categories', async (req, res) => {
   try {
+    // Use JSON fallback if MongoDB not connected
+    if (!isMongoConnected()) {
+      const db = readJsonDB();
+      return res.json(db.categories || []);
+    }
+    
     const categories = await Category.find();
     res.json(categories);
   } catch (err) {
+    console.error('Error fetching categories:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Create category (Admin only)
-app.post('/api/categories', authMiddleware, adminMiddleware, async (req, res) => {
+// Create category
+app.post('/api/categories', async (req, res) => {
   try {
     const category = new Category(req.body);
     await category.save();
     res.json(category);
   } catch (err) {
+    console.error('Error creating category:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Update category (Admin only)
-app.put('/api/categories/:id', authMiddleware, adminMiddleware, async (req, res) => {
+// Update category
+app.put('/api/categories/:id', async (req, res) => {
   try {
     const category = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!category) return res.status(404).json({ error: 'Category not found' });
     res.json(category);
   } catch (err) {
+    console.error('Error updating category:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Delete category (Admin only)
-app.delete('/api/categories/:id', authMiddleware, adminMiddleware, async (req, res) => {
+// Delete category
+app.delete('/api/categories/:id', async (req, res) => {
   try {
-    await Category.findByIdAndDelete(req.params.id);
+    const category = await Category.findByIdAndDelete(req.params.id);
+    if (!category) return res.status(404).json({ error: 'Category not found' });
     res.json({ message: 'Category deleted' });
   } catch (err) {
+    console.error('Error deleting category:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -355,7 +687,7 @@ app.delete('/api/categories/:id', authMiddleware, adminMiddleware, async (req, r
 // Get cart
 app.get('/api/cart', async (req, res) => {
   try {
-    const sessionId = req.headers['x-session-id'] || 'default';
+    const sessionId = getSessionId(req);
     let cart = await Cart.findOne({ sessionId });
     
     if (!cart) {
@@ -365,6 +697,7 @@ app.get('/api/cart', async (req, res) => {
     
     res.json(cart.items);
   } catch (err) {
+    console.error('Error fetching cart:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -372,7 +705,7 @@ app.get('/api/cart', async (req, res) => {
 // Add to cart
 app.post('/api/cart', async (req, res) => {
   try {
-    const sessionId = req.headers['x-session-id'] || 'default';
+    const sessionId = getSessionId(req);
     const { productId, name, price, image, quantity = 1 } = req.body;
     
     let cart = await Cart.findOne({ sessionId });
@@ -392,6 +725,7 @@ app.post('/api/cart', async (req, res) => {
     
     res.json(cart.items);
   } catch (err) {
+    console.error('Error adding to cart:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -399,7 +733,7 @@ app.post('/api/cart', async (req, res) => {
 // Update cart item
 app.put('/api/cart/:productId', async (req, res) => {
   try {
-    const sessionId = req.headers['x-session-id'] || 'default';
+    const sessionId = getSessionId(req);
     const { quantity } = req.body;
     
     const cart = await Cart.findOne({ sessionId });
@@ -418,6 +752,7 @@ app.put('/api/cart/:productId', async (req, res) => {
     
     res.json(cart.items);
   } catch (err) {
+    console.error('Error updating cart item:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -425,7 +760,7 @@ app.put('/api/cart/:productId', async (req, res) => {
 // Delete cart item
 app.delete('/api/cart/:productId', async (req, res) => {
   try {
-    const sessionId = req.headers['x-session-id'] || 'default';
+    const sessionId = getSessionId(req);
     
     const cart = await Cart.findOne({ sessionId });
     if (!cart) return res.status(404).json({ error: 'Cart not found' });
@@ -436,6 +771,7 @@ app.delete('/api/cart/:productId', async (req, res) => {
     
     res.json(cart.items);
   } catch (err) {
+    console.error('Error removing from cart:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -443,41 +779,74 @@ app.delete('/api/cart/:productId', async (req, res) => {
 // Clear cart
 app.delete('/api/cart', async (req, res) => {
   try {
-    const sessionId = req.headers['x-session-id'] || 'default';
+    const sessionId = getSessionId(req);
     await Cart.findOneAndUpdate({ sessionId }, { items: [], updatedAt: new Date() });
     res.json({ message: 'Cart cleared' });
   } catch (err) {
+    console.error('Error clearing cart:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // ============================================
-// REVIEWS ROUTES
+// ORDERS ROUTES
 // ============================================
 
-// Add review
-app.post('/api/products/:id/reviews', async (req, res) => {
+// Get all orders
+app.get('/api/orders', async (req, res) => {
   try {
-    const { user, rating, comment } = req.body;
-    const product = await Product.findById(req.params.id);
-    
-    if (!product) return res.status(404).json({ error: 'Product not found' });
-    
-    product.reviewsList.push({
-      user,
-      rating,
-      comment,
-      date: new Date()
-    });
-    
-    // Update average rating
-    const totalRating = product.reviewsList.reduce((sum, r) => sum + r.rating, 0);
-    product.rating = totalRating / product.reviewsList.length;
-    product.reviews = product.reviewsList.length;
-    
-    await product.save();
-    res.json(product);
+    const orders = await Order.find().sort({ date: -1 });
+    res.json(orders);
   } catch (err) {
+    console.error('Error fetching orders:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get single order
+app.get('/api/orders/:id', async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    res.json(order);
+  } catch (err) {
+    console.error('Error fetching order:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create order
+app.post('/api/orders', async (req, res) => {
+  try {
+    const order = new Order(req.body);
+    await order.save();
+    res.json(order);
+  } catch (err) {
+    console.error('Error creating order:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update order
+app.put('/api/orders/:id', async (req, res) => {
+  try {
+    const order = await Order.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    res.json(order);
+  } catch (err) {
+    console.error('Error updating order:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete order
+app.delete('/api/orders/:id', async (req, res) => {
+  try {
+    const order = await Order.findByIdAndDelete(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    res.json({ message: 'Order deleted' });
+  } catch (err) {
+    console.error('Error deleting order:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -491,15 +860,18 @@ app.get('/api/settings', async (req, res) => {
   try {
     const settings = await Settings.find();
     const result = {};
-    settings.forEach(s => result[s.key] = s.value);
+    settings.forEach(s => {
+        result[s.key] = s.value;
+    });
     res.json(result);
   } catch (err) {
+    console.error('Error fetching settings:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Update settings (Admin only)
-app.put('/api/settings', authMiddleware, adminMiddleware, async (req, res) => {
+// Update settings
+app.put('/api/settings', async (req, res) => {
   try {
     for (const [key, value] of Object.entries(req.body)) {
       await Settings.findOneAndUpdate(
@@ -510,6 +882,463 @@ app.put('/api/settings', authMiddleware, adminMiddleware, async (req, res) => {
     }
     res.json({ message: 'Settings updated' });
   } catch (err) {
+    console.error('Error updating settings:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get announcing text
+app.get('/api/announcing', async (req, res) => {
+  try {
+    const setting = await Settings.findOne({ key: 'announcing' });
+    res.json({ 
+      text: setting?.value?.text || '🚚 تخفيضات وخصومات تصل إلى 50% وتوصيل مجاني لجميع مدن المملكة',
+      isVisible: setting?.value?.isVisible !== false // default true
+    });
+  } catch (err) {
+    console.error('Error fetching announcing text:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update announcing text
+app.put('/api/announcing', async (req, res) => {
+  try {
+    const { text, isVisible } = req.body;
+    const updateData = { key: 'announcing' };
+    
+    // Get current value first
+    const current = await Settings.findOne({ key: 'announcing' });
+    const currentValue = current?.value || {};
+    
+    updateData.value = {
+      text: text !== undefined ? text : currentValue.text,
+      isVisible: isVisible !== undefined ? isVisible : (currentValue.isVisible !== false)
+    };
+    
+    await Settings.findOneAndUpdate(
+      { key: 'announcing' },
+      updateData,
+      { upsert: true }
+    );
+    res.json({ message: 'Announcing settings updated' });
+  } catch (err) {
+    console.error('Error updating announcing text:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// USERS & ADDRESSES (synchronization for frontend)
+// ============================================
+
+// Get user by email (URL-encoded email)
+app.get('/api/users/:email', async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email).toLowerCase();
+    if (!isMongoConnected()) {
+      const db = readJsonDB();
+      const user = (db.users || []).find(u => (u.email || '').toLowerCase() === email);
+      return res.json(user || {});
+    }
+
+    const user = await User.findOne({ email: email });
+    res.json(user || {});
+  } catch (err) {
+    console.error('Error fetching user:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Upsert basic user info (name, phone, email)
+app.put('/api/users/:email', async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email).toLowerCase();
+    const { name, phone } = req.body;
+
+    if (!isMongoConnected()) {
+      const db = readJsonDB();
+      db.users = db.users || [];
+      let user = db.users.find(u => (u.email || '').toLowerCase() === email);
+      if (!user) {
+        user = { email, name: name || '', phone: phone || '', addresses: [] };
+        db.users.push(user);
+      } else {
+        user.name = name || user.name;
+        user.phone = phone || user.phone;
+      }
+      writeJsonDB(db);
+      return res.json(user);
+    }
+
+    const user = await User.findOneAndUpdate(
+      { email },
+      { $set: { name: name || '', phone: phone || '' } },
+      { upsert: true, new: true }
+    );
+    res.json(user);
+  } catch (err) {
+    console.error('Error upserting user:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add address for user
+app.post('/api/users/:email/addresses', async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email).toLowerCase();
+    const { label, address, location } = req.body;
+
+    if (!isMongoConnected()) {
+      const db = readJsonDB();
+      db.users = db.users || [];
+      let user = db.users.find(u => (u.email || '').toLowerCase() === email);
+      if (!user) {
+        user = { email, name: '', phone: '', addresses: [] };
+        db.users.push(user);
+      }
+      user.addresses = user.addresses || [];
+      user.addresses.push({ label, address, location });
+      writeJsonDB(db);
+      return res.json(user);
+    }
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = new User({ email, name: '', phone: '', addresses: [] });
+    }
+    user.addresses = user.addresses || [];
+    user.addresses.push({ label, address, location });
+    await user.save();
+    res.json(user);
+  } catch (err) {
+    console.error('Error adding address:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update specific address by index
+app.put('/api/users/:email/addresses/:idx', async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email).toLowerCase();
+    const idx = parseInt(req.params.idx);
+    const { label, address, location } = req.body;
+
+    if (!isMongoConnected()) {
+      const db = readJsonDB();
+      db.users = db.users || [];
+      const user = db.users.find(u => (u.email || '').toLowerCase() === email);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (!user.addresses || !user.addresses[idx]) return res.status(404).json({ error: 'Address not found' });
+      user.addresses[idx] = { label, address, location };
+      writeJsonDB(db);
+      return res.json(user);
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user.addresses || !user.addresses[idx]) return res.status(404).json({ error: 'Address not found' });
+    user.addresses[idx] = { label, address, location };
+    await user.save();
+    res.json(user);
+  } catch (err) {
+    console.error('Error updating address:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete address by index
+app.delete('/api/users/:email/addresses/:idx', async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email).toLowerCase();
+    const idx = parseInt(req.params.idx);
+
+    if (!isMongoConnected()) {
+      const db = readJsonDB();
+      db.users = db.users || [];
+      const user = db.users.find(u => (u.email || '').toLowerCase() === email);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (!user.addresses || !user.addresses[idx]) return res.status(404).json({ error: 'Address not found' });
+      user.addresses.splice(idx,1);
+      writeJsonDB(db);
+      return res.json(user);
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user.addresses || !user.addresses[idx]) return res.status(404).json({ error: 'Address not found' });
+    user.addresses.splice(idx,1);
+    await user.save();
+    res.json(user);
+  } catch (err) {
+    console.error('Error deleting address:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 📧 Send OTP to email
+app.post('/api/send-verification-email', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Valid email required' });
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    const timestamp = Date.now();
+    
+    // Store OTP (email -> {code, timestamp, attempts})
+    otpStore.set(email, { code: otp, timestamp, attempts: 0 });
+
+    // Send email with OTP
+    const mailOptions = {
+      from: process.env.GMAIL_USER || 'noreply@antika-store.com',
+      to: email,
+      subject: 'Antika Store - Email Verification Code',
+      html: `
+        <div style="font-family: Arial, sans-serif; direction: rtl; text-align: right; background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
+          <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h2 style="color: #c93c7f; margin: 0 0 20px 0;">أنتيكا ستور</h2>
+            <p style="color: #333; font-size: 16px; margin: 10px 0;">مرحباً بك في أنتيكا ستور!</p>
+            <p style="color: #666; font-size: 14px; margin: 10px 0;">استخدم الكود أدناه للتحقق من بريدك الإلكتروني:</p>
+            <div style="background-color: #f9f9f9; padding: 20px; border-radius: 6px; text-align: center; margin: 20px 0; border: 2px solid #c93c7f;">
+              <p style="font-size: 32px; font-weight: bold; color: #c93c7f; letter-spacing: 5px; margin: 0;">${otp}</p>
+            </div>
+            <p style="color: #999; font-size: 12px; margin: 20px 0;">انتهاء الصلاحية: 10 دقائق</p>
+            <p style="color: #999; font-size: 12px; margin: 10px 0;">إذا لم تطلب هذا الكود، تجاهل هذا البريد.</p>
+          </div>
+        </div>
+      `
+    };
+
+    // Development fallback: if Gmail credentials are not configured,
+    // log the OTP to the server console and return a dev response so
+    // developers can test verification without SMTP.
+    const gmailUser = (process.env.GMAIL_USER || '').toLowerCase();
+    const gmailPass = (process.env.GMAIL_APP_PASSWORD || '').toLowerCase();
+    const isPlaceholderCreds = gmailUser.includes('your-email') || gmailPass.includes('your-app-password') || !gmailUser || !gmailPass;
+
+    if (isPlaceholderCreds) {
+      console.log(`DEV MODE: Verification OTP for ${email} is ${otp}`);
+      // Return OTP in response only when not running in production (safe for local dev)
+      const devResponse = { success: true, message: 'Verification code logged on server (dev mode)', email };
+      if ((process.env.NODE_ENV || 'development') !== 'production') devResponse.otp = otp;
+      return res.json(devResponse);
+    }
+
+    emailTransporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error('❌ Email send error:', error);
+        return res.status(500).json({ error: 'Failed to send verification email', details: error.message });
+      }
+      console.log('✅ Email sent:', info.response);
+      res.json({ success: true, message: 'Verification code sent to email', email });
+    });
+  } catch (err) {
+    console.error('Error in send-verification-email:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ Verify OTP code
+app.post('/api/verify-email-code', async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ error: 'Email and code required' });
+    }
+
+    // Check if OTP exists and is valid
+    const storedOTP = otpStore.get(email);
+    if (!storedOTP) {
+      return res.status(400).json({ error: 'No OTP found for this email. Request a new one.' });
+    }
+
+    // Check if OTP has expired
+    if (Date.now() - storedOTP.timestamp > OTP_EXPIRY) {
+      otpStore.delete(email);
+      return res.status(400).json({ error: 'Verification code expired. Request a new one.' });
+    }
+
+    // Check attempt limit
+    if (storedOTP.attempts >= MAX_OTP_ATTEMPTS) {
+      otpStore.delete(email);
+      return res.status(429).json({ error: 'Too many failed attempts. Request a new code.' });
+    }
+
+    // Verify code
+    if (storedOTP.code !== code) {
+      storedOTP.attempts += 1;
+      return res.status(400).json({ error: 'Invalid verification code. Please try again.', attemptsLeft: MAX_OTP_ATTEMPTS - storedOTP.attempts });
+    }
+
+    // ✅ Code is correct! Mark email as verified and clear OTP
+    otpStore.delete(email);
+
+    // If user exists in MongoDB, mark as verified
+    if (isMongoConnected()) {
+      try {
+        const user = await User.findOne({ email });
+        if (user) {
+          user.emailVerified = true;
+          await user.save();
+        }
+      } catch (e) {
+        console.log('Note: Could not update user verification status in MongoDB:', e.message);
+      }
+    } else {
+      // Update in db.json
+      const db = readJsonDB();
+      const user = db.users?.find(u => u.email === email);
+      if (user) {
+        user.emailVerified = true;
+        writeJsonDB(db);
+      }
+    }
+
+    res.json({ success: true, message: 'Email verified successfully', email });
+  } catch (err) {
+    console.error('Error in verify-email-code:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get default location for user
+app.get('/api/users/:email/location', async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email).toLowerCase();
+
+    if (!isMongoConnected()) {
+      const db = readJsonDB();
+      db.users = db.users || [];
+      const user = db.users.find(u => (u.email || '').toLowerCase() === email);
+      const loc = user?.defaultLocation || null;
+      const label = user?.locationLabel || 'موقعي';
+      return res.json({ location: loc, label });
+    }
+
+    const user = await User.findOne({ email });
+    const loc = user?.defaultLocation || null;
+    const label = user?.locationLabel || 'موقعي';
+    res.json({ location: loc, label });
+  } catch (err) {
+    console.error('Error fetching user location:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Set default location for user
+app.put('/api/users/:email/location', async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email).toLowerCase();
+    const { lat, lng, label = 'موقعي' } = req.body;
+
+    if (!isMongoConnected()) {
+      const db = readJsonDB();
+      db.users = db.users || [];
+      let user = db.users.find(u => (u.email || '').toLowerCase() === email);
+      if (!user) {
+        user = { email, name: '', phone: '', addresses: [], defaultLocation: null, locationLabel: 'موقعي' };
+        db.users.push(user);
+      }
+      user.defaultLocation = { lat, lng };
+      user.locationLabel = label || 'موقعي';
+      writeJsonDB(db);
+      return res.json({ success: true, location: user.defaultLocation, label: user.locationLabel });
+    }
+
+    const user = await User.findOneAndUpdate(
+      { email },
+      { 
+        defaultLocation: { lat, lng },
+        locationLabel: label || 'موقعي'
+      },
+      { upsert: true, new: true }
+    );
+    res.json({ success: true, location: user.defaultLocation, label: user.locationLabel });
+  } catch (err) {
+    console.error('Error setting user location:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete default location for user
+app.delete('/api/users/:email/location', async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email).toLowerCase();
+
+    if (!isMongoConnected()) {
+      const db = readJsonDB();
+      db.users = db.users || [];
+      const user = db.users.find(u => (u.email || '').toLowerCase() === email);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      user.defaultLocation = null;
+      user.locationLabel = 'موقعي';
+      writeJsonDB(db);
+      return res.json({ success: true });
+    }
+
+    await User.findOneAndUpdate(
+      { email },
+      { defaultLocation: null, locationLabel: 'موقعي' },
+      { new: true }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error deleting user location:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get footer pages - supports MongoDB and file fallback
+app.get('/api/pages', async (req, res) => {
+  try {
+    if (isMongoConnected()) {
+      const pages = await Settings.find({ key: { $in: ['about', 'returns', 'terms', 'faq'] } });
+      const result = {};
+      pages.forEach(p => result[p.key] = p.value);
+      res.json(result);
+    } else {
+      // Fallback to db.json
+      const db = readJsonDB();
+      res.json(db.pages || {});
+    }
+    } catch (err) {
+    console.error('Error fetching pages:', err);
+    // Final fallback to db.json
+    try {
+      const db = readJsonDB();
+      res.json(db.pages || {});
+    } catch (fallbackErr) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
+
+// Update footer page - supports MongoDB and file fallback
+app.put('/api/pages/:pageId', async (req, res) => {
+  try {
+    const { pageId } = req.params;
+    const { title, content } = req.body;
+    
+    if (isMongoConnected()) {
+      await Settings.findOneAndUpdate(
+        { key: pageId },
+        { key: pageId, value: { title, content } },
+        { upsert: true }
+      );
+    } else {
+      // Fallback to db.json
+      const db = readJsonDB();
+      if (!db.pages) db.pages = {};
+      db.pages[pageId] = { title, content };
+      writeJsonDB(db);
+    }
+    
+    res.json({ message: 'Page updated', page: { title, content } });
+  } catch (err) {
+    console.error('Error updating page:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -524,59 +1353,78 @@ async function initData() {
     const catCount = await Category.countDocuments();
     if (catCount === 0) {
       const defaultCategories = [
-        { id: 'candles', name: 'شموع منزلية', icon: '🕯️', color: '#FFB6C1', subcategories: ['شموع عطرية', 'شموع زينة', 'فواحات'] },
-        { id: 'furniture', name: 'أثاث', icon: '🪑', color: '#8B4513', subcategories: ['كراسي', 'طاولات', 'خزائن'] },
-        { id: 'decor', name: 'ديكور جداري', icon: '🖼️', color: '#DDA0DD', subcategories: ['لوحات', 'مرايا', 'رفوف'] },
-        { id: 'tools', name: 'أدوات منزلية', icon: '🏺', color: '#F4A460', subcategories: ['مطبخ', 'حمام', 'غرفة المعيشة'] }
+        { id: 'candles', name: 'شموع منزلية', icon: '🕯️', subcategories: ['شموع عطرية', 'شموع زينة', 'فواحات'] },
+        { id: 'furniture', name: 'أثاث', icon: '🪑', subcategories: ['كراسي', 'طاولات', 'خزائن'] },
+        { id: 'decor', name: 'ديكور جداري', icon: '🖼️', subcategories: ['لوحات', 'مرايا', 'رفوف'] },
+        { id: 'tools', name: 'أدوات منزلية', icon: '🏺', subcategories: ['مطبخ', 'حمام', 'غرفة المعيشة'] }
       ];
       await Category.insertMany(defaultCategories);
       console.log('✅ Default categories created');
     }
     
-    // Check if products exist
+    // ⚠️ Default products creation is DISABLED - user wants clean database
+    // To re-enable, uncomment the code below
+    /*
     const prodCount = await Product.countDocuments();
     if (prodCount === 0) {
-      const defaultProducts = [
-        {
-          name: 'شمعة العود الفاخرة',
-          description: 'شمعة يدوية الصنع من الشمع الطبيعي بنسبة 100%...',
-          price: 150,
-          discountPrice: 120,
-          discountPercentage: 20,
-          categories: ['candles'],
-          subcategory: 'شموع عطرية',
-          images: ['https://images.unsplash.com/photo-1602607688656-1c7a1b1c0b5e?w=800&h=800&fit=crop'],
-          stock: 20,
-          stockDisplay: 'number',
-          rating: 4.8,
-          reviews: 45,
-          isFeatured: true,
-          createdAt: new Date()
-        },
-        {
-          name: 'كرسي خشبي كلاسيكي',
-          description: 'كرسي بتصميم Scandinavian أنيق...',
-          price: 800,
-          discountPrice: 650,
-          discountPercentage: 18.75,
-          categories: ['furniture'],
-          subcategory: 'كراسي',
-          images: ['https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&h=800&fit=crop'],
-          stock: 5,
-          stockDisplay: 'number',
-          rating: 4.9,
-          reviews: 28,
-          isFeatured: true,
-          createdAt: new Date()
-        }
-      ];
+      const defaultProducts = [...];
       await Product.insertMany(defaultProducts);
       console.log('✅ Default products created');
     }
+    */
+    const prodCount = await Product.countDocuments();
+    console.log(`📦 Products in database: ${prodCount}`);
+    
+    // Create default announcing text if not exists
+    const announcingExists = await Settings.findOne({ key: 'announcing' });
+    if (!announcingExists) {
+      await Settings.create({
+        key: 'announcing',
+        value: { text: '🚚 تخفيضات وخصومات تصل إلى 50% وتوصيل مجاني لجميع مدن المملكة' }
+      });
+      console.log('✅ Default announcing text created');
+    }
+    
   } catch (err) {
     console.error('Error initializing data:', err);
   }
 }
+
+// ============================================
+// SYSTEM STATUS (for frontend debugging)
+// ============================================
+
+app.get('/api/status', async (req, res) => {
+  try {
+    const mongoStatus = isMongoConnected() ? 'connected' : 'disconnected';
+    let productCount = 0;
+    let categoryCount = 0;
+    
+    if (isMongoConnected()) {
+      productCount = await Product.countDocuments();
+      categoryCount = await Category.countDocuments();
+    } else {
+      const db = readJsonDB();
+      productCount = (db.products || []).length;
+      categoryCount = (db.categories || []).length;
+    }
+    
+    res.json({
+      mongodb: mongoStatus,
+      database: mongoose.connection.db?.databaseName || 'antika_store',
+      productCount,
+      categoryCount,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('Error fetching system status:', err);
+    res.json({
+      mongodb: 'error',
+      error: err.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 // ============================================
 // START SERVER
@@ -584,7 +1432,44 @@ async function initData() {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📡 API available at http://localhost:${PORT}/api`);
   await initData();
+});
+
+// Handle EADDRINUSE error - kill existing process and retry
+server.on('error', async (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.log(`⚠️  Port ${PORT} is already in use. Attempting to free it...`);
+    try {
+      // Find and kill process using port 3000
+      const { exec } = require('child_process');
+      exec(`powershell -Command "Get-NetTCPConnection -LocalPort ${PORT} | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"`, (error) => {
+        if (error) {
+          console.log(`❌ Could not free port ${PORT}. Trying alternative port...`);
+          // Try alternative port
+          const ALT_PORT = 3001;
+          app.listen(ALT_PORT, async () => {
+            console.log(`🚀 Server running on alternative port ${ALT_PORT}`);
+            console.log(`📡 API available at http://localhost:${ALT_PORT}/api`);
+            await initData();
+          });
+        } else {
+          console.log(`✅ Port ${PORT} freed. Retrying...`);
+          setTimeout(() => {
+            app.listen(PORT, async () => {
+              console.log(`🚀 Server running on port ${PORT}`);
+              console.log(`📡 API available at http://localhost:${PORT}/api`);
+              await initData();
+            });
+          }, 1000);
+        }
+      });
+    } catch (e) {
+      console.error('Error handling port conflict:', e);
+    }
+  } else {
+    console.error('Server error:', err);
+  }
 });
