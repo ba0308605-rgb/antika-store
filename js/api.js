@@ -1,437 +1,810 @@
-// 🌸 Antika Store API Layer - LocalStorage Version (Enhanced with Multiple Images Support)
+// 🌸 Antika Store API - Enhanced with Orders Support
 
 const API = {
-    init() {
-        if (!localStorage.getItem('antika_products')) {
-            const defaultProducts = [
-                {
-                    "id": "1",
-                    "name": "شمعة العود الفاخرة",
-                    "description": "شمعة يدوية الصنع من الشمع الطبيعي بنسبة 100%، مع عبق العود الفاخر الذي يضفي أجواءً من الرفاهية والهدوء على منزلك. تدوم 60 ساعة.",
-                    "price": 150,
-                    "discountPrice": 120,
-                    "discountPercentage": 20,
-                    "categories": ["candles", "decor"],
-                    "subcategory": "شموع عطرية",
-                    "images": [
-                        "https://images.unsplash.com/photo-1602607688656-1c7a1b1c0b5e?w=800&h=800&fit=crop",
-                        "https://images.unsplash.com/photo-1603006905003-be475563bc59?w=800&h=800&fit=crop",
-                        "https://images.unsplash.com/photo-1572726729207-a78d6feb18d7?w=800&h=800&fit=crop"
-                    ],
-                    "stock": 20,
-                    "stockDisplay": "number",
-                    "rating": 4.8,
-                    "reviews": 45,
-                    "reviewsList": [],
-                    "isNew": false,
-                    "isFeatured": true,
-                    "createdAt": "2025-01-15",
-                    "updatedAt": "2025-01-15"
-                },
-                {
-                    "id": "2",
-                    "name": "كرسي خشبي كلاسيكي",
-                    "description": "كرسي بتصميم Scandinavian أنيق، مصنوع من خشب الزان الطبيعي. مريح وعملي، يناسب جميع ديكورات المنزل العصرية والكلاسيكية.",
-                    "price": 800,
-                    "discountPrice": 650,
-                    "discountPercentage": 18.75,
-                    "categories": ["furniture"],
-                    "subcategory": "كراسي",
-                    "images": [
-                        "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&h=800&fit=crop",
-                        "https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=800&h=800&fit=crop"
-                    ],
-                    "stock": 5,
-                    "stockDisplay": "text",
-                    "rating": 4.9,
-                    "reviews": 28,
-                    "reviewsList": [],
-                    "isNew": false,
-                    "isFeatured": true,
-                    "createdAt": "2025-01-10",
-                    "updatedAt": "2025-01-10"
-                },
-                {
-                    "id": "3",
-                    "name": "فازة سيراميك يدوية",
-                    "description": "فازة فنية مصنوعة يدوياً من السيراميك عالي الجودة. تصميم عصري بألوان هادئة تناسب جميع الأزهار والديكورات.",
-                    "price": 85,
-                    "discountPrice": null,
-                    "discountPercentage": null,
-                    "categories": ["tools", "decor"],
-                    "subcategory": "غرفة المعيشة",
-                    "images": [
-                        "https://images.unsplash.com/photo-1578500494198-246f612d3b3d?w=800&h=800&fit=crop",
-                        "https://images.unsplash.com/photo-1612196808214-b7e239e5bbae?w=800&h=800&fit=crop"
-                    ],
-                    "stock": 15,
-                    "stockDisplay": "number",
-                    "rating": 4.6,
-                    "reviews": 12,
-                    "reviewsList": [],
-                    "isNew": true,
-                    "isFeatured": false,
-                    "createdAt": "2025-01-20",
-                    "updatedAt": "2025-01-20"
-                },
-                {
-                    "id": "4",
-                    "name": "لوحة جدارية فنية",
-                    "description": "لوحة فنية مطبوعة على قماش عالي الجودة، بإطار خشبي أنيق. تضفي لمسة فنية راقية على غرفة المعيشة أو غرفة النوم.",
-                    "price": 200,
-                    "discountPrice": null,
-                    "discountPercentage": null,
-                    "categories": ["decor"],
-                    "subcategory": "لوحات",
-                    "images": [
-                        "https://images.unsplash.com/photo-1513519245088-0e12902e35a6?w=800&h=800&fit=crop",
-                        "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&h=800&fit=crop"
-                    ],
-                    "stock": 8,
-                    "stockDisplay": "hidden",
-                    "rating": 4.7,
-                    "reviews": 19,
-                    "reviewsList": [],
-                    "isNew": true,
-                    "isFeatured": false,
-                    "createdAt": "2025-01-22",
-                    "updatedAt": "2025-01-22"
-                },
-                {
-                    "id": "5",
-                    "name": "طقم شموع معطرة (3 قطع)",
-                    "description": "طقم يتكون من 3 شموع معطرة بروائح مختلفة: فانيليا، لافندر، وورد. هدية مثالية لمن تحبين.",
-                    "price": 180,
-                    "discountPrice": 144,
-                    "discountPercentage": 20,
-                    "categories": ["candles", "decor"],
-                    "subcategory": "شموع عطرية",
-                    "images": [
-                        "https://images.unsplash.com/photo-1603006905003-be475563bc59?w=800&h=800&fit=crop",
-                        "https://images.unsplash.com/photo-1602607688656-1c7a1b1c0b5e?w=800&h=800&fit=crop"
-                    ],
-                    "stock": 30,
-                    "stockDisplay": "text",
-                    "rating": 4.9,
-                    "reviews": 67,
-                    "reviewsList": [],
-                    "isNew": false,
-                    "isFeatured": true,
-                    "createdAt": "2025-01-05",
-                    "updatedAt": "2025-01-05"
-                },
-                {
-                    "id": "6",
-                    "name": "طاولة قهوة خشبية",
-                    "description": "طاولة قهوة دائرية بتصميم عصري، سطح خشبي طبيعي مع أرجل معدنية أنيقة. مناسبة للمساحات الصغيرة والكبيرة.",
-                    "price": 450,
-                    "discountPrice": 382,
-                    "discountPercentage": 15,
-                    "categories": ["furniture", "decor"],
-                    "subcategory": "طاولات",
-                    "images": [
-                        "https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?w=800&h=800&fit=crop",
-                        "https://images.unsplash.com/photo-1499933374294-4584851497cc?w=800&h=800&fit=crop"
-                    ],
-                    "stock": 3,
-                    "stockDisplay": "number",
-                    "rating": 4.8,
-                    "reviews": 34,
-                    "reviewsList": [],
-                    "isNew": false,
-                    "isFeatured": true,
-                    "createdAt": "2025-01-08",
-                    "updatedAt": "2025-01-08"
+    // Base URL for API requests
+    baseURL: 'http://localhost:3000/api',
+
+    // ============================================
+    // PRODUCTS
+    // ============================================
+
+    async getProducts(category = null, search = null, discount = null) {
+        try {
+            // Build query string
+            const params = new URLSearchParams();
+            if (category) params.append('category', category);
+            if (search) params.append('search', search);
+            if (discount) params.append('discount', 'true');
+            
+            const queryString = params.toString() ? `?${params.toString()}` : '';
+            const response = await fetch(`${this.baseURL}/products${queryString}`);
+            
+            if (!response.ok) throw new Error('Failed to fetch products');
+            const data = await response.json();
+            // Normalize products to ensure they all have an 'id' field
+            const normalizedData = Array.isArray(data) ? data.map(p => this._normalizeProduct(p)) : data;
+            // Save to localStorage as backup
+            localStorage.setItem('products_backup', JSON.stringify(normalizedData));
+            return normalizedData;
+        } catch (error) {
+            console.error('Error fetching products:', error);
+            // Fallback to localStorage
+            const stored = localStorage.getItem('products_backup');
+            if (stored) {
+                let products = JSON.parse(stored);
+                // Normalize products
+                products = products.map(p => this._normalizeProduct(p));
+                // Apply filters locally if using fallback
+                if (discount) {
+                    products = products.filter(p => p.discountPrice && p.discountPrice < p.price);
                 }
-            ];
-            localStorage.setItem('antika_products', JSON.stringify(defaultProducts));
-        }
-
-        if (!localStorage.getItem('antika_categories')) {
-            const defaultCategories = [
-                { "id": "candles", "name": "شموع منزلية", "icon": "🕯️", "color": "#FFB6C1", "subcategories": ["شموع عطرية", "شموع زينة", "فواحات"] },
-                { "id": "furniture", "name": "أثاث", "icon": "🪑", "color": "#8B4513", "subcategories": ["كراسي", "طاولات", "خزائن"] },
-                { "id": "decor", "name": "ديكور جداري", "icon": "🖼️", "color": "#DDA0DD", "subcategories": ["لوحات", "مرايا", "رفوف"] },
-                { "id": "tools", "name": "أدوات منزلية", "icon": "🏺", "color": "#F4A460", "subcategories": ["مطبخ", "حمام", "غرفة المعيشة"] }
-            ];
-            localStorage.setItem('antika_categories', JSON.stringify(defaultCategories));
-        }
-
-        if (!localStorage.getItem('antika_cart')) {
-            localStorage.setItem('antika_cart', JSON.stringify([]));
-        }
-
-        if (!localStorage.getItem('antika_settings')) {
-            const defaultSettings = {
-                "hero": {
-                    "title": "أضفي لمسة من الأناقة إلى منزلك",
-                    "subtitle": "مع تشكيلتنا الفريدة من الديكور والأثاث والشموع العطرية",
-                    "color": "#FFB6C1"
-                },
-                "promo": {
-                    "text": "خصم 20% على الشموع هذا الأسبوع فقط!",
-                    "code": "ANT20",
-                    "color": "#8B4513"
+                if (category) {
+                    products = products.filter(p => 
+                        (p.categories && p.categories.includes(category)) ||
+                        p.category === category
+                    );
                 }
-            };
-            localStorage.setItem('antika_settings', JSON.stringify(defaultSettings));
-        }
-    },
-
-    // Products
-    async getProducts() {
-        const products = JSON.parse(localStorage.getItem('antika_products') || '[]');
-        
-        // Check and clear expired new products
-        const now = new Date();
-        products.forEach(product => {
-            if (product.isNew && product.newExpiryDate && new Date(product.newExpiryDate) < now) {
-                product.isNew = false;
+                if (search) {
+                    const searchLower = search.toLowerCase();
+                    products = products.filter(p => 
+                        (p.name && p.name.toLowerCase().includes(searchLower)) ||
+                        (p.description && p.description.toLowerCase().includes(searchLower))
+                    );
+                }
+                return products;
             }
-            // Clear old reviews - start fresh
-            product.reviewsList = [];
-            product.reviews = 0;
-            product.rating = 5; // Default rating
-        });
-        
-        localStorage.setItem('antika_products', JSON.stringify(products));
-        return products;
+
+            // Try loading local db.json when running without server
+            try {
+                const resp = await fetch('/db.json');
+                if (resp.ok) {
+                    const json = await resp.json();
+                    let products = Array.isArray(json.products) ? json.products : (Array.isArray(json) ? json : []);
+                    products = products.map(p => this._normalizeProduct(p));
+
+                    if (discount) {
+                        products = products.filter(p => p.discountPrice && p.discountPrice < p.price);
+                    }
+                    if (category) {
+                        products = products.filter(p => 
+                            (p.categories && p.categories.includes(category)) ||
+                            p.category === category
+                        );
+                    }
+                    if (search) {
+                        const searchLower = search.toLowerCase();
+                        products = products.filter(p => 
+                            (p.name && p.name.toLowerCase().includes(searchLower)) ||
+                            (p.description && p.description.toLowerCase().includes(searchLower))
+                        );
+                    }
+
+                    // Save to backup and return
+                    localStorage.setItem('products_backup', JSON.stringify(products));
+                    return products;
+                }
+            } catch (e) {
+                // ignore
+            }
+
+            return [];
+        }
     },
 
     async getProduct(id) {
-        const products = await this.getProducts();
-        const product = products.find(p => p.id == id);
-        if (product) {
-            if (!product.reviewsList) product.reviewsList = [];
+        try {
+            // Add timestamp to prevent browser caching
+            const response = await fetch(`${this.baseURL}/products/${id}?t=${Date.now()}`);
+            if (!response.ok) throw new Error('Failed to fetch product');
+            const product = await response.json();
+            return this._normalizeProduct(product);
+        } catch (error) {
+            console.error('Error fetching product from API:', error);
+            // Fallback: search in localStorage backup
+            try {
+                const stored = localStorage.getItem('products_backup');
+                if (stored) {
+                    const products = JSON.parse(stored);
+                    const product = products.find(p => (p._id || p.id) === id);
+                    if (product) {
+                        return this._normalizeProduct(product);
+                    }
+                }
+            } catch (e) {
+                console.error('Error reading from localStorage:', e);
+            }
+            return null;
         }
-        return product || null;
     },
 
-    async addProduct(product) {
-        const products = await this.getProducts();
-        product.id = Date.now().toString();
-        product.createdAt = new Date().toISOString().split('T')[0];
-        product.updatedAt = product.createdAt;
-        product.reviewsList = product.reviewsList || [];
-        
-        if (!product.images || !Array.isArray(product.images)) {
-            product.images = ['https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store'];
+    async addProduct(productData) {
+        try {
+            const response = await fetch(`${this.baseURL}/products`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(productData)
+            });
+            if (!response.ok) throw new Error('Failed to add product');
+            return await response.json();
+        } catch (error) {
+            console.error('Error adding product:', error);
+            throw error;
         }
-        
-        if (product.isNew && !product.newExpiryDate) {
-            const expiry = new Date();
-            expiry.setDate(expiry.getDate() + 7);
-            product.newExpiryDate = expiry.toISOString().split('T')[0];
-        }
-        
-        products.push(product);
-        localStorage.setItem('antika_products', JSON.stringify(products));
-        return product;
     },
 
-    async updateProduct(id, updates) {
-        const products = await this.getProducts();
-        const index = products.findIndex(p => p.id == id);
-        if (index !== -1) {
-            if (updates.images && !Array.isArray(updates.images)) {
-                updates.images = [updates.images];
+    async updateProduct(id, productData) {
+        try {
+            // Ensure id is valid
+            if (!id) {
+                throw new Error('Product ID is required');
             }
-            
-            if (updates.isNew && !updates.newExpiryDate) {
-                const expiry = new Date();
-                expiry.setDate(expiry.getDate() + 7);
-                updates.newExpiryDate = expiry.toISOString().split('T')[0];
+            // Support both _id (MongoDB) and id
+            const productId = id;
+            console.log('API: Updating product', productId, productData.name);
+            const response = await fetch(`${this.baseURL}/products/${productId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({...productData, id: productId})
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to update product');
             }
-            
-            products[index] = { ...products[index], ...updates, updatedAt: new Date().toISOString().split('T')[0] };
-            localStorage.setItem('antika_products', JSON.stringify(products));
-            return products[index];
+            return await response.json();
+        } catch (error) {
+            console.error('Error updating product:', error);
+            // Fallback: try to update in localStorage for demo
+            try {
+                const products = JSON.parse(localStorage.getItem('products') || '[]');
+                const index = products.findIndex(p => (p._id || p.id) === id);
+                if (index !== -1) {
+                    products[index] = {...products[index], ...productData};
+                    localStorage.setItem('products', JSON.stringify(products));
+                    return {success: true, message: 'Product updated in localStorage'};
+                }
+            } catch (e) {}
+            throw error;
         }
-        return null;
     },
 
     async deleteProduct(id) {
-        const products = await this.getProducts();
-        const filtered = products.filter(p => p.id != id);
-        localStorage.setItem('antika_products', JSON.stringify(filtered));
-        return true;
-    },
-
-    // Categories
-    async getCategories() {
-        this.init();
-        return JSON.parse(localStorage.getItem('antika_categories')) || [];
-    },
-
-    async addCategory(category) {
-        const categories = await this.getCategories();
-        category.id = 'cat_' + Date.now();
-        categories.push(category);
-        localStorage.setItem('antika_categories', JSON.stringify(categories));
-        return category;
-    },
-
-    async updateCategory(id, updates) {
-        const categories = await this.getCategories();
-        const index = categories.findIndex(c => c.id == id);
-        if (index !== -1) {
-            categories[index] = { ...categories[index], ...updates };
-            localStorage.setItem('antika_categories', JSON.stringify(categories));
-            return categories[index];
+        try {
+            const response = await fetch(`${this.baseURL}/products/${id}`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) throw new Error('Failed to delete product');
+            return await response.json();
+        } catch (error) {
+            console.error('Error deleting product:', error);
+            throw error;
         }
-        return null;
+    },
+
+    // ============================================
+    // CATEGORIES
+    // ============================================
+
+    async getCategories() {
+        try {
+            const response = await fetch(`${this.baseURL}/categories`);
+            if (!response.ok) throw new Error('Failed to fetch categories');
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+            // Fallback to localStorage
+            try {
+                const stored = localStorage.getItem('categories_backup');
+                if (stored) return JSON.parse(stored);
+            } catch (e) {}
+
+            // Try loading from local db.json when running without server
+            try {
+                const resp = await fetch('/db.json');
+                if (resp.ok) {
+                    const json = await resp.json();
+                    if (Array.isArray(json.categories)) {
+                        localStorage.setItem('categories_backup', JSON.stringify(json.categories));
+                        return json.categories;
+                    }
+                }
+            } catch (e) {
+                // ignore
+            }
+
+            return [];
+        }
+    },
+
+    async addCategory(categoryData) {
+        try {
+            const response = await fetch(`${this.baseURL}/categories`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(categoryData)
+            });
+            if (!response.ok) throw new Error('Failed to add category');
+            return await response.json();
+        } catch (error) {
+            console.error('Error adding category:', error);
+            throw error;
+        }
+    },
+
+    async updateCategory(id, categoryData) {
+        try {
+            const response = await fetch(`${this.baseURL}/categories/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(categoryData)
+            });
+            if (!response.ok) throw new Error('Failed to update category');
+            return await response.json();
+        } catch (error) {
+            console.error('Error updating category:', error);
+            throw error;
+        }
     },
 
     async deleteCategory(id) {
-        const categories = await this.getCategories();
-        const filtered = categories.filter(c => c.id != id);
-        localStorage.setItem('antika_categories', JSON.stringify(filtered));
-        return true;
+        try {
+            const response = await fetch(`${this.baseURL}/categories/${id}`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) throw new Error('Failed to delete category');
+            return await response.json();
+        } catch (error) {
+            console.error('Error deleting category:', error);
+            throw error;
+        }
     },
 
-    // Cart
-    async getCart() {
-        this.init();
-        return JSON.parse(localStorage.getItem('antika_cart')) || [];
-    },
+// ============================================
+// CART
+// ============================================
+
+// Get or create session ID
+getSessionId() {
+    // Isolate cart sessions per account to avoid user A/user B mixing on same browser.
+    let scope = 'guest';
+    try {
+        const rawUser = localStorage.getItem('antika_user');
+        if (rawUser) {
+            const user = JSON.parse(rawUser);
+            scope = String(user.uid || user.email || 'guest').toLowerCase();
+        }
+    } catch (e) {}
+
+    const key = `sessionId_${scope}`;
+    let sessionId = localStorage.getItem(key);
+    if (!sessionId) {
+        sessionId = `session_${scope}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+        localStorage.setItem(key, sessionId);
+    }
+    return sessionId;
+},
+
+async getCart() {
+    try {
+        const response = await fetch(`${this.baseURL}/cart`, {
+            headers: {
+                'x-session-id': this.getSessionId()
+            }
+        });
+        if (!response.ok) throw new Error('Failed to fetch cart');
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching cart:', error);
+        return [];
+    }
+},
 
     async addToCart(item) {
-        const cart = await this.getCart();
-        const existing = cart.find(i => i.id === item.id);
-
-        if (existing) {
-            return await this.updateCartItem(existing.id, { quantity: existing.quantity + 1 });
+        try {
+            console.log('🔵 API.addToCart called with:', item);
+            const response = await fetch(`${this.baseURL}/cart`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-session-id': this.getSessionId()
+                },
+                body: JSON.stringify(item)
+            });
+            console.log('🟢 API Response Status:', response.status);
+            if (!response.ok) throw new Error('Failed to add to cart');
+            const result = await response.json();
+            console.log('🟢 API Response:', result);
+            return result;
+        } catch (error) {
+            console.error('🔴 Error adding to cart:', error);
+            throw error;
         }
-
-        cart.push({ ...item, quantity: 1 });
-        localStorage.setItem('antika_cart', JSON.stringify(cart));
-        return item;
     },
 
-    async updateCartItem(id, updates) {
-        const cart = await this.getCart();
-        const index = cart.findIndex(i => i.id == id);
-        if (index !== -1) {
-            cart[index] = { ...cart[index], ...updates };
-            localStorage.setItem('antika_cart', JSON.stringify(cart));
-            return cart[index];
+    async updateCartItem(id, quantity) {
+        try {
+            const response = await fetch(`${this.baseURL}/cart/${id}`, {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-session-id': this.getSessionId()
+                },
+                body: JSON.stringify({ quantity })
+            });
+            if (!response.ok) throw new Error('Failed to update cart item');
+            return await response.json();
+        } catch (error) {
+            console.error('Error updating cart item:', error);
+            throw error;
         }
-        return null;
     },
 
-    async deleteCartItem(id) {
-        const cart = await this.getCart();
-        const filtered = cart.filter(i => i.id != id);
-        localStorage.setItem('antika_cart', JSON.stringify(filtered));
-        return true;
+    async removeFromCart(id) {
+        try {
+            const response = await fetch(`${this.baseURL}/cart/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'x-session-id': this.getSessionId()
+                }
+            });
+            if (!response.ok) throw new Error('Failed to remove from cart');
+            return await response.json();
+        } catch (error) {
+            console.error('Error removing from cart:', error);
+            throw error;
+        }
     },
 
     async clearCart() {
-        localStorage.setItem('antika_cart', JSON.stringify([]));
-        return true;
+        try {
+            const response = await fetch(`${this.baseURL}/cart`, {
+                method: 'DELETE',
+                headers: {
+                    'x-session-id': this.getSessionId()
+                }
+            });
+            if (!response.ok) throw new Error('Failed to clear cart');
+            return await response.json();
+        } catch (error) {
+            console.error('Error clearing cart:', error);
+            throw error;
+        }
     },
 
-    // Settings
+    // ============================================
+    // ORDERS - إدارة الطلبات
+    // ============================================
+
+    async getOrders() {
+        try {
+            const response = await fetch(`${this.baseURL}/orders`);
+            if (!response.ok) throw new Error('Failed to fetch orders');
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching orders:', error);
+            return [];
+        }
+    },
+
+    async getOrder(id) {
+        try {
+            const response = await fetch(`${this.baseURL}/orders/${id}`);
+            if (!response.ok) throw new Error('Failed to fetch order');
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching order:', error);
+            return null;
+        }
+    },
+
+    async createOrder(orderData) {
+        try {
+            const response = await fetch(`${this.baseURL}/orders`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            });
+            if (!response.ok) throw new Error('Failed to create order');
+            return await response.json();
+        } catch (error) {
+            console.error('Error creating order:', error);
+            throw error;
+        }
+    },
+
+    async updateOrderStatus(id, status) {
+        try {
+            const response = await fetch(`${this.baseURL}/orders/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            if (!response.ok) throw new Error('Failed to update order status');
+            return await response.json();
+        } catch (error) {
+            console.error('Error updating order status:', error);
+            throw error;
+        }
+    },
+
+    async deleteOrder(id) {
+        try {
+            const response = await fetch(`${this.baseURL}/orders/${id}`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) throw new Error('Failed to delete order');
+            return await response.json();
+        } catch (error) {
+            console.error('Error deleting order:', error);
+            throw error;
+        }
+    },
+
+    // ============================================
+    // SETTINGS
+    // ============================================
+
     async getSettings() {
-        this.init();
-        return JSON.parse(localStorage.getItem('antika_settings')) || {};
-    },
-
-    async updateSettings(updates) {
-        const settings = await this.getSettings();
-        const newSettings = { ...settings, ...updates };
-        localStorage.setItem('antika_settings', JSON.stringify(newSettings));
-        return newSettings;
-    },
-
-    // Reviews
-    async addReview(productId, review) {
-        const products = await this.getProducts();
-        const product = products.find(p => p.id == productId);
-        if (product) {
-            if (!product.reviewsList) product.reviewsList = [];
-            
-            review.date = new Date().toISOString().split('T')[0];
-            review.id = Date.now().toString();
-            product.reviewsList.push(review);
-            
-            const totalRating = product.reviewsList.reduce((sum, r) => sum + r.rating, 0);
-            product.rating = totalRating / product.reviewsList.length;
-            product.reviews = product.reviewsList.length;
-            
-            localStorage.setItem('antika_products', JSON.stringify(products));
+        try {
+            const response = await fetch(`${this.baseURL}/settings`);
+            if (!response.ok) throw new Error('Failed to fetch settings');
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching settings:', error);
+            return {};
         }
-        return product;
     },
 
-    // Get related products
-    async getRelatedProducts(productId, limit = 4) {
-        const products = await this.getProducts();
-        const currentProduct = products.find(p => p.id == productId);
-        
-        if (!currentProduct) return [];
-        
-        let related = products.filter(p => {
-            if (p.id == productId) return false;
-            if (currentProduct.categories && p.categories) {
-                return p.categories.some(cat => currentProduct.categories.includes(cat));
+    async updateSettings(settings) {
+        try {
+            const response = await fetch(`${this.baseURL}/settings`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings)
+            });
+            if (!response.ok) throw new Error('Failed to update settings');
+            return await response.json();
+        } catch (error) {
+            console.error('Error updating settings:', error);
+            throw error;
+        }
+    },
+
+    // ============================================
+    // ANNOUNCING BAR
+    // ============================================
+
+    async getAnnouncingText() {
+        try {
+            const response = await fetch(`${this.baseURL}/announcing`);
+            if (!response.ok) throw new Error('Failed to fetch announcing text');
+            const data = await response.json();
+            return data.text || '🚚 تخفيضات وخصومات تصل إلى 50% وتوصيل مجاني لجميع مدن المملكة';
+        } catch (error) {
+            console.error('Error fetching announcing text:', error);
+            return '🚚 تخفيضات وخصومات تصل إلى 50% وتوصيل مجاني لجميع مدن المملكة';
+        }
+    },
+
+    async getAnnouncingSettings() {
+        try {
+            const response = await fetch(`${this.baseURL}/announcing`);
+            if (!response.ok) throw new Error('Failed to fetch announcing settings');
+            const data = await response.json();
+            return {
+                text: data.text || '🚚 تخفيضات وخصومات تصل إلى 50% وتوصيل مجاني لجميع مدن المملكة',
+                isVisible: data.isVisible !== false // default true
+            };
+        } catch (error) {
+            console.error('Error fetching announcing settings:', error);
+            return {
+                text: '🚚 تخفيضات وخصومات تصل إلى 50% وتوصيل مجاني لجميع مدن المملكة',
+                isVisible: true
+            };
+        }
+    },
+
+    async updateAnnouncingText(text) {
+        try {
+            const response = await fetch(`${this.baseURL}/announcing`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            if (!response.ok) throw new Error('Failed to update announcing text');
+            return await response.json();
+        } catch (error) {
+            console.error('Error updating announcing text:', error);
+            throw error;
+        }
+    },
+
+    async updateAnnouncingSettings({ text, isVisible }) {
+        try {
+            const response = await fetch(`${this.baseURL}/announcing`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, isVisible })
+            });
+            if (!response.ok) throw new Error('Failed to update announcing settings');
+            return await response.json();
+        } catch (error) {
+            console.error('Error updating announcing settings:', error);
+            throw error;
+        }
+    },
+
+    // ============================================
+    // FOOTER PAGES
+    // ============================================
+
+    async getFooterPages() {
+        try {
+            const response = await fetch(`${this.baseURL}/pages`);
+            if (!response.ok) throw new Error('Failed to fetch footer pages');
+            const data = await response.json();
+            // Also save to localStorage as backup
+            localStorage.setItem('footer_pages', JSON.stringify(data));
+            return data;
+        } catch (error) {
+            console.error('Error fetching footer pages:', error);
+            // Fallback to localStorage
+            const stored = localStorage.getItem('footer_pages');
+            if (stored) {
+                return JSON.parse(stored);
             }
-            return false;
-        });
-        
-        if (related.length < limit) {
-            const otherProducts = products.filter(p => 
-                p.id != productId && !related.includes(p)
-            );
-            related = [...related, ...otherProducts.slice(0, limit - related.length)];
+            return {};
         }
-        
-        return related.slice(0, limit);
     },
 
-    // Bulk Operations
+    async updateFooterPage(pageId, pageData) {
+        try {
+            const response = await fetch(`${this.baseURL}/pages/${pageId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(pageData)
+            });
+            if (!response.ok) throw new Error('Failed to update footer page');
+            // Update localStorage as well
+            const stored = localStorage.getItem('footer_pages') || '{}';
+            const pages = JSON.parse(stored);
+            pages[pageId] = pageData;
+            localStorage.setItem('footer_pages', JSON.stringify(pages));
+            return await response.json();
+        } catch (error) {
+            console.error('Error updating footer page:', error);
+            // Fallback: save to localStorage only
+            const stored = localStorage.getItem('footer_pages') || '{}';
+            const pages = JSON.parse(stored);
+            pages[pageId] = pageData;
+            localStorage.setItem('footer_pages', JSON.stringify(pages));
+            return {success: true, message: 'Saved to localStorage (API unavailable)'};
+        }
+    },
+
+    // ============================================
+    // HELPER METHODS
+    // ============================================
+
+    _normalizeProduct(product) {
+        if (!product) return null;
+        console.log('🔧 Normalizing product:', product.name, '| Raw SKU:', product.sku, '| Raw freeShipping:', product.freeShipping);
+        // Ensure product has a valid id
+        let productId = product._id || product.id;
+        if (!productId && product.name) {
+            // Generate a temporary id if none exists (fallback)
+            productId = 'temp_' + Math.random().toString(36).substr(2, 9);
+            console.warn('Product missing ID, generated temporary ID:', productId, product.name);
+        }
+        const normalized = {
+            ...product,
+            id: productId,
+            sku: product.sku || '',
+            freeShipping: product.freeShipping !== undefined ? product.freeShipping : true,
+            categories: product.categories || (product.category ? [product.category] : []),
+            images: product.images || []
+        };
+        console.log('🔧 Normalized product:', normalized.name, '| SKU:', normalized.sku, '| freeShipping:', normalized.freeShipping);
+        return normalized;
+    },
+
+    // ============================================
+    // BULK DISCOUNT
+    // ============================================
+
     async applyBulkDiscount(productIds, discountType, discountValue, endDate = null) {
-        const products = await this.getProducts();
+        try {
+            const products = await this.getProducts();
+            const updatePromises = productIds.map(async (productId) => {
+                const product = products.find(p => p.id === productId);
+                if (!product) return;
 
-        for (const id of productIds) {
-            const product = products.find(p => p.id == id);
-            if (!product) continue;
+                let discountPrice = product.price;
+                let discountPercentage = 0;
 
-            let discountPrice = product.price;
-            let discountPercentage = 0;
+                switch (discountType) {
+                    case 'percentage':
+                        discountPercentage = discountValue;
+                        discountPrice = Math.round(product.price * (1 - discountValue / 100));
+                        break;
+                    case 'fixed':
+                        discountPrice = Math.max(0, product.price - discountValue);
+                        discountPercentage = Math.round((discountValue / product.price) * 100);
+                        break;
+                    case 'newPrice':
+                        discountPrice = discountValue;
+                        discountPercentage = Math.round(((product.price - discountValue) / product.price) * 100);
+                        break;
+                }
 
-            if (discountType === 'percentage') {
-                discountPrice = Math.round(product.price * (1 - discountValue / 100));
-                discountPercentage = discountValue;
-            } else if (discountType === 'fixed') {
-                discountPrice = product.price - discountValue;
-                discountPercentage = Math.round((discountValue / product.price) * 100);
-            } else if (discountType === 'newPrice') {
-                discountPrice = discountValue;
-                discountPercentage = Math.round(((product.price - discountValue) / product.price) * 100);
-            }
+                return this.updateProduct(productId, {
+                    ...product,
+                    discountPrice: discountPrice,
+                    discountPercentage: discountPercentage,
+                    discountEndDate: endDate
+                });
+            });
 
-            product.discountPrice = discountPrice;
-            product.discountPercentage = discountPercentage;
-            product.updatedAt = new Date().toISOString().split('T')[0];
-
-            if (endDate) product.discountEndDate = endDate;
+            await Promise.all(updatePromises);
+            return { success: true };
+        } catch (error) {
+            console.error('Error applying bulk discount:', error);
+            throw error;
         }
-
-        localStorage.setItem('antika_products', JSON.stringify(products));
-        return true;
+    }
+    ,
+    // ============================================
+    // USERS / ADDRESSES (server sync)
+    // ============================================
+    async getUser(email) {
+        try {
+            if (!email) return null;
+            const encoded = encodeURIComponent(email.toLowerCase());
+            const resp = await fetch(`${this.baseURL}/users/${encoded}`);
+            if (!resp.ok) return null;
+            return await resp.json();
+        } catch (err) {
+            console.error('Error fetching user:', err);
+            return null;
+        }
     },
 
-    // Reset all data (for testing)
-    resetData() {
-        localStorage.removeItem('antika_products');
-        localStorage.removeItem('antika_categories');
-        localStorage.removeItem('antika_cart');
-        localStorage.removeItem('antika_settings');
-        localStorage.removeItem('antika_user');
-        this.init();
+    async upsertUser(email, data = {}) {
+        try {
+            if (!email) throw new Error('Email required');
+            const encoded = encodeURIComponent(email.toLowerCase());
+            const resp = await fetch(`${this.baseURL}/users/${encoded}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!resp.ok) throw new Error('Failed to upsert user');
+            return await resp.json();
+        } catch (err) {
+            console.error('Error upserting user:', err);
+            throw err;
+        }
+    },
+
+    async addUserAddress(email, address) {
+        try {
+            if (!email) throw new Error('Email required');
+            const encoded = encodeURIComponent(email.toLowerCase());
+            const resp = await fetch(`${this.baseURL}/users/${encoded}/addresses`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(address)
+            });
+            if (!resp.ok) throw new Error('Failed to add address');
+            return await resp.json();
+        } catch (err) {
+            console.error('Error adding user address:', err);
+            throw err;
+        }
+    },
+
+    async updateUserAddress(email, idx, address) {
+        try {
+            if (!email) throw new Error('Email required');
+            const encoded = encodeURIComponent(email.toLowerCase());
+            const resp = await fetch(`${this.baseURL}/users/${encoded}/addresses/${idx}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(address)
+            });
+            if (!resp.ok) throw new Error('Failed to update address');
+            return await resp.json();
+        } catch (err) {
+            console.error('Error updating user address:', err);
+            throw err;
+        }
+    },
+
+    async deleteUserAddress(email, idx) {
+        try {
+            if (!email) throw new Error('Email required');
+            const encoded = encodeURIComponent(email.toLowerCase());
+            const resp = await fetch(`${this.baseURL}/users/${encoded}/addresses/${idx}`, {
+                method: 'DELETE'
+            });
+            if (!resp.ok) throw new Error('Failed to delete address');
+            return await resp.json();
+        } catch (err) {
+            console.error('Error deleting user address:', err);
+            throw err;
+        }
+    },
+
+    // ============================================
+    // DEFAULT LOCATION (for one-tap checkout)
+    // ============================================
+    async getUserLocation(email) {
+        try {
+            if (!email) return null;
+            const encoded = encodeURIComponent(email.toLowerCase());
+            const resp = await fetch(`${this.baseURL}/users/${encoded}/location`);
+            if (!resp.ok) return null;
+            return await resp.json();
+        } catch (err) {
+            console.error('Error fetching user location:', err);
+            return null;
+        }
+    },
+
+    async setUserLocation(email, lat, lng, label = 'موقعي') {
+        try {
+            if (!email) throw new Error('Email required');
+            const encoded = encodeURIComponent(email.toLowerCase());
+            const resp = await fetch(`${this.baseURL}/users/${encoded}/location`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat, lng, label })
+            });
+            if (!resp.ok) throw new Error('Failed to set location');
+            return await resp.json();
+        } catch (err) {
+            console.error('Error setting user location:', err);
+            throw err;
+        }
+    },
+
+    async deleteUserLocation(email) {
+        try {
+            if (!email) throw new Error('Email required');
+            const encoded = encodeURIComponent(email.toLowerCase());
+            const resp = await fetch(`${this.baseURL}/users/${encoded}/location`, {
+                method: 'DELETE'
+            });
+            if (!resp.ok) throw new Error('Failed to delete location');
+            return await resp.json();
+        } catch (err) {
+            console.error('Error deleting user location:', err);
+            throw err;
+        }
+    },
+
+    // ============================================
+    // SYSTEM STATUS (for debugging)
+    // ============================================
+    async getSystemStatus() {
+        try {
+            const resp = await fetch(`${this.baseURL}/status`);
+            if (resp.ok) {
+                return await resp.json();
+            }
+        } catch (e) {
+            console.log('Could not fetch system status from API');
+        }
+        return { 
+            mongodb: 'unknown', 
+            productCount: 0,
+            categoryCount: 0,
+            source: 'fallback'
+        };
     }
 };
 
-// Initialize on load
-API.init();
+// Expose API globally for other scripts
+window.API = API;
+
+// Expose API globally for other scripts
+window.API = API;

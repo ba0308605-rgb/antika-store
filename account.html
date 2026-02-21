@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حسابي - انتيكا استور</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'antika-pink': '#FFB6C1',
+                        'antika-pink-dark': '#FF69B4',
+                        'antika-gold': '#D6C1A6',
+                        'antika-gold-dark': '#C4AC8E',
+                        'antika-gold-light': '#E8D9C5',
+                        'antika-beige': '#FAF0E6',
+                        'antika-lavender': '#FFF0F5',
+                    },
+                    fontFamily: {
+                        'tajawal': ['Tajawal', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Tajawal', sans-serif; }
+        
+        /* Custom Input Styles */
+        .antika-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        .antika-input:focus {
+            outline: none;
+            border-color: #D6C1A6;
+            box-shadow: 0 0 0 3px rgba(214, 193, 166, 0.1);
+        }
+        .antika-input:hover {
+            border-color: #D6C1A6;
+        }
+        
+        /* Gender Selection */
+        .gender-option {
+            flex: 1;
+            padding: 12px 24px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .gender-option:hover {
+            border-color: #D6C1A6;
+            background: #faf7f4;
+        }
+        .gender-option.selected {
+            border-color: #D6C1A6;
+            background: linear-gradient(135deg, #D6C1A6 0%, #C4AC8E 100%);
+            color: white;
+        }
+        
+        /* Save Button */
+        .save-btn {
+            background: linear-gradient(135deg, #D6C1A6 0%, #C4AC8E 100%);
+            color: white;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(214, 193, 166, 0.4);
+        }
+        .save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(214, 193, 166, 0.5);
+        }
+        .save-btn:active {
+            transform: translateY(0);
+        }
+        .save-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Phone Input Container */
+        .phone-container {
+            display: flex;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .phone-container:focus-within {
+            border-color: #D6C1A6;
+            box-shadow: 0 0 0 3px rgba(214, 193, 166, 0.1);
+        }
+        .phone-prefix {
+            background: #f9fafb;
+            padding: 12px 16px;
+            border-left: 2px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+        .phone-input {
+            flex: 1;
+            border: none;
+            padding: 12px 16px;
+            font-size: 15px;
+            outline: none;
+        }
+        
+        /* Profile Image */
+        .profile-image-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto;
+        }
+        .profile-image {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #E8D9C5;
+        }
+        .profile-edit-btn {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #D6C1A6 0%, #C4AC8E 100%);
+            border: 3px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .profile-edit-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        /* Sidebar Menu Item */
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            color: #4b5563;
+            transition: all 0.2s;
+            border-radius: 8px;
+            margin-bottom: 4px;
+        }
+        .sidebar-item:hover {
+            background-color: #f9fafb;
+            color: #D6C1A6;
+        }
+        .sidebar-item.active {
+            background: linear-gradient(135deg, rgba(214, 193, 166, 0.1) 0%, rgba(255, 182, 193, 0.1) 100%);
+            color: #D6C1A6;
+            font-weight: 600;
+            border-right: 3px solid #D6C1A6;
+        }
+        .sidebar-item i {
+            width: 20px;
+            text-align: center;
+        }
+        
+        /* Last Updated Text */
+        .last-updated {
+            font-size: 13px;
+            color: #9ca3af;
+            text-align: center;
+            margin-top: 8px;
+        }
+        
+        /* Success Message */
+        .success-message {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+        }
+        .success-message.show {
+            display: flex;
+            animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <!-- Unified Announcement Bar -->
+    <antika-announcement-bar></antika-announcement-bar>
+
+    <!-- Unified Header Component -->
+    <antika-header></antika-header>
+
+    <!-- Main Content -->
+    <main class="flex-1">
+        <!-- Breadcrumb -->
+        <nav class="bg-white border-b py-3">
+            <div class="container mx-auto px-4">
+                <div class="flex items-center text-sm">
+                    <a href="index.html" class="text-antika-gold hover:text-antika-pink-dark transition font-semibold">
+                        الرئيسية
+                    </a>
+                    <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
+                    <span class="text-gray-600">حسابي</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Page Content -->
+        <div class="container mx-auto px-4 py-8">
+            <div class="flex flex-col lg:flex-row gap-6">
+                
+                <!-- Sidebar Menu -->
+                <aside class="w-full lg:w-64 flex-shrink-0">
+                    <div class="bg-white rounded-xl shadow-sm border p-4">
+                        <!-- Menu Items -->
+                        <a href="notifications.html" class="sidebar-item">
+                            <i class="fas fa-bell"></i>
+                            <span>الإشعارات</span>
+                        </a>
+                        
+                        <a href="orders.html" class="sidebar-item">
+                            <i class="fas fa-shopping-bag"></i>
+                            <span>الطلبات</span>
+                        </a>
+                        
+                        <a href="wishlist.html" class="sidebar-item">
+                            <i class="fas fa-heart"></i>
+                            <span>المفضلة</span>
+                        </a>
+                        
+                        <a href="account.html" class="sidebar-item active">
+                            <i class="fas fa-user-circle"></i>
+                            <span>حسابي</span>
+                        </a>
+                        
+                        <a href="addresses.html" class="sidebar-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>عناويني</span>
+                        </a>
+
+                        <a href="settings.html" class="sidebar-item">
+                            <i class="fas fa-cog"></i>
+                            <span>الإعدادات</span>
+                        </a>
+                        
+                        <div class="border-t my-3"></div>
+                        
+                        <button onclick="logout()" class="sidebar-item w-full text-right text-red-500 hover:bg-red-50 hover:text-red-600">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>تسجيل الخروج</span>
+                        </button>
+                    </div>
+                </aside>
+
+                <!-- Main Content Area - Edit Form -->
+                <div class="flex-1">
+                    <div class="bg-white rounded-xl shadow-sm border p-6 lg:p-8">
+                        
+                        <!-- Success Message -->
+                        <div id="success-message" class="success-message">
+                            <i class="fas fa-check-circle"></i>
+                            <span>تم حفظ التغييرات بنجاح!</span>
+                        </div>
+                        
+                        <!-- Profile Header with Image -->
+                        <div class="text-center mb-8">
+                            <div class="profile-image-container mb-4">
+                                <img id="profile-image" src="images/default-avatar.png" alt="صورة الملف الشخصي" class="profile-image" onerror="this.src='https://ui-avatars.com/api/?name=User&background=D6C1A6&color=fff'">
+                                <div class="profile-edit-btn" onclick="document.getElementById('avatar-input').click()">
+                                    <i class="fas fa-camera text-sm"></i>
+                                </div>
+                                <input type="file" id="avatar-input" accept="image/*" class="hidden" onchange="previewAvatar(this)">
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800 mb-1" id="display-name">اسم المستخدم</h2>
+                            <p class="last-updated" id="last-updated">آخر تحديث: -</p>
+                        </div>
+
+                        <!-- Edit Form -->
+                        <form id="profile-form" class="space-y-6">
+                            
+                            <!-- Name Fields -->
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-gray-700 font-bold mb-2 text-sm">
+                                        الاسم الأول <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="text" id="first-name" class="antika-input" placeholder="أدخل الاسم الأول" required>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 font-bold mb-2 text-sm">
+                                        الاسم الأخير
+                                    </label>
+                                    <input type="text" id="last-name" class="antika-input" placeholder="أدخل الاسم الأخير (اختياري)">
+                                </div>
+                            </div>
+                            
+                            <!-- Phone Number -->
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2 text-sm">
+                                    رقم الجوال <span class="text-red-500">*</span>
+                                </label>
+                                <div class="phone-container">
+                                    <div class="phone-prefix">
+                                        <span>🇸🇦</span>
+                                        <span>+966</span>
+                                    </div>
+                                    <input type="tel" id="phone-number" class="phone-input" placeholder="55 123 4567" maxlength="10">
+                                </div>
+                            </div>
+                            
+                            <!-- Email -->
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2 text-sm">
+                                    البريد الإلكتروني <span class="text-red-500">*</span>
+                                </label>
+                                <input type="email" id="email" class="antika-input" placeholder="example@email.com" required>
+                                <p class="text-xs text-gray-500 mt-1">سنرسل لك رابط تحقق عند تغيير الإيميل</p>
+                            </div>
+                            
+                            <!-- Birth Date -->
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2 text-sm">
+                                    تاريخ الميلاد
+                                </label>
+                                <input type="date" id="birth-date" class="antika-input">
+                            </div>
+                            
+                            <!-- Gender -->
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-3 text-sm">
+                                    الجنس
+                                </label>
+                                <div class="flex gap-4">
+                                    <div class="gender-option" onclick="selectGender('male')" id="gender-male">
+                                        <i class="fas fa-mars mb-1"></i>
+                                        <div>ذكر</div>
+                                    </div>
+                                    <div class="gender-option" onclick="selectGender('female')" id="gender-female">
+                                        <i class="fas fa-venus mb-1"></i>
+                                        <div>أنثى</div>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="gender" value="">
+                            </div>
+                            
+                            <!-- Submit Button -->
+                            <div class="pt-4">
+                                <button type="submit" class="save-btn w-full md:w-auto">
+                                    <i class="fas fa-save ml-2"></i>
+                                    حفظ التغييرات
+                                </button>
+                            </div>
+                            
+                            <!-- Delete Account -->
+                            <div class="pt-6">
+                                <button id="delete-account-btn" type="button" class="w-full bg-red-50 text-red-600 py-3 rounded-lg hover:bg-red-100 transition" onclick="confirmDeleteAccount()">
+                                    <i class="fas fa-user-slash ml-2"></i>
+                                    حذف الحساب نهائياً
+                                </button>
+                                <p class="text-xs text-gray-500 mt-2">بمجرد الحذف سيُحذف حسابك وكل البيانات المرتبطة (الطلبات، العناوين) ولن يمكن استعادتها.</p>
+                            </div>
+                            
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <antika-footer></antika-footer>
+
+    <!-- Scripts -->
+    <script src="js/header.js"></script>
+    <script src="js/auth-sync.js"></script>
+    <script src="js/announcement-bar.js"></script>
+    <script src="js/footer.js"></script>
+    
+    <script>
+        // Load user info
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUserData();
+        });
+        
+        function loadUserData() {
+            const userData = localStorage.getItem('antika_user');
+            if (userData) {
+                const user = JSON.parse(userData);
+                
+                // Set display name
+                document.getElementById('display-name').textContent = user.name || 'مستخدم';
+                
+                // Split name into first and last
+                const nameParts = (user.name || '').split(' ');
+                document.getElementById('first-name').value = nameParts[0] || '';
+                // Only set last name if there's more than one part
+                if (nameParts.length > 1) {
+                    document.getElementById('last-name').value = nameParts.slice(1).join(' ');
+                } else {
+                    document.getElementById('last-name').value = '';
+                }
+                
+                // Email
+                document.getElementById('email').value = user.email || '';
+                
+                // Phone (remove +966 if exists)
+                let phone = user.phone || '';
+                if (phone.startsWith('+966')) {
+                    phone = phone.substring(4);
+                } else if (phone.startsWith('966')) {
+                    phone = phone.substring(3);
+                }
+                document.getElementById('phone-number').value = phone;
+                
+                // Birth date
+                if (user.birthDate) {
+                    document.getElementById('birth-date').value = user.birthDate;
+                }
+                
+                // Gender
+                if (user.gender) {
+                    selectGender(user.gender);
+                }
+                
+                // Profile image
+                if (user.avatar) {
+                    document.getElementById('profile-image').src = user.avatar;
+                } else {
+                    // Generate avatar with initial
+                    const initial = user.name ? user.name.charAt(0).toUpperCase() : 'U';
+                    document.getElementById('profile-image').src = `https://ui-avatars.com/api/?name=${initial}&background=D6C1A6&color=fff&size=128`;
+                }
+                
+                // Last updated
+                if (user.lastUpdated) {
+                    const date = new Date(user.lastUpdated);
+                    document.getElementById('last-updated').textContent = 'آخر تحديث: ' + date.toLocaleDateString('ar-SA');
+                }
+            }
+        }
+
+        async function confirmDeleteAccount(){
+            if (!window.Auth) {
+                alert('نظام المصادقة غير متوفر');
+                return;
+            }
+            const result = await Auth.deleteAccount();
+            if (result && result.success) {
+                alert('تم حذف الحساب بنجاح');
+            } else if (result && result.error === 'requires-recent-login') {
+                // handled in Auth.deleteAccount
+            } else {
+                alert('حدث خطأ أثناء حذف الحساب');
+            }
+        }
+        
+        // Select Gender
+        function selectGender(gender) {
+            document.getElementById('gender').value = gender;
+            
+            // Update UI
+            document.getElementById('gender-male').classList.remove('selected');
+            document.getElementById('gender-female').classList.remove('selected');
+            
+            if (gender === 'male') {
+                document.getElementById('gender-male').classList.add('selected');
+            } else if (gender === 'female') {
+                document.getElementById('gender-female').classList.add('selected');
+            }
+        }
+        
+        // Preview Avatar
+        function previewAvatar(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('profile-image').src = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+        
+        // Form Submit
+        document.getElementById('profile-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = this.querySelector('.save-btn');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري الحفظ...';
+            submitBtn.disabled = true;
+            
+            try {
+                // Get current user
+                const userData = localStorage.getItem('antika_user');
+                if (!userData) {
+                    alert('يجب تسجيل الدخول أولاً');
+                    return;
+                }
+                
+                const user = JSON.parse(userData);
+                
+                // Collect form data
+                const firstName = document.getElementById('first-name').value.trim();
+                const lastName = document.getElementById('last-name').value.trim();
+                const fullName = firstName + (lastName ? ' ' + lastName : '');
+                const email = document.getElementById('email').value.trim();
+                const phone = document.getElementById('phone-number').value.trim();
+                const birthDate = document.getElementById('birth-date').value;
+                const gender = document.getElementById('gender').value;
+                
+                // Validate - only first name is required
+                if (!firstName) {
+                    alert('الرجاء إدخال الاسم الأول');
+                    return;
+                }
+                
+                if (!email) {
+                    alert('الرجاء إدخال البريد الإلكتروني');
+                    return;
+                }
+                
+                // Update user object with all fields
+                const updatedUser = {
+                    ...user,
+                    name: fullName,
+                    firstName: firstName,
+                    lastName: lastName,
+                    email: email,
+                    phone: phone ? '+966' + phone : user.phone,
+                    birthDate: birthDate,
+                    gender: gender,
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                // Save to localStorage
+                localStorage.setItem('antika_user', JSON.stringify(updatedUser));
+                
+                // Try to sync to Auth system if available
+                if (window.Auth && typeof Auth.updateUserProfile === 'function') {
+                    try {
+                        await Auth.updateUserProfile({
+                            firstName: firstName,
+                            lastName: lastName,
+                            birthDate: birthDate,
+                            gender: gender
+                        });
+                    } catch (e) {
+                        console.warn('Failed to sync to Auth:', e);
+                    }
+                }
+                
+                // Show success message
+                document.getElementById('success-message').classList.add('show');
+                setTimeout(() => {
+                    document.getElementById('success-message').classList.remove('show');
+                }, 3000);
+                
+                // Update display name
+                document.getElementById('display-name').textContent = fullName;
+                
+                // Update last updated
+                document.getElementById('last-updated').textContent = 'آخر تحديث: ' + new Date().toLocaleDateString('ar-SA');
+                
+                // Dispatch event to update header
+                window.dispatchEvent(new Event('userUpdated'));
+                
+            } catch (error) {
+                console.error('Error saving profile:', error);
+                alert('حدث خطأ أثناء حفظ البيانات');
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('antika_user');
+            localStorage.removeItem('antika_token');
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

@@ -18,7 +18,7 @@ function checkLoginStatus() {
     const loginBtn = document.getElementById('login-btn');
     if (isLoggedIn && loginBtn) {
         const user = JSON.parse(isLoggedIn);
-        loginBtn.innerHTML = `<i class="fas fa-user-circle"></i><span class="hidden sm:inline">${user.name || 'حسابي'}</span>`;
+        loginBtn.innerHTML = `<i class="fas fa-user-circle text-xl"></i>`;
         loginBtn.href = '#';
         loginBtn.onclick = function(e) {
             e.preventDefault();
@@ -27,38 +27,138 @@ function checkLoginStatus() {
     }
 }
 
-// Show account menu
+// ✅ Check if user is registered - required for cart and wishlist
+function isUserRegistered() {
+    const user = localStorage.getItem('antika_user');
+    return user !== null;
+}
+
+// ✅ Require login before proceeding - guards cart and wishlist
+function requireLogin(action = 'continue') {
+    if (!isUserRegistered()) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl w-full max-w-md p-8 text-center">
+                <div class="mb-6">
+                    <i class="fas fa-lock-open text-6xl text-antika-gold mb-4"></i>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">يجب تسجيل الدخول</h3>
+                    <p class="text-gray-600">تسجيل الدخول أو إنشاء حساب للمتابعة</p>
+                </div>
+                <div class="space-y-3">
+                    <button onclick="window.location.href='register.html'" class="w-full bg-antika-gold text-white font-bold py-3 rounded-lg hover:bg-antika-gold-dark transition">
+                        📝 إنشاء حساب جديد
+                    </button>
+                    <button onclick="window.location.href='login.html'" class="w-full border-2 border-antika-gold text-antika-gold font-bold py-3 rounded-lg hover:bg-antika-beige transition">
+                        🔐 تسجيل الدخول
+                    </button>
+                    <button onclick="this.closest('.fixed').remove()" class="w-full text-gray-600 py-2">إغلاق</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        return false;
+    }
+    return true;
+}
+
+// Show account menu - نفس تصميم المتجر المرجعي
 function showAccountMenu(user) {
+    // إغلاق القائمة المفتوحة إذا وجدت
+    const existingMenu = document.getElementById('account-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+        return;
+    }
+
     const menu = document.createElement('div');
-    menu.className = 'absolute top-full left-0 mt-2 w-48 bg-white shadow-xl rounded-lg border border-antika-pink/20 z-50';
+    menu.id = 'account-menu';
+    menu.className = 'fixed bg-white shadow-2xl rounded-xl border border-gray-100 z-50';
+    menu.style.cssText = 'top: 80px; left: 20px; width: 320px; max-height: 80vh; overflow-y: auto;';
+    
     menu.innerHTML = `
-        <div class="p-3 border-b border-gray-100">
-            <p class="font-bold text-gray-800">${user.name}</p>
-            <p class="text-sm text-gray-500">${user.email}</p>
+        <!-- Header with user info -->
+        <div class="p-4 border-b border-gray-100">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-antika-gold to-antika-pink flex items-center justify-center text-white text-xl font-bold">
+                    ${user.name ? user.name.charAt(0).toUpperCase() : '👤'}
+                </div>
+                <div class="flex-1">
+                    <p class="font-bold text-gray-800 text-sm">${user.name || 'المستخدم'}</p>
+                    <p class="text-xs text-gray-500">${user.email || ''}</p>
+                </div>
+                <button onclick="document.getElementById('account-menu').remove()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         </div>
-        <a href="#" class="block px-4 py-2 hover:bg-antika-lavender transition text-gray-700">
-            <i class="fas fa-user ml-2"></i> الملف الشخصي
-        </a>
-        <a href="#" class="block px-4 py-2 hover:bg-antika-lavender transition text-gray-700">
-            <i class="fas fa-shopping-bag ml-2"></i> طلباتي
-        </a>
-        <a href="wishlist.html" class="block px-4 py-2 hover:bg-antika-lavender transition text-gray-700">
-            <i class="fas fa-heart ml-2"></i> المفضلة
-        </a>
-        <div class="border-t border-gray-100">
-            <button onclick="logout()" class="w-full text-right px-4 py-2 hover:bg-red-50 text-red-500 transition">
-                <i class="fas fa-sign-out-alt ml-2"></i> تسجيل الخروج
+        
+        <!-- Menu Items -->
+        <div class="py-2">
+            <!-- الإشعارات -->
+            <a href="#" onclick="showNotifications(); return false;" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold text-gray-800 text-sm">الإشعارات</p>
+                </div>
+                <span class="bg-antika-pink text-white text-xs px-2 py-1 rounded-full">0</span>
+            </a>
+            
+            <!-- الطلبات -->
+            <a href="#" onclick="showOrders(); return false;" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-500">
+                    <i class="fas fa-shopping-bag"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold text-gray-800 text-sm">الطلبات</p>
+                </div>
+            </a>
+            
+            <!-- المفضلة -->
+            <a href="wishlist.html" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                <div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500">
+                    <i class="fas fa-heart"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold text-gray-800 text-sm">المفضلة</p>
+                </div>
+            </a>
+            
+            <!-- حسابي -->
+            <a href="#" onclick="showProfile(); return false;" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                <div class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-500">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold text-gray-800 text-sm">حسابي</p>
+                </div>
+            </a>
+            
+            <!-- الإعدادات -->
+            <a href="#" onclick="showSettings(); return false;" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
+                    <i class="fas fa-cog"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold text-gray-800 text-sm">الإعدادات</p>
+                </div>
+            </a>
+        </div>
+        
+        <!-- Logout -->
+        <div class="border-t border-gray-100 p-3">
+            <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-lg transition">
+                <i class="fas fa-sign-out-alt"></i>
+                <span class="font-semibold">تسجيل الخروج</span>
             </button>
         </div>
     `;
 
-    const rect = document.getElementById('login-btn').getBoundingClientRect();
-    menu.style.position = 'fixed';
-    menu.style.top = (rect.bottom + 5) + 'px';
-    menu.style.left = rect.left + 'px';
-
     document.body.appendChild(menu);
 
+    // إغلاق القائمة عند النقر خارجها
     setTimeout(() => {
         document.addEventListener('click', function closeMenu(e) {
             if (!menu.contains(e.target) && e.target !== document.getElementById('login-btn')) {
@@ -69,9 +169,148 @@ function showAccountMenu(user) {
     }, 100);
 }
 
+// Show notifications modal
+function showNotifications() {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h3 class="font-bold text-lg text-gray-800">الإشعارات</h3>
+                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-8 text-center">
+                <i class="fas fa-bell-slash text-6xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">لا توجد إشعارات جديدة</p>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Show orders modal
+function showOrders() {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] overflow-hidden">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h3 class="font-bold text-lg text-gray-800">طلباتي</h3>
+                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-8 text-center">
+                <i class="fas fa-shopping-bag text-6xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500 mb-4">لا توجد طلبات حالياً</p>
+                <a href="products.html" class="inline-block bg-antika-gold text-white px-6 py-2 rounded-full hover:bg-antika-gold-dark transition">
+                    تسوق الآن
+                </a>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Show profile modal
+function showProfile() {
+    const user = JSON.parse(localStorage.getItem('antika_user') || '{}');
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl w-full max-w-md max-h-[80vh] overflow-y-auto">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h3 class="font-bold text-lg text-gray-800">حسابي</h3>
+                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <div class="text-center mb-6">
+                    <div class="w-20 h-20 rounded-full bg-gradient-to-br from-antika-gold to-antika-pink flex items-center justify-center text-white text-3xl font-bold mx-auto mb-3">
+                        ${user.name ? user.name.charAt(0).toUpperCase() : '👤'}
+                    </div>
+                    <h4 class="font-bold text-lg">${user.name || 'المستخدم'}</h4>
+                    <p class="text-gray-500 text-sm">${user.email || ''}</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm mb-1">الاسم</label>
+                        <input type="text" value="${user.name || ''}" class="w-full border border-gray-200 rounded-lg px-4 py-2 bg-gray-50" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm mb-1">البريد الإلكتروني</label>
+                        <input type="email" value="${user.email || ''}" class="w-full border border-gray-200 rounded-lg px-4 py-2 bg-gray-50" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm mb-1">رقم الجوال</label>
+                        <input type="tel" value="${user.phone || 'غير محدد'}" class="w-full border border-gray-200 rounded-lg px-4 py-2 bg-gray-50" readonly>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Show settings modal
+function showSettings() {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h3 class="font-bold text-lg text-gray-800">الإعدادات</h3>
+                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-4">
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg cursor-pointer">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-bell text-gray-400"></i>
+                            <span>الإشعارات</span>
+                        </div>
+                        <i class="fas fa-chevron-left text-gray-400"></i>
+                    </div>
+                    <div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg cursor-pointer">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-moon text-gray-400"></i>
+                            <span>الوضع الليلي</span>
+                        </div>
+                        <div class="w-10 h-6 bg-gray-200 rounded-full relative">
+                            <div class="w-4 h-4 bg-white rounded-full absolute top-1 left-1 shadow"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg cursor-pointer">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-language text-gray-400"></i>
+                            <span>اللغة</span>
+                        </div>
+                        <span class="text-gray-500 text-sm">العربية</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg cursor-pointer">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-shield-alt text-gray-400"></i>
+                            <span>الخصوصية والأمان</span>
+                        </div>
+                        <i class="fas fa-chevron-left text-gray-400"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
 // Logout function
 function logout() {
     localStorage.removeItem('antika_user');
+    localStorage.removeItem('antika_token');
     window.location.reload();
 }
 
@@ -116,6 +355,21 @@ async function loadCategories() {
                 </a>
             `).join('');
         }
+
+        // Load categories in mobile menu
+        const mobileCategories = document.getElementById('mobile-categories');
+        if (mobileCategories) {
+            if (categories.length === 0) {
+                mobileCategories.innerHTML = '<p class="text-gray-400 text-sm">لا توجد تصنيفات</p>';
+            } else {
+                mobileCategories.innerHTML = categories.map(cat => `
+                    <a href="products.html?category=${cat.id}" class="flex items-center gap-3 py-2 text-gray-700 hover:text-antika-pink transition" onclick="toggleMenu()">
+                        <span class="text-xl">${cat.icon || '📦'}</span>
+                        <span>${cat.name}</span>
+                    </a>
+                `).join('');
+            }
+        }
     } catch (error) {
         console.error('Error loading categories:', error);
     }
@@ -123,6 +377,12 @@ async function loadCategories() {
 
 // UNIFIED PRODUCT CARD - Used everywhere
 function createProductCard(product, options = {}) {
+    // Validate product has an ID
+    if (!product || !product.id) {
+        console.error('Invalid product data - missing ID:', product);
+        return ''; // Return empty string if product is invalid
+    }
+    
     const hasDiscount = product.discountPrice && product.discountPrice < product.price;
     const imageUrl = product.images && product.images[0] ? product.images[0] : 'https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store';
     const showEye = options.showEye !== false;
@@ -164,7 +424,7 @@ function createProductCard(product, options = {}) {
     }
 
     const eyeButton = showEye ? `
-        <button onclick="event.stopPropagation(); openQuickView(${product.id})" class="eye-icon" title="نظرة سريعة">
+        <button onclick="event.stopPropagation(); openQuickView('${product.id}')" class="eye-icon" title="نظرة سريعة">
             <i class="fas fa-eye"></i>
         </button>
     ` : '';
@@ -173,12 +433,37 @@ function createProductCard(product, options = {}) {
         <div class="absolute top-4 right-4 bg-antika-pink text-white px-3 py-1 rounded-full text-xs font-bold">جديد</div>
     ` : '';
 
+    // Out of Stock Ribbon - Diagonal red ribbon
+    const outOfStockRibbon = (product.stock <= 0 || product.isOutOfStock) ? `
+        <div class="out-of-stock-ribbon" style="
+            position: absolute;
+            top: 18px;
+            right: -28px;
+            background: #dc2626;
+            color: white;
+            padding: 5px 40px;
+            font-size: 10px;
+            font-weight: bold;
+            transform: rotate(45deg);
+            transform-origin: center;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            white-space: nowrap;
+            direction: rtl;
+            letter-spacing: 0;
+        ">${product.outOfStockText || 'نفذت الكمية'}</div>
+    ` : '';
+
+    // Build product URL safely
+    const productUrl = product.id ? `product.html?id=${encodeURIComponent(product.id)}` : '#';
+    
     return `
-        <div class="product-card bg-white rounded-2xl overflow-hidden shadow-lg border border-gray-100 product-square" onclick="window.location.href='product.html?id=${product.id}'">
+        <div class="product-card bg-white rounded-2xl overflow-hidden shadow-lg border border-gray-100 product-square ${(product.stock <= 0 || product.isOutOfStock) ? 'out-of-stock' : ''}" onclick="window.location.href='${productUrl}'">
             <div class="product-image-container relative">
                 <img src="${imageUrl}" alt="${product.name}" class="w-full h-full object-cover">
                 ${eyeButton}
                 ${newBadge}
+                ${outOfStockRibbon}
             </div>
             <div class="p-4">
                 <h3 class="font-bold text-gray-800 mb-2 text-sm truncate">${product.name}</h3>
@@ -193,30 +478,42 @@ function createProductCard(product, options = {}) {
                             <span class="text-antika-gold font-bold">${product.price} ر.س</span>
                         `}
                     </div>
-                    <button onclick="event.stopPropagation(); addToCart(${product.id})" class="add-to-cart-btn">
-                        <i class="fas fa-shopping-bag"></i> أضف للسلة
-                    </button>
+                    ${(product.stock <= 0 || product.isOutOfStock) ? `
+                        <button disabled class="add-to-cart-btn" style="opacity: 0.5; cursor: not-allowed; background: #9ca3af;">
+                            <i class="fas fa-times"></i> غير متوفر
+                        </button>
+                    ` : `
+                        <button onclick="event.stopPropagation(); addToCart('${product.id}')" class="add-to-cart-btn">
+                                <i class="fas fa-shopping-bag"></i> أضف للسلة
+                            </button>
+                    `}
                 </div>
             </div>
         </div>
     `;
 }
 
-// Load featured products
+// Load featured products (DISCOUNTED products - عروض خاصة)
 async function loadFeaturedProducts() {
     try {
         const products = await API.getProducts();
-        const featured = products.filter(p => p.isFeatured).slice(0, 4);
+        // ✅ Show products with actual discount (discountPrice < price)
+        const discounted = products.filter(p => p.discountPrice && p.discountPrice < p.price).slice(0, 4);
         
         const container = document.getElementById('featured-products');
         if (!container) return;
         
-        if (featured.length === 0) {
-            container.innerHTML = '<p class="text-gray-500 col-span-full text-center">لا توجد منتجات مميزة</p>';
+        if (discounted.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 col-span-full text-center">لا توجد منتجات مخفضة حالياً</p>';
             return;
         }
 
-        container.innerHTML = featured.map(product => createProductCard(product)).join('');
+        container.innerHTML = discounted.map(product => `
+            <antika-product-card 
+                data-product='${JSON.stringify(product)}'
+                data-variant="default">
+            </antika-product-card>
+        `).join('');
     } catch (error) {
         console.error('Error loading featured products:', error);
     }
@@ -236,103 +533,24 @@ async function loadNewProducts() {
             return;
         }
 
-        container.innerHTML = newProducts.map(product => createProductCard(product)).join('');
+        container.innerHTML = newProducts.map(product => `
+            <antika-product-card 
+                data-product='${JSON.stringify(product)}'
+                data-variant="default">
+            </antika-product-card>
+        `).join('');
     } catch (error) {
         console.error('Error loading new products:', error);
     }
 }
 
 // Quick View Function
-async function openQuickView(productId) {
-    try {
-        const products = await API.getProducts();
-        const product = products.find(p => p.id == productId);
-        if (!product) return;
-
-        const hasDiscount = product.discountPrice && product.discountPrice < product.price;
-        const imageUrl = product.images && product.images[0] ? product.images[0] : 'https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store';
-
-        // Rating for quick view
-        let ratingHtml = '';
-        if (!product.reviews || product.reviews === 0) {
-            ratingHtml = '<span class="text-gray-300">☆☆☆☆☆</span>';
-        } else {
-            let stars = '';
-            for (let i = 1; i <= 5; i++) {
-                if (i <= Math.floor(product.rating)) {
-                    stars += '<span class="text-yellow-400">★</span>';
-                } else if (i === Math.ceil(product.rating) && !Number.isInteger(product.rating)) {
-                    stars += '<span class="text-yellow-400 relative"><span class="absolute overflow-hidden w-1/2">★</span><span class="text-gray-300">☆</span></span>';
-                } else {
-                    stars += '<span class="text-gray-300">☆</span>';
-                }
-            }
-            ratingHtml = stars;
-        }
-
-        const modalHtml = `
-            <div id="quick-view-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div class="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
-                    <button onclick="closeQuickView()" class="absolute top-4 left-4 w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition z-10">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
-                    <div class="p-6 md:p-8">
-                        <div class="grid md:grid-cols-2 gap-8">
-                            <div class="rounded-2xl overflow-hidden">
-                                <img src="${imageUrl}" alt="${product.name}" class="w-full aspect-square object-cover">
-                            </div>
-                            <div class="flex flex-col justify-center">
-                                <h2 class="text-3xl font-bold text-gray-800 mb-4">${product.name}</h2>
-                                <div class="flex items-center gap-2 mb-4">
-                                    <div class="text-xl">${ratingHtml}</div>
-                                    <span class="text-gray-500">(${product.reviews || 0} تقييم)</span>
-                                </div>
-                                <p class="text-gray-600 mb-6 leading-relaxed line-clamp-3">${product.description}</p>
-                                <div class="flex items-center gap-4 mb-6">
-                                    ${hasDiscount ? `
-                                        <span class="text-gray-400 line-through text-2xl">${product.price} ر.س</span>
-                                        <span class="text-antika-pink-dark font-bold text-4xl">${product.discountPrice} ر.س</span>
-                                    ` : `
-                                        <span class="text-antika-gold font-bold text-4xl">${product.price} ر.س</span>
-                                    `}
-                                </div>
-                                <div class="flex gap-4">
-                                    <button onclick="addToCart(${product.id}); closeQuickView();" class="flex-1 bg-antika-gold text-white py-4 rounded-xl font-bold hover:bg-antika-gold-dark transition">
-                                        <i class="fas fa-shopping-bag ml-2"></i> أضف للسلة
-                                    </button>
-                                    <button onclick="window.location.href='product.html?id=${product.id}'" class="px-6 py-4 border-2 border-antika-gold text-antika-gold rounded-xl font-bold hover:bg-antika-gold hover:text-white transition">
-                                        التفاصيل
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        const modalDiv = document.createElement('div');
-        modalDiv.innerHTML = modalHtml;
-        document.body.appendChild(modalDiv);
-        document.body.style.overflow = 'hidden';
-
-        document.getElementById('quick-view-modal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeQuickView();
-            }
-        });
-    } catch (error) {
-        console.error('Error opening quick view:', error);
+// ✅ Handle add to cart with login check
+async function handleAddToCart(productId) {
+    if (!requireLogin('إضافة للسلة')) {
+        return; // User not logged in
     }
-}
-
-// Close Quick View
-function closeQuickView() {
-    const modal = document.getElementById('quick-view-modal');
-    if (modal) {
-        modal.remove();
-        document.body.style.overflow = 'auto';
-    }
+    await addToCart(productId);
 }
 
 // Add to cart
@@ -343,7 +561,7 @@ async function addToCart(productId) {
 
         if (product && product.stock > 0) {
             await API.addToCart({
-                id: product.id,
+                productId: product.id,
                 name: product.name,
                 price: product.discountPrice || product.price,
                 image: product.images && product.images[0] ? product.images[0] : 'https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store',
@@ -375,4 +593,27 @@ function showNotification(message, type = 'success') {
     setTimeout(() => {
         notification.remove();
     }, 3000);
+}
+
+// Load footer settings
+async function loadFooterSettings() {
+    try {
+        const settings = await API.getSettings();
+        if (settings.footer) {
+            // Update footer contact info if elements exist
+            const phoneEl = document.getElementById('footer-phone-display');
+            const emailEl = document.getElementById('footer-email-display');
+            const instagramEl = document.getElementById('footer-instagram-link');
+            const whatsappEl = document.getElementById('footer-whatsapp-link');
+            const snapchatEl = document.getElementById('footer-snapchat-link');
+
+            if (phoneEl) phoneEl.textContent = settings.footer.phone || '+966 50 123 4567';
+            if (emailEl) emailEl.textContent = settings.footer.email || 'info@antika-store.com';
+            if (instagramEl) instagramEl.href = settings.footer.instagram || '#';
+            if (whatsappEl) whatsappEl.href = settings.footer.whatsapp || '#';
+            if (snapchatEl) snapchatEl.href = settings.footer.snapchat || '#';
+        }
+    } catch (error) {
+        console.error('Error loading footer settings:', error);
+    }
 }

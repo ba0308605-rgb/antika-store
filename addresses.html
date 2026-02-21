@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة العناوين | انتيكا استور</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root{
+            --antika-card: #0f1720; /* dark card */
+            --antika-gold: #D6C1A6;
+            --antika-pink: #E8B7B7;
+            --antika-teal: #D6C1A6; /* main action color - same as footer */
+            --antika-green: #16A34A;
+            --antika-muted: #94a3b8;
+            --antika-bg: #ffffff;
+        }
+        html { overflow-y: scroll; }
+        body{font-family:'Tajawal',sans-serif;background:var(--antika-bg);}
+        .dark-gradient { background: linear-gradient(135deg, #0b0b0b 0%, #0f1112 100%); }
+        .card-hover { transition: all 0.24s ease; }
+        .card-hover:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(0,0,0,0.06); }
+
+        /* Utility color classes used in this page */
+        .text-antika-gold { color: var(--antika-gold) !important; }
+        .text-antika-pink { color: var(--antika-pink) !important; }
+        .bg-antika-gold { background: var(--antika-gold) !important; color: #111; }
+        .bg-antika-pink { background: var(--antika-pink) !important; color: #111; }
+        .bg-antika-teal { background: var(--antika-teal) !important; }
+        .border-antika-gold { border-color: var(--antika-gold) !important; }
+        .status-default { background: var(--antika-green); color: white; }
+        .muted { color: var(--antika-muted); }
+
+        /* Sidebar Menu Item */
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            color: #4b5563;
+            transition: all 0.2s;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            text-decoration: none;
+        }
+        .sidebar-item:hover {
+            background-color: #f9fafb;
+            color: #D6C1A6;
+        }
+        .sidebar-item.active {
+            background: linear-gradient(135deg, rgba(214, 193, 166, 0.1) 0%, rgba(255, 182, 193, 0.1) 100%);
+            color: #D6C1A6;
+            font-weight: 600;
+            border-right: 3px solid #D6C1A6;
+        }
+        .sidebar-item i {
+            width: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-white text-gray-900 min-h-screen flex flex-col">
+    <antika-announcement-bar></antika-announcement-bar>
+    <antika-header></antika-header>
+
+    <!-- Main Content -->
+    <main class="flex-1">
+        <!-- Breadcrumb -->
+        <nav class="bg-white border-b py-3">
+            <div class="container mx-auto px-4">
+                <div class="flex items-center text-sm">
+                    <a href="index.html" class="text-antika-gold font-semibold">الرئيسية</a>
+                    <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
+                    <a href="account.html" class="text-antika-gold font-semibold">حسابي</a>
+                    <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
+                    <span class="text-gray-600">عناويني</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Page Content -->
+        <div class="container mx-auto px-4 py-8">
+            <div class="flex flex-col lg:flex-row gap-6">
+        <!-- Sidebar -->
+        <aside class="w-full lg:w-64 flex-shrink-0">
+            <div class="bg-white rounded-xl shadow-sm border p-4">
+                <a href="notifications.html" class="sidebar-item">
+                    <i class="fas fa-bell"></i>
+                    <span>الإشعارات</span>
+                </a>
+                <a href="orders.html" class="sidebar-item">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span>الطلبات</span>
+                </a>
+                <a href="wishlist.html" class="sidebar-item">
+                    <i class="fas fa-heart"></i>
+                    <span>المفضلة</span>
+                </a>
+                <a href="account.html" class="sidebar-item">
+                    <i class="fas fa-user-circle"></i>
+                    <span>حسابي</span>
+                </a>
+                <a href="addresses.html" class="sidebar-item active">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>عناويني</span>
+                </a>
+                <a href="settings.html" class="sidebar-item">
+                    <i class="fas fa-cog"></i>
+                    <span>الإعدادات</span>
+                </a>
+                <div class="border-t my-3"></div>
+                <button onclick="logout()" class="sidebar-item w-full text-right text-red-500 hover:bg-red-50 hover:text-red-600">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>تسجيل الخروج</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-10">
+                <div class="flex items-center gap-3">
+                    <h1 class="text-4xl font-bold text-antika-gold">إدارة العناوين</h1>
+                    <i class="fas fa-map-pin text-antika-gold text-2xl"></i>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Unified Saved Addresses Card -->
+                <div class="card-hover bg-white rounded-xl p-6 border border-gray-200 text-gray-800">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-2xl font-bold text-antika-gold flex items-center gap-3">
+                            <i class="fas fa-map-marker-alt text-antika-pink"></i> العناوين المحفوظة
+                        </h2>
+                    </div>
+
+                    <div id="saved-list" class="space-y-3">
+                        <!-- Combined locations + addresses loaded by JS -->
+                    </div>
+
+                    <div id="empty-saved" class="text-center text-gray-400 py-12">
+                        <i class="fas fa-map text-5xl mb-4 text-gray-600"></i>
+                        <p class="text-lg">لا توجد عناوين محفوظة</p>
+                        <p class="text-sm mt-2">اضغط "اضافة عنوان جديد" لإضافة عنوانك أو موقعك</p>
+                    </div>
+                </div>
+
+                <!-- Add new button (full-width under card) -->
+                <div>
+                    <button id="add-address-btn" class="w-full px-6 py-3 bg-antika-teal text-white rounded-full text-lg font-semibold hover:opacity-90 transition">
+                        <i class="fas fa-plus ml-2"></i>اضافة عنوان جديد
+                    </button>
+                </div>
+            </div>
+        </div>
+            </div>
+        </div>
+    </main>>
+
+    <antika-footer></antika-footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/addresses.js"></script>
+    <script src="js/header.js"></script>
+    <script src="js/footer.js"></script>
+</body>
+</html>

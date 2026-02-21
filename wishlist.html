@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>المفضلة | انتيكا استور</title>
+    <title>المفضلة - انتيكا استور</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -17,7 +17,7 @@
                         'antika-gold': '#D6C1A6',
                         'antika-gold-dark': '#C4AC8E',
                         'antika-gold-light': '#E8D9C5',
-                        'antika-beige': '#F5F5DC',
+                        'antika-beige': '#FAF0E6',
                         'antika-lavender': '#FFF0F5',
                     },
                     fontFamily: {
@@ -28,99 +28,88 @@
         }
     </script>
     <style>
+        html { overflow-y: scroll; }
         body { font-family: 'Tajawal', sans-serif; }
-
-        /* Announcing Bar */
-        .announcing-bar {
-            background: #D6C1A6;
-            color: white;
-            padding: 8px 0;
-            font-size: 14px;
-            white-space: nowrap;
-            overflow: hidden;
-        }
-        .announcing-content {
-            display: inline-block;
-            animation: scroll 20s linear infinite;
-        }
-        @keyframes scroll {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-        }
-
+        
         /* Header Styles */
         .main-header {
             background: white;
             border-bottom: 1px solid #eee;
             position: sticky;
+            position: relative;
             top: 0;
             z-index: 100;
         }
 
-        /* Search Expand */
-        .search-container {
-            position: relative;
-        }
-        .search-expand {
-            position: absolute;
-            top: 50%;
-            left: 0;
-            transform: translateY(-50%);
-            width: 40px;
-            height: 40px;
-            overflow: hidden;
-            transition: all 0.3s ease;
-            background: white;
-            border-radius: 20px;
+        /* Sidebar Menu Item */
+        .sidebar-item {
             display: flex;
             align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            color: #4b5563;
+            transition: all 0.2s;
+            border-radius: 8px;
+            margin-bottom: 4px;
         }
-        .search-expand.active {
-            width: 300px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            padding: 0 15px;
+        .sidebar-item:hover {
+            background-color: #f9fafb;
+            color: #D6C1A6;
         }
-        .search-expand input {
-            width: 0;
-            border: none;
-            background: transparent;
-            outline: none;
-            font-family: 'Tajawal', sans-serif;
-            transition: width 0.3s ease;
+        .sidebar-item.active {
+            background-color: #f3f4f6;
+            color: #D6C1A6;
+            font-weight: 600;
         }
-        .search-expand.active input {
-            width: 230px;
-            margin-right: 10px;
+        .sidebar-item i {
+            width: 20px;
+            text-align: center;
         }
 
         /* Logo Styles */
-        .logo-container {
+        .logo-wrapper {
             display: flex;
             align-items: center;
             gap: 12px;
         }
-        .logo-image {
+        .logo-image-container {
             width: 50px;
             height: 50px;
-            object-fit: contain;
             border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #D6C1A6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
         }
-        .logo-text {
+        .logo-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .logo-text-container {
             display: flex;
             flex-direction: column;
-            align-items: center;
+            align-items: flex-start;
         }
-        .logo-text-ar {
-            font-size: 24px;
+        .logo-text-main {
+            font-size: 22px;
             font-weight: 800;
             color: #D6C1A6;
-            letter-spacing: 2px;
+            line-height: 1;
         }
-        .logo-text-en {
-            font-size: 12px;
+        .logo-text-sub {
+            font-size: 10px;
             color: #999;
-            letter-spacing: 3px;
-            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-transform: lowercase;
+            margin-top: 2px;
+        }
+        @media (max-width: 768px) {
+            .logo-image-container { width: 40px; height: 40px; }
+            .logo-text-main { font-size: 18px; }
+            .logo-text-sub { font-size: 8px; }
         }
 
         /* Hamburger Menu */
@@ -168,30 +157,63 @@
             visibility: visible;
         }
 
-        /* Breadcrumb */
-        .breadcrumb {
-            background: linear-gradient(135deg, rgba(255, 182, 193, 0.1), rgba(214, 193, 166, 0.1));
-            border-bottom: 1px solid rgba(255, 182, 193, 0.2);
+        /* User Menu */
+        .user-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            min-width: 220px;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
         }
-        .breadcrumb-item:not(:last-child)::after {
-            content: '›';
-            margin: 0 8px;
-            color: #D6C1A6;
-            font-size: 1.2em;
+        .user-menu.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .user-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: #374151;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .user-menu-item:hover {
+            background: #FFF0F5;
+            color: #FF69B4;
+        }
+        .user-menu-item i {
+            width: 20px;
+            text-align: center;
+        }
+        .notification-badge {
+            background: #EF4444;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-right: auto;
         }
 
-        /* Product Card Unified Style */
-        .product-card { 
-            transition: all 0.3s ease; 
-            cursor: pointer;
+        /* Wishlist Product Card */
+        .wishlist-item {
+            transition: all 0.3s ease;
             background: white;
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
         }
-        .product-card:hover { 
-            transform: translateY(-5px); 
-            box-shadow: 0 15px 30px rgba(0,0,0,0.15); 
+        .wishlist-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
         }
         .product-image-container {
             aspect-ratio: 1/1;
@@ -205,57 +227,42 @@
             object-fit: cover;
             transition: transform 0.3s ease;
         }
-        .product-card:hover .product-image-container img {
+        .wishlist-item:hover .product-image-container img {
             transform: scale(1.05);
         }
-        .eye-icon {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            width: 36px;
-            height: 36px;
-            background: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #D6C1A6;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            z-index: 10;
-            transition: all 0.2s ease;
-            border: none;
-            cursor: pointer;
+        .remove-btn {
+            transition: all 0.2s;
         }
-        .eye-icon:hover {
-            background: #FFB6C1;
-            color: white;
+        .remove-btn:hover {
+            background: #FEE2E2;
+            color: #DC2626;
         }
         .add-to-cart-btn {
             background: #D6C1A6;
             color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            border: none;
-            cursor: pointer;
+            transition: all 0.3s;
         }
         .add-to-cart-btn:hover {
             background: #C4AC8E;
+            transform: scale(1.02);
         }
 
-        /* Contact Box */
-        .contact-box {
-            background: white;
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        /* Empty State */
+        .empty-wishlist {
+            text-align: center;
+            padding: 60px 20px;
         }
-    /* Search Modal Styles */
+        .empty-wishlist i {
+            font-size: 80px;
+            color: #E5E7EB;
+            margin-bottom: 20px;
+        }
+
+        /* Footer */
+        footer a:hover {
+            color: #D6C1A6;
+        }
+        /* Search Modal Styles - Same as index.html */
         .search-modal-overlay {
             position: fixed;
             inset: 0;
@@ -341,210 +348,123 @@
         }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 flex flex-col min-h-screen">
+    <!-- Unified Announcement Bar -->
+    <antika-announcement-bar></antika-announcement-bar>
 
-    <!-- Announcing Bar -->
-    <div class="announcing-bar">
-        <div class="announcing-content">
-            🚚 تخفيضات و خصومات تصل الى 50% وتوصيل مجاني لجميع مدن المملكة &nbsp;&nbsp;&nbsp; 🚚 تخفيضات و خصومات تصل الى 50% وتوصيل مجاني لجميع مدن المملكة &nbsp;&nbsp;&nbsp; 🚚 تخفيضات و خصومات تصل الى 50% وتوصيل مجاني لجميع مدن المملكة &nbsp;&nbsp;&nbsp; 🚚 تخفيضات و خصومات تصل الى 50% وتوصيل مجاني لجميع مدن المملكة &nbsp;&nbsp;&nbsp;
-        </div>
-        <div class="announcing-content">
-            🚚 تخفيضات و خصومات تصل الى 50% وتوصيل مجاني لجميع مدن المملكة &nbsp;&nbsp;&nbsp; 🚚 تخفيضات و خصومات تصل الى 50% وتوصيل مجاني لجميع مدن المملكة &nbsp;&nbsp;&nbsp; 🚚 تخفيضات و خصومات تصل الى 50% وتوصيل مجاني لجميع مدن المملكة &nbsp;&nbsp;&nbsp; 🚚 تخفيضات و خصومات تصل الى 50% وتوصيل مجاني لجميع مدن المملكة &nbsp;&nbsp;&nbsp;
-        </div>
-    </div>
+    <!-- Unified Header Component -->
+    <antika-header></antika-header>
 
-        <!-- Main Header -->
-    <header class="main-header">
-        <div class="container mx-auto px-4">
-            <div class="flex items-center justify-between h-20">
-                <!-- Right Side: Hamburger Menu -->
-                <div class="hamburger-lines" onclick="toggleMenu()">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </div>
-
-                <!-- Center: Logo with Image -->
-                <a href="index.html" class="absolute left-1/2 transform -translate-x-1/2">
-                    <div class="logo-container">
-                        <img src="images/logo.jpg" alt="Antika Logo" class="logo-image">
-                        <div class="logo-text">
-                            <span class="logo-text-ar">أنتيكا</span>
-                            <span class="logo-text-en">Antika Store</span>
-                        </div>
-                    </div>
-                </a>
-
-                <!-- Left Side: Search, Cart, Login -->
-                <div class="flex items-center gap-4">
-                    <!-- Search Icon -->
-                    <button onclick="openSearchModal()" class="w-10 h-10 flex items-center justify-center text-gray-600 hover:text-antika-gold transition">
-                        <i class="fas fa-search text-lg"></i>
-                    </button>
-
-                    <!-- Cart -->
-                    <a href="cart.html" class="relative text-gray-600 hover:text-antika-gold transition">
-                        <i class="fas fa-shopping-cart text-xl"></i>
-                        <span id="cart-count" class="absolute -top-2 -right-2 bg-antika-pink text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold hidden">0</span>
+    <!-- Main Content -->
+    <main class="flex-1">
+        <!-- Breadcrumb -->
+        <nav class="bg-white border-b py-3">
+            <div class="container mx-auto px-4">
+                <div class="flex items-center text-sm">
+                    <a href="index.html" class="text-antika-gold hover:text-antika-pink-dark transition font-semibold">
+                        الرئيسية
                     </a>
-
-                    <!-- Login -->
-                    <a href="login.html" id="login-btn" class="text-gray-600 hover:text-antika-gold transition flex items-center gap-2">
-                        <span class="hidden sm:inline text-sm">تسجيل الدخول</span>
-                        <i class="fas fa-user text-lg"></i>
+                    <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
+                    <a href="account.html" class="text-antika-gold hover:text-antika-pink-dark transition font-semibold">
+                        حسابي
                     </a>
+                    <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
+                    <span class="text-gray-600">المفضلة</span>
                 </div>
             </div>
-        </div>
-    </header>
+        </nav>
 
-    <!-- Search Modal -->
-    <div id="search-modal" class="search-modal-overlay">
-        <button onclick="closeSearchModal()" class="search-modal-close">
-            <i class="fas fa-times"></i>
-        </button>
-        <div class="search-modal-box">
-            <i class="fas fa-search text-gray-400 text-xl"></i>
-            <input type="text" id="search-modal-input" placeholder="ابحث عن منتج..." onkeypress="handleSearchModal(event)">
-            <button onclick="performSearch()">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-        </div>
-    </div>
-
-    <!-- Mobile Menu Overlay -->
-    <div class="menu-overlay" id="menu-overlay" onclick="toggleMenu()"></div>
-
-    <!-- Mobile Menu -->
-    <div class="mobile-menu" id="mobile-menu">
-        <div class="p-6">
-            <div class="flex justify-between items-center mb-8">
-                <h3 class="text-xl font-bold text-antika-gold">القائمة</h3>
-                <button onclick="toggleMenu()" class="text-2xl text-gray-600">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <nav class="space-y-4">
-                <a href="index.html" class="block py-3 border-b border-gray-100 text-gray-800 hover:text-antika-gold">الرئيسية</a>
-                <a href="products.html" class="block py-3 border-b border-gray-100 text-gray-800 hover:text-antika-gold">المنتجات</a>
-                <a href="wishlist.html" class="block py-3 border-b border-gray-100 text-antika-gold font-semibold">المفضلة</a>
-            </nav>
-            <div class="mt-8">
-                <h4 class="font-bold text-gray-700 mb-4">التصنيفات</h4>
-                <div id="mobile-categories" class="space-y-3">
-                    <!-- Categories loaded by JS -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Breadcrumb -->
-    <nav class="breadcrumb py-3">
-        <div class="container mx-auto px-4">
-            <div class="flex items-center text-sm">
-                <a href="index.html" class="breadcrumb-item text-antika-gold hover:text-antika-pink-dark transition font-semibold">
-                    <i class="fas fa-home ml-1"></i> الرئيسية
-                </a>
-                <span class="text-gray-500">المفضلة</span>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Wishlist Content -->
-    <div class="container mx-auto px-4 py-8 min-h-[60vh]">
-        <h2 class="text-3xl font-bold text-antika-gold mb-8">❤️ قائمة المفضلة</h2>
-        <div id="wishlist-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            <!-- Wishlist items will be loaded here -->
-        </div>
-    </div>
-
-    <!-- Footer with Contact Box -->
-    <footer class="bg-antika-gold text-white py-12 mt-12">
-        <div class="container mx-auto px-4">
-            <!-- Contact Box -->
-            <div class="contact-box mb-12 max-w-4xl mx-auto">
-                <h3 class="text-xl font-bold text-antika-gold mb-6 text-center">تواصل معنا</h3>
-                <div class="grid md:grid-cols-3 gap-6 text-center">
-                    <div>
-                        <i class="fas fa-phone text-2xl text-antika-gold mb-2"></i>
-                        <p class="text-gray-600 text-sm">اتصل بنا</p>
-                        <p class="text-gray-800 font-bold">+966 50 123 4567</p>
+        <!-- Page Content -->
+        <div class="container mx-auto px-4 py-8">
+            <div class="flex flex-col lg:flex-row gap-6">
+                
+                <!-- Sidebar Menu -->
+                <aside class="w-full lg:w-64 flex-shrink-0">
+                    <div class="bg-white rounded-xl shadow-sm border p-4">
+                        <!-- Menu Items -->
+                        <a href="notifications.html" class="sidebar-item">
+                            <i class="fas fa-bell"></i>
+                            <span>الإشعارات</span>
+                        </a>
+                        
+                        <a href="orders.html" class="sidebar-item">
+                            <i class="fas fa-shopping-bag"></i>
+                            <span>الطلبات</span>
+                        </a>
+                        
+                        <a href="wishlist.html" class="sidebar-item active">
+                            <i class="fas fa-heart"></i>
+                            <span>المفضلة</span>
+                        </a>
+                        
+                        <a href="account.html" class="sidebar-item">
+                            <i class="fas fa-user-circle"></i>
+                            <span>حسابي</span>
+                        </a>
+                        
+                        <a href="addresses.html" class="sidebar-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>عناويني</span>
+                        </a>
+                        
+                        <a href="settings.html" class="sidebar-item">
+                            <i class="fas fa-cog"></i>
+                            <span>الإعدادات</span>
+                        </a>
+                        
+                        <div class="border-t my-3"></div>
+                        
+                        <button onclick="logout()" class="sidebar-item w-full text-right text-red-500 hover:bg-red-50 hover:text-red-600">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>تسجيل الخروج</span>
+                        </button>
                     </div>
-                    <div>
-                        <i class="fas fa-envelope text-2xl text-antika-gold mb-2"></i>
-                        <p class="text-gray-600 text-sm">البريد الإلكتروني</p>
-                        <p class="text-gray-800 font-bold">info@antika-store.com</p>
+                </aside>
+
+                <!-- Main Content Area -->
+                <div class="flex-1">
+                    <!-- Page Title -->
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold text-gray-800">
+                            <i class="fas fa-heart text-antika-pink ml-2"></i>
+                            قائمة المفضلة
+                        </h1>
+                        <p class="text-gray-500 mt-1">المنتجات التي أعجبتك</p>
                     </div>
-                    <div>
-                        <i class="fab fa-whatsapp text-2xl text-antika-gold mb-2"></i>
-                        <p class="text-gray-600 text-sm">واتساب</p>
-                        <p class="text-gray-800 font-bold">+966 50 123 4567</p>
+
+                    <!-- Wishlist Grid -->
+                    <div id="wishlistContainer">
+                        <!-- Wishlist items will be loaded here -->
                     </div>
                 </div>
-                <div class="flex justify-center gap-4 mt-6">
-                    <a href="#" class="w-12 h-12 bg-antika-gold/20 rounded-full flex items-center justify-center hover:bg-antika-pink transition text-antika-gold hover:text-white">
-                        <i class="fab fa-instagram text-xl"></i>
-                    </a>
-                    <a href="#" class="w-12 h-12 bg-antika-gold/20 rounded-full flex items-center justify-center hover:bg-antika-pink transition text-antika-gold hover:text-white">
-                        <i class="fab fa-whatsapp text-xl"></i>
-                    </a>
-                    <a href="#" class="w-12 h-12 bg-antika-gold/20 rounded-full flex items-center justify-center hover:bg-antika-pink transition text-antika-gold hover:text-white">
-                        <i class="fab fa-snapchat text-xl"></i>
-                    </a>
-                </div>
-            </div>
-
-            <div class="grid md:grid-cols-4 gap-8">
-                <div>
-                    <div class="text-center mb-4">
-                        <div class="text-3xl font-bold text-white" style="font-family: serif;">antika</div>
-                        <div class="text-xs text-white/70 tracking-widest">أنتيكا</div>
-                    </div>
-                    <p class="text-white/90 leading-relaxed text-center">وجهتك الأولى للديكور والأثاث المنزلي الفاخر.</p>
-                </div>
-                <div>
-                    <h4 class="font-bold mb-4 text-white">روابط سريعة</h4>
-                    <ul class="space-y-2 text-white/90">
-                        <li><a href="index.html" class="hover:text-white transition">الرئيسية</a></li>
-                        <li><a href="products.html" class="hover:text-white transition">المنتجات</a></li>
-                        <li><a href="wishlist.html" class="hover:text-white transition">المفضلة</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 class="font-bold mb-4 text-white">خدمة العملاء</h4>
-                    <ul class="space-y-2 text-white/90">
-                        <li><a href="pages.html?page=faq" class="hover:text-white transition">الأسئلة الشائعة</a></li>
-                        <li><a href="pages.html?page=returns" class="hover:text-white transition">سياسة الإرجاع</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 class="font-bold mb-4 text-white">عن المتجر</h4>
-                    <ul class="space-y-2 text-white/90">
-                        <li><a href="pages.html?page=about" class="hover:text-white transition">من نحن</a></li>
-                        <li><a href="pages.html?page=terms" class="hover:text-white transition">الشروط والأحكام</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="border-t border-white/30 mt-8 pt-8 text-center text-white/90">
-                <p>© 2025 انتيكا استور. جميع الحقوق محفوظة.</p>
             </div>
         </div>
-    </footer>
+    </main>
 
+    <antika-footer></antika-footer>
+
+    <!-- Scripts -->
     <script src="js/api.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <!-- Search Modal Functions - Global (outside module) -->
     <script>
-        // Search Modal Functions
         function openSearchModal() {
             const modal = document.getElementById('search-modal');
-            modal.classList.add('active');
-            document.getElementById('search-modal-input').focus();
-            document.body.style.overflow = 'hidden';
+            if (modal) {
+                modal.classList.add('active');
+                const input = document.getElementById('search-modal-input');
+                if (input) input.focus();
+                document.body.style.overflow = 'hidden';
+            }
         }
 
         function closeSearchModal() {
             const modal = document.getElementById('search-modal');
-            modal.classList.remove('active');
-            document.body.style.overflow = 'auto';
+            if (modal) {
+                modal.classList.remove('active');
+                document.body.style.overflow = 'auto';
+            }
         }
 
         function handleSearchModal(e) {
@@ -554,104 +474,180 @@
         }
 
         function performSearch() {
-            const query = document.getElementById('search-modal-input').value.trim();
-            if (query) {
-                window.location.href = `products.html?search=${encodeURIComponent(query)}`;
+            const input = document.getElementById('search-modal-input');
+            if (input) {
+                const query = input.value.trim();
+                if (query) {
+                    window.location.href = 'products.html?search=' + encodeURIComponent(query);
+                }
             }
         }
 
         // Close search modal on backdrop click
-        document.getElementById('search-modal')?.addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeSearchModal();
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchModal = document.getElementById('search-modal');
+            if (searchModal) {
+                searchModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeSearchModal();
+                    }
+                });
             }
         });
 
-        // Toggle Mobile Menu
-        function toggleMenu() {
-            document.getElementById('mobile-menu').classList.toggle('open');
-            document.getElementById('menu-overlay').classList.toggle('open');
+        // Show account menu - نفس تصميم index.html
+        function showAccountMenu(user) {
+            // إغلاق القائمة المفتوحة إذا وجدت
+            const existingMenu = document.getElementById('account-menu');
+            if (existingMenu) {
+                existingMenu.remove();
+                return;
+            }
+
+            const menu = document.createElement('div');
+            menu.id = 'account-menu';
+            menu.className = 'fixed bg-white shadow-2xl rounded-xl border border-gray-100 z-50';
+            menu.style.cssText = 'top: 80px; left: 20px; width: 320px; max-height: 80vh; overflow-y: auto;';
+            
+            menu.innerHTML = `
+                <!-- Header with user info -->
+                <div class="p-4 border-b border-gray-100">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-antika-gold to-antika-pink flex items-center justify-center text-white text-xl font-bold">
+                            ${user.name ? user.name.charAt(0).toUpperCase() : '👤'}
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-bold text-gray-800 text-sm">${user.name || 'المستخدم'}</p>
+                            <p class="text-xs text-gray-500">${user.email || ''}</p>
+                        </div>
+                        <button onclick="document.getElementById('account-menu').remove()" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Menu Items -->
+                <div class="py-2">
+                    <!-- الإشعارات -->
+                    <a href="notifications.html" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                        <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-800 text-sm">الإشعارات</p>
+                        </div>
+                    </a>
+                    
+                    <!-- الطلبات -->
+                    <a href="orders.html" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                        <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-500">
+                            <i class="fas fa-shopping-bag"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-800 text-sm">الطلبات</p>
+                        </div>
+                    </a>
+                    
+                    <!-- المفضلة -->
+                    <a href="wishlist.html" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                        <div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500">
+                            <i class="fas fa-heart"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-800 text-sm">المفضلة</p>
+                        </div>
+                    </a>
+                    
+                    <!-- حسابي -->
+                    <a href="account.html" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                        <div class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-500">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-800 text-sm">حسابي</p>
+                        </div>
+                    </a>
+                    
+                    <!-- الإعدادات -->
+                    <a href="settings.html" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                        <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-800 text-sm">الإعدادات</p>
+                        </div>
+                    </a>
+                </div>
+                
+                <!-- Logout -->
+                <div class="border-t border-gray-100 p-3">
+                    <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-lg transition">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span class="font-semibold">تسجيل الخروج</span>
+                    </button>
+                </div>
+            `;
+
+            document.body.appendChild(menu);
+
+            // إغلاق القائمة عند النقر خارجها
+            setTimeout(() => {
+                document.addEventListener('click', function closeMenu(e) {
+                    if (!menu.contains(e.target) && e.target !== document.getElementById('login-btn')) {
+                        menu.remove();
+                        document.removeEventListener('click', closeMenu);
+                    }
+                });
+            }, 100);
         }
 
+        // Helper functions for account menu
+        function showNotifications() {
+            window.location.href = 'notifications.html';
+        }
+
+        function showOrders() {
+            window.location.href = 'orders.html';
+        }
+
+        function showProfile() {
+            window.location.href = 'account.html';
+        }
+
+        function showSettings() {
+            window.location.href = 'settings.html';
+        }
+
+        function logout() {
+            localStorage.removeItem('antika_user');
+            localStorage.removeItem('antika_token');
+            window.location.reload();
+        }
+    </script>
+    <script>
         document.addEventListener('DOMContentLoaded', async function() {
-            await loadCategories();
+            const userRaw = localStorage.getItem('antika_user');
+            if (!userRaw) {
+                showLoginRequiredModal();
+                return;
+            }
             await loadWishlist();
-            updateCartCount();
-            checkLoginStatus();
+            await updateCartCount();
         });
 
-        // UNIFIED PRODUCT CARD
-        function createProductCard(product) {
-            const hasDiscount = product.discountPrice && product.discountPrice < product.price;
-            const imageUrl = product.images && product.images[0] ? product.images[0] : 'https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store';
-            const isNew = product.isNew && new Date(product.newExpiryDate) > new Date();
-            
-            // Stock display
-            let stockHtml = '';
-            if (product.stockDisplay !== 'hidden') {
-                let stockText = '';
-                let stockClass = product.stock < 5 ? 'text-red-500' : 'text-green-600';
-                
-                if (product.stockDisplay === 'text' && product.stockText) {
-                    stockText = product.stockText;
-                } else if (product.stockDisplay === 'number') {
-                    stockText = `متوفر: ${product.stock} قطعة`;
-                }
-                
-                if (stockText) {
-                    stockHtml = `<p class="${stockClass} text-xs mb-1"><i class="fas fa-box ml-1"></i>${stockText}</p>`;
-                }
-            }
-
-            // Rating display
-            let ratingHtml = '';
-            if (!product.reviews || product.reviews === 0) {
-                ratingHtml = '<span class="text-gray-300 text-sm">☆☆☆☆☆</span><span class="text-gray-400 mr-1 text-xs">(0)</span>';
-            } else {
-                let stars = '';
-                for (let i = 1; i <= 5; i++) {
-                    if (i <= Math.floor(product.rating)) {
-                        stars += '<span class="text-yellow-400">★</span>';
-                    } else if (i === Math.ceil(product.rating) && !Number.isInteger(product.rating)) {
-                        stars += '<span class="text-yellow-400 relative"><span class="absolute overflow-hidden w-1/2">★</span><span class="text-gray-300">☆</span></span>';
-                    } else {
-                        stars += '<span class="text-gray-300">☆</span>';
-                    }
-                }
-                ratingHtml = stars + `<span class="text-gray-400 mr-1 text-xs">(${product.reviews})</span>`;
-            }
-
-            // Price display with before/after
-            let priceHtml = '';
-            if (hasDiscount) {
-                priceHtml = `
-                    <div class="flex items-center gap-2">
-                        <span class="text-gray-400 line-through text-sm">${product.price} ر.س</span>
-                        <span class="text-antika-pink-dark font-bold text-lg">${product.discountPrice} ر.س</span>
-                    </div>
-                `;
-            } else {
-                priceHtml = `<span class="text-antika-gold font-bold text-lg">${product.price} ر.س</span>`;
-            }
-
-            return `
-                <div class="product-card" onclick="window.location.href='product.html?id=${product.id}'">
-                    <div class="product-image-container">
-                        <img src="${imageUrl}" alt="${product.name}">
-                        <button onclick="event.stopPropagation(); openQuickView(${product.id})" class="eye-icon" title="نظرة سريعة">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        ${isNew ? `<div class="absolute top-3 right-3 bg-antika-pink text-white px-3 py-1 rounded-full text-xs font-bold">جديد</div>` : ''}
-                    </div>
-                    <div class="p-4">
-                        <h3 class="font-bold text-gray-800 mb-2 text-sm truncate">${product.name}</h3>
-                        ${stockHtml}
-                        <div class="flex items-center gap-1 mb-2 text-sm">${ratingHtml}</div>
-                        <div class="flex items-center justify-between">
-                            ${priceHtml}
-                            <button onclick="event.stopPropagation(); addToCart(${product.id})" class="add-to-cart-btn">
-                                <i class="fas fa-shopping-bag"></i> أضف
-                            </button>
+        function showLoginRequiredModal() {
+            document.body.innerHTML = `
+                <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div class="bg-white rounded-2xl w-full max-w-md p-8 text-center">
+                        <div class="mb-6">
+                            <i class="fas fa-lock-open text-6xl text-antika-gold mb-4"></i>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-2">المفضلة محفوظة لعملائنا</h3>
+                            <p class="text-gray-600">سجّل دخولك أو أنشئ حسابًا للوصول إلى المفضلة</p>
+                        </div>
+                        <div class="space-y-3">
+                            <button onclick="window.location.href='register.html'" class="w-full bg-antika-gold text-white font-bold py-3 rounded-lg hover:bg-antika-gold-dark transition">إنشاء حساب جديد</button>
+                            <button onclick="window.location.href='login.html'" class="w-full border-2 border-antika-gold text-antika-gold font-bold py-3 rounded-lg hover:bg-antika-beige transition">تسجيل الدخول</button>
+                            <button onclick="window.location.href='index.html'" class="w-full text-gray-600 py-2 hover:bg-gray-100 rounded-lg">العودة للرئيسية</button>
                         </div>
                     </div>
                 </div>
@@ -660,195 +656,202 @@
 
         async function loadWishlist() {
             try {
-                const wishlist = JSON.parse(localStorage.getItem('antika_wishlist') || '[]');
-                const allProducts = await API.getProducts();
-                const container = document.getElementById('wishlist-grid');
+                const localUser = JSON.parse(localStorage.getItem('antika_user') || '{}');
+                const authUser = (window.Auth && typeof Auth.getCurrentUser === 'function') ? Auth.getCurrentUser() : (window.Auth ? Auth.currentUser : null);
+                const wishlistScope = String(
+                    (authUser && (authUser.uid || authUser.email))
+                    || localUser.uid
+                    || localUser.email
+                    || 'guest'
+                ).toLowerCase();
+                const wishlistKey = `wishlist_${wishlistScope}`;
 
-                if (wishlist.length === 0) {
-                    container.innerHTML = `
-                        <div class="col-span-full text-center py-16">
-                            <div class="text-6xl mb-4">❤️</div>
-                            <h3 class="text-2xl font-bold text-gray-400 mb-4">قائمة المفضلة فارغة</h3>
-                            <a href="products.html" class="inline-block bg-antika-gold text-white px-8 py-3 rounded-full font-bold hover:bg-antika-gold-dark transition">
-                                تصفح المنتجات
-                            </a>
-                        </div>
-                    `;
+                let ids = JSON.parse(localStorage.getItem(wishlistKey) || '[]');
+                if (!Array.isArray(ids)) ids = [];
+                ids = ids.map(String);
+
+                // Sync from Auth/Firestore when local list is empty
+                if (ids.length === 0 && window.Auth && typeof Auth.getWishlist === 'function') {
+                    try {
+                        const remote = await Auth.getWishlist();
+                        if (Array.isArray(remote) && remote.length > 0) {
+                            ids = remote.map(item => String(item.productId || item.id)).filter(Boolean);
+                            localStorage.setItem(wishlistKey, JSON.stringify(Array.from(new Set(ids))));
+                        }
+                    } catch (e) {
+                        console.warn('Could not sync wishlist from Auth:', e);
+                    }
+                }
+
+                if (ids.length === 0) {
+                    showEmptyWishlist('قائمة المفضلة فارغة');
                     return;
                 }
 
-                const wishlistProducts = allProducts.filter(p => wishlist.includes(parseInt(p.id)) || wishlist.includes(p.id.toString()));
+                const products = await API.getProducts();
+                const idSet = new Set(ids.map(String));
+                const wishlistProducts = products.filter(p => idSet.has(String(p._id || p.id)));
 
-                container.innerHTML = wishlistProducts.map(product => `
-                    <div class="relative">
-                        ${createProductCard(product)}
-                        <button onclick="removeFromWishlist(${product.id})" class="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition z-20">
-                            <i class="fas fa-times text-sm"></i>
-                        </button>
-                    </div>
-                `).join('');
+                if (!wishlistProducts.length) {
+                    showEmptyWishlist('لا توجد منتجات متاحة حالياً في المفضلة');
+                    return;
+                }
+
+                renderWishlist(wishlistProducts);
             } catch (error) {
                 console.error('Error loading wishlist:', error);
+                showEmptyWishlist('حدث خطأ أثناء تحميل المفضلة');
             }
         }
 
-        async function addToCart(productId) {
+        function renderWishlist(products) {
+            const container = document.getElementById('wishlistContainer');
+            container.innerHTML = `
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                    ${products.map(product => {
+                        const productId = product._id || product.id;
+                        const image = (product.images && product.images[0]) ? product.images[0] : 'https://via.placeholder.com/300x300';
+                        const price = Number(product.price || 0);
+                        const discountPrice = product.discountPrice ? Number(product.discountPrice) : null;
+                        const displayPrice = discountPrice || price;
+                        const discountPercent = discountPrice && price > 0 ? Math.round((1 - discountPrice / price) * 100) : 0;
+                        return `
+                            <div class="wishlist-item">
+                                <a href="product.html?id=${encodeURIComponent(productId)}" class="product-image-container block">
+                                    <img src="${image}" alt="${product.name || 'منتج'}" class="w-full h-full object-cover">
+                                    ${discountPercent > 0 ? `<span class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">خصم ${discountPercent}%</span>` : ''}
+                                </a>
+                                <div class="p-4">
+                                    <h3 class="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm">${product.name || 'منتج بدون اسم'}</h3>
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <span class="text-antika-gold-dark font-bold">${displayPrice} ر.س</span>
+                                        ${discountPrice ? `<span class="text-gray-400 line-through text-sm">${price} ر.س</span>` : ''}
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button onclick="addToCart('${productId}')" class="add-to-cart-btn flex-1 py-2 rounded-full font-medium text-sm">
+                                            <i class="fas fa-shopping-cart ml-1"></i>أضف للسلة
+                                        </button>
+                                        <button onclick="removeFromWishlist('${productId}')" class="remove-btn w-10 h-10 border border-gray-200 rounded-full flex items-center justify-center text-gray-400">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function showEmptyWishlist(message) {
+            const container = document.getElementById('wishlistContainer');
+            container.innerHTML = `
+                <div class="empty-wishlist">
+                    <i class="far fa-heart"></i>
+                    <h3 class="text-xl font-semibold text-gray-600 mb-2">${message}</h3>
+                    <a href="products.html" class="inline-block mt-4 bg-antika-gold text-white px-6 py-3 rounded-full hover:bg-antika-gold-dark transition-colors">
+                        تصفح المنتجات
+                    </a>
+                </div>
+            `;
+        }
+
+        window.addToCart = async (productId) => {
             try {
-                const products = await API.getProducts();
-                const product = products.find(p => p.id == productId);
-                if (product) {
-                    await API.addToCart({
-                        id: product.id,
-                        name: product.name,
-                        price: product.discountPrice || product.price,
-                        image: product.images && product.images[0] ? product.images[0] : 'https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store'
-                    });
-                    await updateCartCount();
-                    showNotification('تمت الإضافة للسلة! 🛒');
+                if (!((window.Auth && typeof Auth.getCurrentUser === 'function' && Auth.getCurrentUser()) || (window.Auth && Auth.currentUser))) {
+                    showNotification('يرجى تسجيل الدخول أولًا لإضافة المنتج للسلة', 'error');
+                    return;
                 }
-            } catch (error) {
-                console.error('Error adding to cart:', error);
-            }
-        }
+                const product = await API.getProduct(productId);
+                if (!product) {
+                    showNotification('المنتج غير متاح حالياً', 'error');
+                    return;
+                }
 
-        function removeFromWishlist(productId) {
-            let wishlist = JSON.parse(localStorage.getItem('antika_wishlist') || '[]');
-            wishlist = wishlist.filter(id => id != productId);
-            localStorage.setItem('antika_wishlist', JSON.stringify(wishlist));
-            loadWishlist();
-            showNotification('تمت الإزالة من المفضلة');
-        }
+                await API.addToCart({
+                    productId: product.id || product._id,
+                    name: product.name,
+                    price: product.discountPrice || product.price,
+                    image: (product.images && product.images[0]) ? product.images[0] : product.image,
+                    quantity: 1
+                });
+                showNotification('تمت الإضافة للسلة بنجاح', 'success');
+                await updateCartCount();
+            } catch (error) {
+                console.error('Add to cart error:', error);
+                showNotification('حدث خطأ أثناء الإضافة للسلة', 'error');
+            }
+        };
+
+        window.removeFromWishlist = async (productId) => {
+            try {
+                const localUser = JSON.parse(localStorage.getItem('antika_user') || '{}');
+                const authUser = (window.Auth && typeof Auth.getCurrentUser === 'function') ? Auth.getCurrentUser() : (window.Auth ? Auth.currentUser : null);
+                const wishlistScope = String(
+                    (authUser && (authUser.uid || authUser.email))
+                    || localUser.uid
+                    || localUser.email
+                    || 'guest'
+                ).toLowerCase();
+                const wishlistKey = `wishlist_${wishlistScope}`;
+
+                let wishlist = JSON.parse(localStorage.getItem(wishlistKey) || '[]');
+                wishlist = wishlist.map(String).filter(id => id !== String(productId));
+                localStorage.setItem(wishlistKey, JSON.stringify(wishlist));
+
+                if (window.Auth && typeof Auth.removeFromWishlist === 'function') {
+                    await Auth.removeFromWishlist(String(productId));
+                }
+            } catch (e) {
+                console.warn('Could not sync wishlist removal:', e);
+            }
+            await loadWishlist();
+            showNotification('تمت الإزالة من المفضلة', 'success');
+        };
 
         async function updateCartCount() {
             try {
                 const cart = await API.getCart();
-                const count = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
-                const badge = document.getElementById('cart-count');
-                badge.textContent = count;
-                badge.classList.toggle('hidden', count === 0);
+                const count = (Array.isArray(cart) ? cart : []).reduce((sum, item) => sum + (item.quantity || 1), 0);
+                const cartCount = document.getElementById('cart-count');
+                if (!cartCount) return;
+                if (count > 0) {
+                    cartCount.textContent = count > 99 ? '99+' : count;
+                    cartCount.classList.remove('hidden');
+                } else {
+                    cartCount.classList.add('hidden');
+                }
             } catch (error) {
                 console.error('Error updating cart count:', error);
             }
         }
 
-        async function loadCategories() {
+        window.logout = async () => {
             try {
-                const categories = await API.getCategories();
-                const mobileCats = document.getElementById('mobile-categories');
-                if (mobileCats) {
-                    mobileCats.innerHTML = categories.map(cat => `
-                        <a href="products.html?category=${cat.id}" class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition">
-                            <span class="text-2xl">${cat.icon}</span>
-                            <span class="text-gray-700">${cat.name}</span>
-                        </a>
-                    `).join('');
+                if (window.Auth && typeof Auth.logout === 'function') {
+                    await Auth.logout();
                 }
             } catch (error) {
-                console.error('Error loading categories:', error);
+                console.warn('Logout error:', error);
             }
-        }
+            localStorage.removeItem('antika_user');
+            localStorage.removeItem('antika_token');
+            window.location.reload();
+        };
 
-        // Check login status - ALWAYS show "تسجيل الدخول"
-        function checkLoginStatus() {
-            const loginBtn = document.getElementById('login-btn');
-            if (loginBtn) {
-                loginBtn.innerHTML = '<span class="hidden sm:inline text-sm">تسجيل الدخول</span><i class="fas fa-user text-lg"></i>';
-                loginBtn.href = 'login.html';
-                loginBtn.onclick = null;
-            }
-        }
-
-        function showNotification(message, type = 'success') {
+        function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
-            notification.className = `fixed top-24 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full shadow-2xl font-bold animate-bounce ${type === 'success' ? 'bg-antika-pink text-white' : 'bg-red-500 text-white'}`;
-            notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} ml-2"></i> ${message}`;
+            notification.className = `fixed top-20 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-lg z-50 ${type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-antika-gold'} text-white`;
+            notification.textContent = message;
             document.body.appendChild(notification);
             setTimeout(() => notification.remove(), 3000);
         }
-
-        async function openQuickView(productId) {
-            try {
-                const products = await API.getProducts();
-                const product = products.find(p => p.id == productId);
-                if (!product) return;
-
-                const hasDiscount = product.discountPrice && product.discountPrice < product.price;
-                const imageUrl = product.images && product.images[0] ? product.images[0] : 'https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store';
-
-                let ratingHtml = '';
-                if (!product.reviews || product.reviews === 0) {
-                    ratingHtml = '<span class="text-gray-300">☆☆☆☆☆</span>';
-                } else {
-                    let stars = '';
-                    for (let i = 1; i <= 5; i++) {
-                        if (i <= Math.floor(product.rating)) {
-                            stars += '<span class="text-yellow-400">★</span>';
-                        } else if (i === Math.ceil(product.rating) && !Number.isInteger(product.rating)) {
-                            stars += '<span class="text-yellow-400 relative"><span class="absolute overflow-hidden w-1/2">★</span><span class="text-gray-300">☆</span></span>';
-                        } else {
-                            stars += '<span class="text-gray-300">☆</span>';
-                        }
-                    }
-                    ratingHtml = stars;
-                }
-
-                const modalHtml = `
-                    <div id="quick-view-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                        <div class="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
-                            <button onclick="closeQuickView()" class="absolute top-4 left-4 w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition z-10">
-                                <i class="fas fa-times text-xl"></i>
-                            </button>
-                            <div class="p-6 md:p-8">
-                                <div class="grid md:grid-cols-2 gap-8">
-                                    <div class="rounded-2xl overflow-hidden bg-gray-100">
-                                        <img src="${imageUrl}" alt="${product.name}" class="w-full aspect-square object-cover">
-                                    </div>
-                                    <div class="flex flex-col justify-center">
-                                        <h2 class="text-3xl font-bold text-gray-800 mb-4">${product.name}</h2>
-                                        <div class="flex items-center gap-2 mb-4">
-                                            <div class="text-xl">${ratingHtml}</div>
-                                            <span class="text-gray-500">(${product.reviews || 0} تقييم)</span>
-                                        </div>
-                                        <p class="text-gray-600 mb-6 leading-relaxed line-clamp-3">${product.description}</p>
-                                        <div class="flex items-center gap-4 mb-6">
-                                            ${hasDiscount ? `
-                                                <span class="text-gray-400 line-through text-2xl">${product.price} ر.س</span>
-                                                <span class="text-antika-pink-dark font-bold text-4xl">${product.discountPrice} ر.س</span>
-                                            ` : `
-                                                <span class="text-antika-gold font-bold text-4xl">${product.price} ر.س</span>
-                                            `}
-                                        </div>
-                                        <div class="flex gap-4">
-                                            <button onclick="addToCart(${product.id}); closeQuickView();" class="flex-1 bg-antika-gold text-white py-4 rounded-xl font-bold hover:bg-antika-gold-dark transition">
-                                                <i class="fas fa-shopping-bag ml-2"></i> أضف للسلة
-                                            </button>
-                                            <button onclick="window.location.href='product.html?id=${product.id}'" class="px-6 py-4 border-2 border-antika-gold text-antika-gold rounded-xl font-bold hover:bg-antika-gold hover:text-white transition">
-                                                التفاصيل
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                const modalDiv = document.createElement('div');
-                modalDiv.innerHTML = modalHtml;
-                document.body.appendChild(modalDiv);
-                document.body.style.overflow = 'hidden';
-            } catch (error) {
-                console.error('Error opening quick view:', error);
-            }
-        }
-
-        function closeQuickView() {
-            const modal = document.getElementById('quick-view-modal');
-            if (modal) {
-                modal.remove();
-                document.body.style.overflow = 'auto';
-            }
-        }
     </script>
+    <!-- Unified Header Component Script -->
+    <script src="js/header.js"></script>
+    <script src="js/auth-sync.js"></script>
+    <script src="js/announcement-bar.js"></script>
+    <script src="js/footer.js"></script>
 </body>
 </html>
+
