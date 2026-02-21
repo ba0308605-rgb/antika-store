@@ -2,7 +2,29 @@
 
 const API = {
     // Base URL for API requests
-    baseURL: 'http://localhost:3000/api',
+    baseURL: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://localhost:3000/api'
+        : '/api',
+
+    async _loadDbJson() {
+        const basePath = window.location.pathname.endsWith('/')
+            ? window.location.pathname
+            : window.location.pathname.replace(/\/[^/]*$/, '/');
+
+        const candidates = Array.from(new Set([
+            new URL('db.json', window.location.href).toString(),
+            `${window.location.origin}${basePath}db.json`,
+            `${window.location.origin}/db.json`
+        ]));
+
+        for (const url of candidates) {
+            try {
+                const resp = await fetch(url, { cache: 'no-store' });
+                if (resp.ok) return await resp.json();
+            } catch (e) {}
+        }
+        return null;
+    },
 
     // ============================================
     // PRODUCTS
@@ -54,11 +76,10 @@ const API = {
                 return products;
             }
 
-            // Try loading local db.json when running without server
+            // Try loading db.json when running without backend (e.g., GitHub Pages)
             try {
-                const resp = await fetch('/db.json');
-                if (resp.ok) {
-                    const json = await resp.json();
+                const json = await this._loadDbJson();
+                if (json) {
                     let products = Array.isArray(json.products) ? json.products : (Array.isArray(json) ? json : []);
                     products = products.map(p => this._normalizeProduct(p));
 
@@ -109,6 +130,12 @@ const API = {
                     if (product) {
                         return this._normalizeProduct(product);
                     }
+                }
+                const json = await this._loadDbJson();
+                if (json) {
+                    const products = Array.isArray(json.products) ? json.products : (Array.isArray(json) ? json : []);
+                    const product = products.find(p => String(p._id || p.id) === String(id));
+                    if (product) return this._normalizeProduct(product);
                 }
             } catch (e) {
                 console.error('Error reading from localStorage:', e);
@@ -197,15 +224,12 @@ const API = {
                 if (stored) return JSON.parse(stored);
             } catch (e) {}
 
-            // Try loading from local db.json when running without server
+            // Try loading db.json when running without backend (e.g., GitHub Pages)
             try {
-                const resp = await fetch('/db.json');
-                if (resp.ok) {
-                    const json = await resp.json();
-                    if (Array.isArray(json.categories)) {
-                        localStorage.setItem('categories_backup', JSON.stringify(json.categories));
-                        return json.categories;
-                    }
+                const json = await this._loadDbJson();
+                if (json && Array.isArray(json.categories)) {
+                    localStorage.setItem('categories_backup', JSON.stringify(json.categories));
+                    return json.categories;
                 }
             } catch (e) {
                 // ignore
