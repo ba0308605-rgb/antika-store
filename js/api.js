@@ -6,6 +6,38 @@ const API = {
         ? 'http://localhost:3000/api'
         : '/api',
 
+    getAuthToken() {
+        return localStorage.getItem('antika_admin_token') || '';
+    },
+
+    getAuthHeaders(extraHeaders = {}) {
+        const headers = { ...extraHeaders };
+        const token = this.getAuthToken();
+        if (token) {
+            headers.Authorization = `Bearer ${token}`;
+        }
+        return headers;
+    },
+
+    async adminLogin(username, password) {
+        const response = await fetch(`${this.baseURL}/admin/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'Admin login failed');
+        return data;
+    },
+
+    async verifyAdminSession() {
+        const response = await fetch(`${this.baseURL}/admin/session`, {
+            headers: this.getAuthHeaders()
+        });
+        if (!response.ok) return null;
+        return await response.json();
+    },
+
     // ============================================
     // PRODUCTS
     // ============================================
@@ -49,7 +81,7 @@ const API = {
         try {
             const response = await fetch(`${this.baseURL}/products`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.getAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify(productData)
             });
             if (!response.ok) throw new Error('Failed to add product');
@@ -71,7 +103,7 @@ const API = {
             console.log('API: Updating product', productId, productData.name);
             const response = await fetch(`${this.baseURL}/products/${productId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.getAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({...productData, id: productId})
             });
             if (!response.ok) {
@@ -88,7 +120,8 @@ const API = {
     async deleteProduct(id) {
         try {
             const response = await fetch(`${this.baseURL}/products/${id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: this.getAuthHeaders()
             });
             if (!response.ok) throw new Error('Failed to delete product');
             return await response.json();
@@ -117,7 +150,7 @@ const API = {
         try {
             const response = await fetch(`${this.baseURL}/categories`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.getAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify(categoryData)
             });
             if (!response.ok) throw new Error('Failed to add category');
@@ -132,7 +165,7 @@ const API = {
         try {
             const response = await fetch(`${this.baseURL}/categories/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.getAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify(categoryData)
             });
             if (!response.ok) throw new Error('Failed to update category');
@@ -146,7 +179,8 @@ const API = {
     async deleteCategory(id) {
         try {
             const response = await fetch(`${this.baseURL}/categories/${id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: this.getAuthHeaders()
             });
             if (!response.ok) throw new Error('Failed to delete category');
             return await response.json();
@@ -274,7 +308,9 @@ async getCart() {
 
     async getOrders() {
         try {
-            const response = await fetch(`${this.baseURL}/orders`);
+            const response = await fetch(`${this.baseURL}/orders`, {
+                headers: this.getAuthHeaders()
+            });
             if (!response.ok) throw new Error('Failed to fetch orders');
             return await response.json();
         } catch (error) {
@@ -285,7 +321,9 @@ async getCart() {
 
     async getOrder(id) {
         try {
-            const response = await fetch(`${this.baseURL}/orders/${id}`);
+            const response = await fetch(`${this.baseURL}/orders/${id}`, {
+                headers: this.getAuthHeaders()
+            });
             if (!response.ok) throw new Error('Failed to fetch order');
             return await response.json();
         } catch (error) {
@@ -313,7 +351,7 @@ async getCart() {
         try {
             const response = await fetch(`${this.baseURL}/orders/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.getAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ status })
             });
             if (!response.ok) throw new Error('Failed to update order status');
@@ -327,7 +365,8 @@ async getCart() {
     async deleteOrder(id) {
         try {
             const response = await fetch(`${this.baseURL}/orders/${id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: this.getAuthHeaders()
             });
             if (!response.ok) throw new Error('Failed to delete order');
             return await response.json();
@@ -356,7 +395,7 @@ async getCart() {
         try {
             const response = await fetch(`${this.baseURL}/settings`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.getAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify(settings)
             });
             if (!response.ok) throw new Error('Failed to update settings');
@@ -405,7 +444,7 @@ async getCart() {
         try {
             const response = await fetch(`${this.baseURL}/announcing`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.getAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ text })
             });
             if (!response.ok) throw new Error('Failed to update announcing text');
@@ -420,7 +459,7 @@ async getCart() {
         try {
             const response = await fetch(`${this.baseURL}/announcing`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.getAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ text, isVisible })
             });
             if (!response.ok) throw new Error('Failed to update announcing settings');
@@ -450,13 +489,27 @@ async getCart() {
         try {
             const response = await fetch(`${this.baseURL}/pages/${pageId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.getAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify(pageData)
             });
             if (!response.ok) throw new Error('Failed to update footer page');
             return await response.json();
         } catch (error) {
             console.error('Error updating footer page:', error);
+            throw error;
+        }
+    },
+
+    async deleteAllProducts() {
+        try {
+            const response = await fetch(`${this.baseURL}/products`, {
+                method: 'DELETE',
+                headers: this.getAuthHeaders()
+            });
+            if (!response.ok) throw new Error('Failed to delete all products');
+            return await response.json();
+        } catch (error) {
+            console.error('Error deleting all products:', error);
             throw error;
         }
     },

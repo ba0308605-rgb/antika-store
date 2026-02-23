@@ -5,6 +5,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
@@ -23,6 +24,18 @@ const emailTransporter = nodemailer.createTransport({
 const otpStore = new Map();
 const OTP_EXPIRY = 10 * 60 * 1000; // 10 minutes
 const MAX_OTP_ATTEMPTS = 5;
+const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'BDR-FIRST';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'B1-a2d3e4r5';
+const ADMIN_TOKEN_TTL = process.env.ADMIN_TOKEN_TTL || '8h';
+
+if (!process.env.JWT_SECRET) {
+  console.warn('⚠️ JWT_SECRET is missing; using insecure fallback secret. Set JWT_SECRET in production.');
+}
+
+if (!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD) {
+  console.warn('⚠️ ADMIN_USERNAME/ADMIN_PASSWORD missing; using default admin credentials. Set both in production.');
+}
 
 // Helper: Generate random 6-digit OTP
 function generateOTP() {
@@ -42,6 +55,31 @@ function requireMongo(res, action = 'Operation') {
     mongodb: 'disconnected'
   });
   return false;
+}
+
+function getAdminToken(req) {
+  const authHeader = req.headers.authorization || '';
+  if (!authHeader.startsWith('Bearer ')) return null;
+  const token = authHeader.slice('Bearer '.length).trim();
+  return token || null;
+}
+
+function requireAdmin(req, res, next) {
+  const token = getAdminToken(req);
+  if (!token) {
+    return res.status(401).json({ error: 'Admin authentication required' });
+  }
+
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (payload?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin privileges required' });
+    }
+    req.admin = payload;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid or expired admin token' });
+  }
 }
 
 // Helper function to find product by ID (supports both ObjectId and custom id)
@@ -262,6 +300,47 @@ function getSessionId(req) {
 }
 
 // ============================================
+// ADMIN AUTH ROUTES
+// ============================================
+
+app.post('/api/admin/login', (req, res) => {
+  const { username, password } = req.body || {};
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Invalid username or password' });
+  }
+
+  const token = jwt.sign(
+    { role: 'admin', username: ADMIN_USERNAME, type: 'admin' },
+    JWT_SECRET,
+    { expiresIn: ADMIN_TOKEN_TTL }
+  );
+
+  return res.json({
+    token,
+    user: {
+      name: 'Admin',
+      username: ADMIN_USERNAME,
+      isAdmin: true
+    }
+  });
+});
+
+app.get('/api/admin/session', requireAdmin, (req, res) => {
+  res.json({
+    ok: true,
+    user: {
+      username: req.admin.username,
+      isAdmin: true
+    }
+  });
+});
+
+// ============================================
 // PRODUCTS ROUTES
 // ============================================
 
@@ -345,7 +424,7 @@ app.get('/api/products/:id', async (req, res) => {
 });
 
 // Create product
-app.post('/api/products', async (req, res) => {
+app.post('/api/products', requireAdmin, async (req, res) => {
   try {
     if (!requireMongo(res, 'Product create')) return;
 
@@ -360,7 +439,7 @@ app.post('/api/products', async (req, res) => {
 });
 
 // Delete user and related data (orders) by email
-app.delete('/api/users/:email', async (req, res) => {
+app.delete('/api/users/:email', requireAdmin, async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();
 
@@ -377,7 +456,7 @@ app.delete('/api/users/:email', async (req, res) => {
 });
 
 // Update product
-app.put('/api/products/:id', async (req, res) => {
+app.put('/api/products/:id', requireAdmin, async (req, res) => {
   try {
     if (!requireMongo(res, 'Product update')) return;
 
@@ -413,7 +492,7 @@ app.put('/api/products/:id', async (req, res) => {
 });
 
 // Delete product (supports both MongoDB ObjectId and numeric id)
-app.delete('/api/products/:id', async (req, res) => {
+app.delete('/api/products/:id', requireAdmin, async (req, res) => {
   try {
     if (!requireMongo(res, 'Product delete')) return;
 
@@ -454,7 +533,7 @@ app.delete('/api/products/:id', async (req, res) => {
 });
 
 // 🧹 DELETE ALL PRODUCTS - Admin only
-app.delete('/api/products', async (req, res) => {
+app.delete('/api/products', requireAdmin, async (req, res) => {
   try {
     if (!requireMongo(res, 'Delete all products')) return;
     const result = await Product.deleteMany({});
@@ -466,7 +545,7 @@ app.delete('/api/products', async (req, res) => {
 });
 
 // Bulk discount
-app.post('/api/products/bulk-discount', async (req, res) => {
+app.post('/api/products/bulk-discount', requireAdmin, async (req, res) => {
   try {
     const { productIds, discountType, discountValue, endDate } = req.body;
     
@@ -503,7 +582,7 @@ app.post('/api/products/bulk-discount', async (req, res) => {
 });
 
 // User Statistics API
-app.get('/api/users/stats', async (req, res) => {
+app.get('/api/users/stats', requireAdmin, async (req, res) => {
   try {
     
     // For now, return sample data structure
@@ -536,7 +615,7 @@ app.get('/api/categories', async (req, res) => {
 });
 
 // Create category
-app.post('/api/categories', async (req, res) => {
+app.post('/api/categories', requireAdmin, async (req, res) => {
   try {
     const category = new Category(req.body);
     await category.save();
@@ -548,7 +627,7 @@ app.post('/api/categories', async (req, res) => {
 });
 
 // Update category
-app.put('/api/categories/:id', async (req, res) => {
+app.put('/api/categories/:id', requireAdmin, async (req, res) => {
   try {
     const category = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!category) return res.status(404).json({ error: 'Category not found' });
@@ -560,7 +639,7 @@ app.put('/api/categories/:id', async (req, res) => {
 });
 
 // Delete category
-app.delete('/api/categories/:id', async (req, res) => {
+app.delete('/api/categories/:id', requireAdmin, async (req, res) => {
   try {
     const category = await Category.findByIdAndDelete(req.params.id);
     if (!category) return res.status(404).json({ error: 'Category not found' });
@@ -694,7 +773,7 @@ app.delete('/api/cart', async (req, res) => {
 // ============================================
 
 // Get all orders
-app.get('/api/orders', async (req, res) => {
+app.get('/api/orders', requireAdmin, async (req, res) => {
   try {
     if (!requireMongo(res, 'Orders fetch')) return;
 
@@ -707,7 +786,7 @@ app.get('/api/orders', async (req, res) => {
 });
 
 // Get single order
-app.get('/api/orders/:id', async (req, res) => {
+app.get('/api/orders/:id', requireAdmin, async (req, res) => {
   try {
     if (!requireMongo(res, 'Order fetch')) return;
 
@@ -735,7 +814,7 @@ app.post('/api/orders', async (req, res) => {
 });
 
 // Update order
-app.put('/api/orders/:id', async (req, res) => {
+app.put('/api/orders/:id', requireAdmin, async (req, res) => {
   try {
     if (!requireMongo(res, 'Order update')) return;
 
@@ -749,7 +828,7 @@ app.put('/api/orders/:id', async (req, res) => {
 });
 
 // Delete order
-app.delete('/api/orders/:id', async (req, res) => {
+app.delete('/api/orders/:id', requireAdmin, async (req, res) => {
   try {
     if (!requireMongo(res, 'Order delete')) return;
 
@@ -784,7 +863,7 @@ app.get('/api/settings', async (req, res) => {
 });
 
 // Update settings
-app.put('/api/settings', async (req, res) => {
+app.put('/api/settings', requireAdmin, async (req, res) => {
   try {
     if (!requireMongo(res, 'Settings update')) return;
 
@@ -819,7 +898,7 @@ app.get('/api/announcing', async (req, res) => {
 });
 
 // Update announcing text
-app.put('/api/announcing', async (req, res) => {
+app.put('/api/announcing', requireAdmin, async (req, res) => {
   try {
     if (!requireMongo(res, 'Announcing update')) return;
 
@@ -1135,7 +1214,7 @@ app.get('/api/pages', async (req, res) => {
 });
 
 // Update footer page
-app.put('/api/pages/:pageId', async (req, res) => {
+app.put('/api/pages/:pageId', requireAdmin, async (req, res) => {
   try {
     if (!requireMongo(res, 'Page update')) return;
 

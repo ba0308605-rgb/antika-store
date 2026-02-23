@@ -2,6 +2,8 @@
 
 let currentEditingProduct = null;
 let currentEditingCategory = null;
+const ADMIN_TOKEN_KEY = 'antika_admin_token';
+const ADMIN_USER_KEY = 'antika_admin_user';
 
 // ============================================
 // INITIALIZATION
@@ -16,69 +18,76 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Check admin authentication
-function checkAdminAuth() {
-    const userData = localStorage.getItem('antika_user');
-    const token = localStorage.getItem('antika_token');
+async function checkAdminAuth() {
+    const token = localStorage.getItem(ADMIN_TOKEN_KEY);
 
-    if (userData && token) {
+    if (token) {
         try {
-            const user = JSON.parse(userData);
-            if (user.isAdmin) {
-                // Admin is logged in, show admin panel
+            const session = await API.verifyAdminSession();
+            if (session?.ok) {
+                const existingAdminUser = localStorage.getItem(ADMIN_USER_KEY);
+                if (!existingAdminUser) {
+                    localStorage.setItem(ADMIN_USER_KEY, JSON.stringify({
+                        name: 'Admin',
+                        username: session.user?.username || 'admin',
+                        isAdmin: true,
+                        loginTime: new Date().toISOString()
+                    }));
+                }
+
                 document.getElementById('login-modal').classList.add('hidden');
                 document.getElementById('admin-panel').classList.remove('hidden');
-                initAdmin();
+                await initAdmin();
                 return;
             }
         } catch (e) {
-            console.error('Error parsing user data:', e);
+            console.error('Admin session validation failed:', e);
         }
     }
-    
-    // Not logged in, show login modal
+
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    localStorage.removeItem(ADMIN_USER_KEY);
     document.getElementById('login-modal').classList.remove('hidden');
     document.getElementById('admin-panel').classList.add('hidden');
 }
 
 // Login handling
-document.getElementById('login-form')?.addEventListener('submit', function(e) {
+document.getElementById('login-form')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
 
-    // Admin credentials
-    const ADMIN_CREDENTIALS = {
-        username: 'BDR-FIRST',
-        password: 'B1-a2d3e4r5'
-    };
+    if (!username || !password) {
+        showNotification('الرجاء إدخال اسم المستخدم وكلمة المرور', 'error');
+        return;
+    }
 
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-        // Generate secure token
-        const token = 'admin_' + btoa(Date.now() + '_' + Math.random().toString(36).substr(2, 9));
-        
-        localStorage.setItem('antika_token', token);
-        localStorage.setItem('antika_user', JSON.stringify({ 
-            name: 'المسؤول', 
-            email: username, 
+    try {
+        const result = await API.adminLogin(username, password);
+        localStorage.setItem(ADMIN_TOKEN_KEY, result.token);
+        localStorage.setItem(ADMIN_USER_KEY, JSON.stringify({
+            ...(result.user || {}),
             isAdmin: true,
             loginTime: new Date().toISOString()
         }));
 
         document.getElementById('login-modal').classList.add('hidden');
         document.getElementById('admin-panel').classList.remove('hidden');
-        
-        showNotification('تم تسجيل الدخول بنجاح! 🎉');
-        initAdmin();
-    } else {
+        showNotification('تم تسجيل الدخول بنجاح!');
+        await initAdmin();
+        return;
+    } catch (error) {
+        console.error('Admin login error:', error);
         showNotification('اسم المستخدم أو كلمة المرور غير صحيحة!', 'error');
+        return;
     }
 });
 
 // Logout function
 function logout() {
-    localStorage.removeItem('antika_token');
-    localStorage.removeItem('antika_user');
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    localStorage.removeItem(ADMIN_USER_KEY);
     
     document.getElementById('login-modal').classList.remove('hidden');
     document.getElementById('admin-panel').classList.add('hidden');
@@ -822,13 +831,7 @@ async function deleteAllProducts() {
 
     try {
         console.log('🗑️ Deleting all products...');
-        const response = await fetch('http://localhost:3000/api/products', {
-            method: 'DELETE'
-        });
-        
-        if (!response.ok) throw new Error('Failed to delete all products');
-        
-        const result = await response.json();
+        const result = await API.deleteAllProducts();
         console.log('✅ All products deleted:', result);
         
         // Clear localStorage backup

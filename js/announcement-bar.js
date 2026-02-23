@@ -1,82 +1,97 @@
 // Announcement Bar Component - Unified Version
-
 class AntikaAnnouncementBar extends HTMLElement {
     constructor() {
         super();
-        this.text = 'ØªØ®ÙÙŠØ¶Ø§Øª ÙˆØ®ØµÙˆÙ…Ø§Øª ØªØµÙ„ Ø¥Ù„Ù‰ 50% ÙˆØªÙˆØµÙŠÙ„ Ù…Ø¬Ø§Ù†ÙŠ Ù„Ø¬Ù…ÙŠØ¹ Ù…Ø¯Ù† Ø§Ù„Ù…Ù…Ù„ÙƒØ©';
+        this.defaultText = 'ÊÎİíÖÇÊ æÎÕæãÇÊ ÊÕá Åáì 50% æÊæÕíá ãÌÇäí áÌãíÚ ãÏä ÇáããáßÉ';
+        this.text = this.defaultText;
         this.isVisible = true;
-        console.log('ğŸ“¢ Announcement bar: Constructor called');
+    }
+
+    getApiBase() {
+        return (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+            ? 'http://localhost:3000/api'
+            : '/api';
+    }
+
+    escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     async connectedCallback() {
-        console.log('ğŸ“¢ Announcement bar: Connected to DOM');
+        // Avoid visual flicker while fetching settings.
+        this.style.display = 'none';
         await this.loadSettings();
-        
-        console.log('ğŸ“¢ Announcement bar: isVisible =', this.isVisible);
-        
+
         if (!this.isVisible) {
-            console.log('ğŸ“¢ Announcement bar: Hiding (isVisible = false)');
+            this.innerHTML = '';
             this.style.display = 'none';
             return;
         }
-        
+
         this.render();
-        console.log('ğŸ“¢ Announcement bar: Rendered');
+        this.style.display = 'block';
     }
 
     async loadSettings() {
         try {
-            const res = await fetch(`http://localhost:3000/api/announcing?t=${Date.now()}`);
-            const data = await res.json();
-            
-            if (data.text) this.text = data.text;
-            this.isVisible = data.isVisible !== false;
-            
-            console.log('ğŸ“¢ Announcement bar settings loaded:', { 
-                isVisible: this.isVisible, 
-                text: this.text 
+            const res = await fetch(`${this.getApiBase()}/announcing?t=${Date.now()}`, {
+                cache: 'no-store'
             });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+
+            this.text = (typeof data.text === 'string' && data.text.trim()) ? data.text.trim() : this.defaultText;
+            this.isVisible = data.isVisible !== false;
         } catch (e) {
-            console.error('ğŸ“¢ Announcement bar error:', e);
-            console.log('Using default announcement settings');
+            // Keep safe fallback so the store does not break.
+            this.text = this.defaultText;
+            this.isVisible = true;
+            console.error('Announcement bar fallback mode:', e.message);
         }
     }
 
     render() {
-        const item = this.text + ' â– ';
-        const content = item.repeat(100);
-        
+        const item = `${this.escapeHtml(this.text)} \u2022 `;
+        const content = item.repeat(70);
+
         this.innerHTML = `
             <style>
                 .announcement-bar {
                     width: 100%;
                     overflow: hidden;
                     background: #D6C1A6;
-                    color: white;
+                    color: #fff;
                     padding: 10px 0;
                     font-size: 14px;
+                    line-height: 1;
                 }
                 .announcement-track {
                     display: inline-block;
                     white-space: nowrap;
                     animation: announcement-scroll 60s linear infinite;
                     font-family: 'Tajawal', sans-serif;
+                    will-change: transform;
                 }
                 @keyframes announcement-scroll {
                     0% { transform: translateX(0); }
                     100% { transform: translateX(-50%); }
                 }
-                @media(max-width:768px){
+                @media (max-width: 768px) {
                     .announcement-bar { font-size: 12px; padding: 8px 0; }
                 }
             </style>
-            <div class="announcement-bar">
+            <div class="announcement-bar" role="status" aria-label="Store announcements">
                 <div class="announcement-track">${content}${content}</div>
             </div>
         `;
     }
 }
 
-// Register
-customElements.define('antika-announcement-bar', AntikaAnnouncementBar);
-console.log('ğŸ“¢ Announcement bar component registered');
+if (!customElements.get('antika-announcement-bar')) {
+    customElements.define('antika-announcement-bar', AntikaAnnouncementBar);
+}
