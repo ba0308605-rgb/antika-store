@@ -578,6 +578,8 @@ app.delete('/api/categories/:id', async (req, res) => {
 // Get cart
 app.get('/api/cart', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Cart fetch')) return;
+
     const sessionId = getSessionId(req);
     let cart = await Cart.findOne({ sessionId });
     
@@ -596,6 +598,8 @@ app.get('/api/cart', async (req, res) => {
 // Add to cart
 app.post('/api/cart', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Cart add')) return;
+
     const sessionId = getSessionId(req);
     const { productId, name, price, image, quantity = 1 } = req.body;
     
@@ -624,6 +628,8 @@ app.post('/api/cart', async (req, res) => {
 // Update cart item
 app.put('/api/cart/:productId', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Cart update')) return;
+
     const sessionId = getSessionId(req);
     const { quantity } = req.body;
     
@@ -651,6 +657,8 @@ app.put('/api/cart/:productId', async (req, res) => {
 // Delete cart item
 app.delete('/api/cart/:productId', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Cart delete item')) return;
+
     const sessionId = getSessionId(req);
     
     const cart = await Cart.findOne({ sessionId });
@@ -670,6 +678,8 @@ app.delete('/api/cart/:productId', async (req, res) => {
 // Clear cart
 app.delete('/api/cart', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Cart clear')) return;
+
     const sessionId = getSessionId(req);
     await Cart.findOneAndUpdate({ sessionId }, { items: [], updatedAt: new Date() });
     res.json({ message: 'Cart cleared' });
@@ -686,6 +696,8 @@ app.delete('/api/cart', async (req, res) => {
 // Get all orders
 app.get('/api/orders', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Orders fetch')) return;
+
     const orders = await Order.find().sort({ date: -1 });
     res.json(orders);
   } catch (err) {
@@ -697,6 +709,8 @@ app.get('/api/orders', async (req, res) => {
 // Get single order
 app.get('/api/orders/:id', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Order fetch')) return;
+
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
     res.json(order);
@@ -709,6 +723,8 @@ app.get('/api/orders/:id', async (req, res) => {
 // Create order
 app.post('/api/orders', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Order create')) return;
+
     const order = new Order(req.body);
     await order.save();
     res.json(order);
@@ -721,6 +737,8 @@ app.post('/api/orders', async (req, res) => {
 // Update order
 app.put('/api/orders/:id', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Order update')) return;
+
     const order = await Order.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!order) return res.status(404).json({ error: 'Order not found' });
     res.json(order);
@@ -733,6 +751,8 @@ app.put('/api/orders/:id', async (req, res) => {
 // Delete order
 app.delete('/api/orders/:id', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Order delete')) return;
+
     const order = await Order.findByIdAndDelete(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
     res.json({ message: 'Order deleted' });
@@ -749,6 +769,8 @@ app.delete('/api/orders/:id', async (req, res) => {
 // Get settings
 app.get('/api/settings', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Settings fetch')) return;
+
     const settings = await Settings.find();
     const result = {};
     settings.forEach(s => {
@@ -764,6 +786,8 @@ app.get('/api/settings', async (req, res) => {
 // Update settings
 app.put('/api/settings', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Settings update')) return;
+
     for (const [key, value] of Object.entries(req.body)) {
       await Settings.findOneAndUpdate(
         { key },
@@ -781,6 +805,8 @@ app.put('/api/settings', async (req, res) => {
 // Get announcing text
 app.get('/api/announcing', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Announcing fetch')) return;
+
     const setting = await Settings.findOne({ key: 'announcing' });
     res.json({ 
       text: setting?.value?.text || '🚚 تخفيضات وخصومات تصل إلى 50% وتوصيل مجاني لجميع مدن المملكة',
@@ -795,6 +821,8 @@ app.get('/api/announcing', async (req, res) => {
 // Update announcing text
 app.put('/api/announcing', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Announcing update')) return;
+
     const { text, isVisible } = req.body;
     const updateData = { key: 'announcing' };
     
