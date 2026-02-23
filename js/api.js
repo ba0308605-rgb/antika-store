@@ -6,26 +6,6 @@ const API = {
         ? 'http://localhost:3000/api'
         : '/api',
 
-    async _loadDbJson() {
-        const basePath = window.location.pathname.endsWith('/')
-            ? window.location.pathname
-            : window.location.pathname.replace(/\/[^/]*$/, '/');
-
-        const candidates = Array.from(new Set([
-            new URL('db.json', window.location.href).toString(),
-            `${window.location.origin}${basePath}db.json`,
-            `${window.location.origin}/db.json`
-        ]));
-
-        for (const url of candidates) {
-            try {
-                const resp = await fetch(url, { cache: 'no-store' });
-                if (resp.ok) return await resp.json();
-            } catch (e) {}
-        }
-        return null;
-    },
-
     // ============================================
     // PRODUCTS
     // ============================================
@@ -45,70 +25,10 @@ const API = {
             const data = await response.json();
             // Normalize products to ensure they all have an 'id' field
             const normalizedData = Array.isArray(data) ? data.map(p => this._normalizeProduct(p)) : data;
-            // Save to localStorage as backup
-            localStorage.setItem('products_backup', JSON.stringify(normalizedData));
             return normalizedData;
         } catch (error) {
             console.error('Error fetching products:', error);
-            // Fallback to localStorage
-            const stored = localStorage.getItem('products_backup');
-            if (stored) {
-                let products = JSON.parse(stored);
-                // Normalize products
-                products = products.map(p => this._normalizeProduct(p));
-                // Apply filters locally if using fallback
-                if (discount) {
-                    products = products.filter(p => p.discountPrice && p.discountPrice < p.price);
-                }
-                if (category) {
-                    products = products.filter(p => 
-                        (p.categories && p.categories.includes(category)) ||
-                        p.category === category
-                    );
-                }
-                if (search) {
-                    const searchLower = search.toLowerCase();
-                    products = products.filter(p => 
-                        (p.name && p.name.toLowerCase().includes(searchLower)) ||
-                        (p.description && p.description.toLowerCase().includes(searchLower))
-                    );
-                }
-                return products;
-            }
-
-            // Try loading db.json when running without backend (e.g., GitHub Pages)
-            try {
-                const json = await this._loadDbJson();
-                if (json) {
-                    let products = Array.isArray(json.products) ? json.products : (Array.isArray(json) ? json : []);
-                    products = products.map(p => this._normalizeProduct(p));
-
-                    if (discount) {
-                        products = products.filter(p => p.discountPrice && p.discountPrice < p.price);
-                    }
-                    if (category) {
-                        products = products.filter(p => 
-                            (p.categories && p.categories.includes(category)) ||
-                            p.category === category
-                        );
-                    }
-                    if (search) {
-                        const searchLower = search.toLowerCase();
-                        products = products.filter(p => 
-                            (p.name && p.name.toLowerCase().includes(searchLower)) ||
-                            (p.description && p.description.toLowerCase().includes(searchLower))
-                        );
-                    }
-
-                    // Save to backup and return
-                    localStorage.setItem('products_backup', JSON.stringify(products));
-                    return products;
-                }
-            } catch (e) {
-                // ignore
-            }
-
-            return [];
+            throw error;
         }
     },
 
@@ -121,25 +41,6 @@ const API = {
             return this._normalizeProduct(product);
         } catch (error) {
             console.error('Error fetching product from API:', error);
-            // Fallback: search in localStorage backup
-            try {
-                const stored = localStorage.getItem('products_backup');
-                if (stored) {
-                    const products = JSON.parse(stored);
-                    const product = products.find(p => (p._id || p.id) === id);
-                    if (product) {
-                        return this._normalizeProduct(product);
-                    }
-                }
-                const json = await this._loadDbJson();
-                if (json) {
-                    const products = Array.isArray(json.products) ? json.products : (Array.isArray(json) ? json : []);
-                    const product = products.find(p => String(p._id || p.id) === String(id));
-                    if (product) return this._normalizeProduct(product);
-                }
-            } catch (e) {
-                console.error('Error reading from localStorage:', e);
-            }
             return null;
         }
     },
@@ -180,16 +81,6 @@ const API = {
             return await response.json();
         } catch (error) {
             console.error('Error updating product:', error);
-            // Fallback: try to update in localStorage for demo
-            try {
-                const products = JSON.parse(localStorage.getItem('products') || '[]');
-                const index = products.findIndex(p => (p._id || p.id) === id);
-                if (index !== -1) {
-                    products[index] = {...products[index], ...productData};
-                    localStorage.setItem('products', JSON.stringify(products));
-                    return {success: true, message: 'Product updated in localStorage'};
-                }
-            } catch (e) {}
             throw error;
         }
     },
@@ -218,23 +109,6 @@ const API = {
             return await response.json();
         } catch (error) {
             console.error('Error fetching categories:', error);
-            // Fallback to localStorage
-            try {
-                const stored = localStorage.getItem('categories_backup');
-                if (stored) return JSON.parse(stored);
-            } catch (e) {}
-
-            // Try loading db.json when running without backend (e.g., GitHub Pages)
-            try {
-                const json = await this._loadDbJson();
-                if (json && Array.isArray(json.categories)) {
-                    localStorage.setItem('categories_backup', JSON.stringify(json.categories));
-                    return json.categories;
-                }
-            } catch (e) {
-                // ignore
-            }
-
             return [];
         }
     },
@@ -565,17 +439,9 @@ async getCart() {
         try {
             const response = await fetch(`${this.baseURL}/pages`);
             if (!response.ok) throw new Error('Failed to fetch footer pages');
-            const data = await response.json();
-            // Also save to localStorage as backup
-            localStorage.setItem('footer_pages', JSON.stringify(data));
-            return data;
+            return await response.json();
         } catch (error) {
             console.error('Error fetching footer pages:', error);
-            // Fallback to localStorage
-            const stored = localStorage.getItem('footer_pages');
-            if (stored) {
-                return JSON.parse(stored);
-            }
             return {};
         }
     },
@@ -588,20 +454,10 @@ async getCart() {
                 body: JSON.stringify(pageData)
             });
             if (!response.ok) throw new Error('Failed to update footer page');
-            // Update localStorage as well
-            const stored = localStorage.getItem('footer_pages') || '{}';
-            const pages = JSON.parse(stored);
-            pages[pageId] = pageData;
-            localStorage.setItem('footer_pages', JSON.stringify(pages));
             return await response.json();
         } catch (error) {
             console.error('Error updating footer page:', error);
-            // Fallback: save to localStorage only
-            const stored = localStorage.getItem('footer_pages') || '{}';
-            const pages = JSON.parse(stored);
-            pages[pageId] = pageData;
-            localStorage.setItem('footer_pages', JSON.stringify(pages));
-            return {success: true, message: 'Saved to localStorage (API unavailable)'};
+            throw error;
         }
     },
 

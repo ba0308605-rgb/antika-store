@@ -617,20 +617,6 @@ const Auth = {
                     console.warn('Could not fetch product details for wishlist:', e);
                 }
 
-                // Fallback to localStorage backup
-                if ((!productName || productImage === undefined || productPrice === undefined) && localStorage.getItem('products_backup')) {
-                    try {
-                        const backup = JSON.parse(localStorage.getItem('products_backup')) || [];
-                        const prod = backup.find(p => (p._id || p.id) == productId);
-                        if (prod) {
-                            productName = productName || prod.name || prod.title || '';
-                            productImage = productImage === undefined ? (Array.isArray(prod.images) ? prod.images[0] : prod.image || '') : productImage;
-                            productPrice = productPrice === undefined ? (prod.discountPrice || prod.price || null) : productPrice;
-                        }
-                    } catch (e) {
-                        console.warn('Error reading products_backup for wishlist:', e);
-                    }
-                }
             }
 
             // Check if product already in wishlist

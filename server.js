@@ -4,12 +4,11 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 const app = express();
+mongoose.set('bufferCommands', false);
 
 // 📧 Email Configuration (Gmail SMTP with Nodemailer)
 const emailTransporter = nodemailer.createTransport({
@@ -30,41 +29,23 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// JSON DB fallback helpers
-const DB_FILE = path.join(__dirname, 'db.json');
-
-function readJsonDB() {
-  try {
-    if (fs.existsSync(DB_FILE)) {
-      return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-    }
-  } catch (e) {
-    console.error('Error reading db.json:', e);
-  }
-  return { products: [], categories: [], cart: [], orders: [], pages: {}, settings: {}, users: [] };
-}
-
-function writeJsonDB(data) {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (e) {
-    console.error('Error writing db.json:', e);
-  }
-}
-
 // Check MongoDB connection status
 let mongoConnected = false;
 function isMongoConnected() {
   return mongoose.connection.readyState === 1;
 }
 
+function requireMongo(res, action = 'Operation') {
+  if (isMongoConnected()) return true;
+  res.status(503).json({
+    error: `${action} unavailable: MongoDB is disconnected.`,
+    mongodb: 'disconnected'
+  });
+  return false;
+}
+
 // Helper function to find product by ID (supports both ObjectId and custom id)
-async function findByIdOrFallback(Model, id) {
-  if (!isMongoConnected()) {
-    const db = readJsonDB();
-    return db.products.find(p => p._id === id || p.id === id);
-  }
-  
+async function findByIdOrCustom(Model, id) {
   let doc = null;
   
   // Try MongoDB ObjectId first (only if format is valid)
@@ -91,7 +72,11 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.static('.'));
 
 // MongoDB Connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/antika_store';
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+  console.error('Missing MONGODB_URI in environment.');
+  process.exit(1);
+}
 console.log('🔌 Attempting to connect to MongoDB:', MONGODB_URI);
 
 mongoose.connect(MONGODB_URI)
@@ -102,7 +87,6 @@ mongoose.connect(MONGODB_URI)
   })
   .catch(err => {
     console.error('❌ MongoDB Connection Error:', err.message);
-    console.log('⚠️ Running in JSON fallback mode');
     mongoConnected = false;
   });
 
@@ -113,6 +97,8 @@ mongoose.connection.on('connected', async () => {
   
   // Show database stats
   try {
+    await initData();
+
     const collections = await mongoose.connection.db.listCollections().toArray();
     console.log('📁 Collections in database:', collections.map(c => c.name).join(', '));
     
@@ -282,32 +268,8 @@ function getSessionId(req) {
 // Get all products
 app.get('/api/products', async (req, res) => {
   try {
-    // Use JSON fallback if MongoDB not connected
-    if (!isMongoConnected()) {
-      const db = readJsonDB();
-      let products = db.products || [];
-      
-      const { category, search, featured, discount } = req.query;
-      
-      if (category) {
-        products = products.filter(p => 
-          (p.categories && p.categories.includes(category)) ||
-          p.category === category
-        );
-      }
-      if (featured === 'true') products = products.filter(p => p.isFeatured);
-      // ✅ Only show products with actual discount (discountPrice < price)
-      if (discount === 'true') products = products.filter(p => p.discountPrice && p.discountPrice < p.price);
-      if (search) {
-        const searchLower = search.toLowerCase();
-        products = products.filter(p => 
-          (p.name && p.name.toLowerCase().includes(searchLower)) ||
-          (p.description && p.description.toLowerCase().includes(searchLower))
-        );
-      }
-      
-      return res.json(products);
-    }
+    if (!requireMongo(res, 'Products fetch')) return;
+
     
     const { category, search, featured, discount } = req.query;
     let query = {};
@@ -349,16 +311,11 @@ app.get('/api/products', async (req, res) => {
 // Get single product
 app.get('/api/products/:id', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Product fetch')) return;
+
     const { id } = req.params;
     console.log('🔍 Looking for product with ID:', id);
     
-    // Use JSON fallback if MongoDB not connected
-    if (!isMongoConnected()) {
-      const db = readJsonDB();
-      const product = db.products.find(p => p._id === id || p.id === id);
-      if (!product) return res.status(404).json({ error: 'Product not found' });
-      return res.json(product);
-    }
     
     // Try to find by _id (support both ObjectId and string)
     let product = null;
@@ -390,19 +347,8 @@ app.get('/api/products/:id', async (req, res) => {
 // Create product
 app.post('/api/products', async (req, res) => {
   try {
-    // Use JSON fallback if MongoDB not connected
-    if (!isMongoConnected()) {
-      const db = readJsonDB();
-      const newProduct = {
-        ...req.body,
-        _id: 'prod_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      db.products.push(newProduct);
-      writeJsonDB(db);
-      return res.json(newProduct);
-    }
+    if (!requireMongo(res, 'Product create')) return;
+
     
     const product = new Product(req.body);
     await product.save();
@@ -418,16 +364,7 @@ app.delete('/api/users/:email', async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();
 
-    if (!isMongoConnected()) {
-      const db = readJsonDB();
-      // Remove orders for this email
-      db.orders = (db.orders || []).filter(o => (o.customerEmail || '').toLowerCase() !== email);
-      // Remove user records
-      db.users = (db.users || []).filter(u => (u.email || '').toLowerCase() !== email);
-      writeJsonDB(db);
-      return res.json({ success: true, message: 'User and related orders removed (json mode)' });
-    }
-
+    
     // MongoDB mode
     await Order.deleteMany({ customerEmail: { $regex: new RegExp('^' + email + '$', 'i') } });
     await User.deleteOne({ email: { $regex: new RegExp('^' + email + '$', 'i') } });
@@ -442,19 +379,11 @@ app.delete('/api/users/:email', async (req, res) => {
 // Update product
 app.put('/api/products/:id', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Product update')) return;
+
     const { id } = req.params;
     console.log('📝 Updating product with ID:', id);
     
-    // Use JSON fallback if MongoDB not connected
-    if (!isMongoConnected()) {
-      const db = readJsonDB();
-      const index = db.products.findIndex(p => p._id === id || p.id === id);
-      if (index === -1) return res.status(404).json({ error: 'Product not found' });
-      
-      db.products[index] = { ...db.products[index], ...req.body, _id: id, updatedAt: new Date() };
-      writeJsonDB(db);
-      return res.json(db.products[index]);
-    }
     
     req.body.updatedAt = new Date();
     
@@ -486,27 +415,17 @@ app.put('/api/products/:id', async (req, res) => {
 // Delete product (supports both MongoDB ObjectId and numeric id)
 app.delete('/api/products/:id', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Product delete')) return;
+
     let product;
     const rawId = req.params.id;
     const id = rawId.trim();
     
     console.log('🗑️ Delete request for product ID:', id, '| Length:', id.length);
     
-    // JSON fallback first (always try this if MongoDB might not find it)
-    if (!isMongoConnected()) {
-      console.log('   Using JSON fallback...');
-      const db = readJsonDB();
-      const index = db.products.findIndex(p => (p._id === id || p.id === id));
-      if (index !== -1) {
-        product = db.products.splice(index, 1)[0];
-        writeJsonDB(db);
-        console.log('   ✅ Deleted from JSON');
-        return res.json({ message: 'Product deleted successfully' });
-      }
-    }
     
     // Try to find product first to see what type of ID it has
-    const foundProduct = await findByIdOrFallback(Product, id);
+    const foundProduct = await findByIdOrCustom(Product, id);
     if (foundProduct) {
       // Found it - now delete using the correct method
       const foundId = foundProduct._id || foundProduct.id;
@@ -537,22 +456,9 @@ app.delete('/api/products/:id', async (req, res) => {
 // 🧹 DELETE ALL PRODUCTS - Admin only
 app.delete('/api/products', async (req, res) => {
   try {
-    console.log('🗑️ Deleting ALL products...');
-    
-    // Clear from MongoDB
-    if (isMongoConnected()) {
-      const result = await Product.deleteMany({});
-      console.log(`   ✅ Deleted ${result.deletedCount} products from MongoDB`);
-    }
-    
-    // Clear from JSON fallback
-    const db = readJsonDB();
-    const count = db.products.length;
-    db.products = [];
-    writeJsonDB(db);
-    console.log(`   ✅ Deleted ${count} products from JSON`);
-    
-    res.json({ message: `All products deleted successfully`, count: count });
+    if (!requireMongo(res, 'Delete all products')) return;
+    const result = await Product.deleteMany({});
+    return res.json({ message: 'All products deleted successfully', count: result.deletedCount });
   } catch (err) {
     console.error('❌ Error deleting all products:', err);
     res.status(500).json({ error: err.message });
@@ -599,16 +505,6 @@ app.post('/api/products/bulk-discount', async (req, res) => {
 // User Statistics API
 app.get('/api/users/stats', async (req, res) => {
   try {
-    // Use JSON fallback if MongoDB not connected
-    if (!isMongoConnected()) {
-      // Read from localStorage backup (users are stored in localStorage, not in db.json)
-      // Return empty stats for now
-      return res.json({
-        genderStats: { male: 0, female: 0, unknown: 0 },
-        ageStats: { under18: 0, age18to25: 0, age26to35: 0, age36to50: 0, over50: 0, unknown: 0 },
-        totalUsers: 0
-      });
-    }
     
     // For now, return sample data structure
     // In production, this would query a User collection
@@ -630,11 +526,6 @@ app.get('/api/users/stats', async (req, res) => {
 // Get all categories
 app.get('/api/categories', async (req, res) => {
   try {
-    // Use JSON fallback if MongoDB not connected
-    if (!isMongoConnected()) {
-      const db = readJsonDB();
-      return res.json(db.categories || []);
-    }
     
     const categories = await Category.find();
     res.json(categories);
@@ -936,12 +827,7 @@ app.put('/api/announcing', async (req, res) => {
 app.get('/api/users/:email', async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();
-    if (!isMongoConnected()) {
-      const db = readJsonDB();
-      const user = (db.users || []).find(u => (u.email || '').toLowerCase() === email);
-      return res.json(user || {});
-    }
-
+    
     const user = await User.findOne({ email: email });
     res.json(user || {});
   } catch (err) {
@@ -956,21 +842,7 @@ app.put('/api/users/:email', async (req, res) => {
     const email = decodeURIComponent(req.params.email).toLowerCase();
     const { name, phone } = req.body;
 
-    if (!isMongoConnected()) {
-      const db = readJsonDB();
-      db.users = db.users || [];
-      let user = db.users.find(u => (u.email || '').toLowerCase() === email);
-      if (!user) {
-        user = { email, name: name || '', phone: phone || '', addresses: [] };
-        db.users.push(user);
-      } else {
-        user.name = name || user.name;
-        user.phone = phone || user.phone;
-      }
-      writeJsonDB(db);
-      return res.json(user);
-    }
-
+    
     const user = await User.findOneAndUpdate(
       { email },
       { $set: { name: name || '', phone: phone || '' } },
@@ -989,20 +861,7 @@ app.post('/api/users/:email/addresses', async (req, res) => {
     const email = decodeURIComponent(req.params.email).toLowerCase();
     const { label, address, location } = req.body;
 
-    if (!isMongoConnected()) {
-      const db = readJsonDB();
-      db.users = db.users || [];
-      let user = db.users.find(u => (u.email || '').toLowerCase() === email);
-      if (!user) {
-        user = { email, name: '', phone: '', addresses: [] };
-        db.users.push(user);
-      }
-      user.addresses = user.addresses || [];
-      user.addresses.push({ label, address, location });
-      writeJsonDB(db);
-      return res.json(user);
-    }
-
+    
     let user = await User.findOne({ email });
     if (!user) {
       user = new User({ email, name: '', phone: '', addresses: [] });
@@ -1024,17 +883,7 @@ app.put('/api/users/:email/addresses/:idx', async (req, res) => {
     const idx = parseInt(req.params.idx);
     const { label, address, location } = req.body;
 
-    if (!isMongoConnected()) {
-      const db = readJsonDB();
-      db.users = db.users || [];
-      const user = db.users.find(u => (u.email || '').toLowerCase() === email);
-      if (!user) return res.status(404).json({ error: 'User not found' });
-      if (!user.addresses || !user.addresses[idx]) return res.status(404).json({ error: 'Address not found' });
-      user.addresses[idx] = { label, address, location };
-      writeJsonDB(db);
-      return res.json(user);
-    }
-
+    
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (!user.addresses || !user.addresses[idx]) return res.status(404).json({ error: 'Address not found' });
@@ -1053,17 +902,7 @@ app.delete('/api/users/:email/addresses/:idx', async (req, res) => {
     const email = decodeURIComponent(req.params.email).toLowerCase();
     const idx = parseInt(req.params.idx);
 
-    if (!isMongoConnected()) {
-      const db = readJsonDB();
-      db.users = db.users || [];
-      const user = db.users.find(u => (u.email || '').toLowerCase() === email);
-      if (!user) return res.status(404).json({ error: 'User not found' });
-      if (!user.addresses || !user.addresses[idx]) return res.status(404).json({ error: 'Address not found' });
-      user.addresses.splice(idx,1);
-      writeJsonDB(db);
-      return res.json(user);
-    }
-
+    
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (!user.addresses || !user.addresses[idx]) return res.status(404).json({ error: 'Address not found' });
@@ -1176,25 +1015,17 @@ app.post('/api/verify-email-code', async (req, res) => {
     // ✅ Code is correct! Mark email as verified and clear OTP
     otpStore.delete(email);
 
+    if (!requireMongo(res, 'Email verification update')) return;
+
     // If user exists in MongoDB, mark as verified
-    if (isMongoConnected()) {
-      try {
-        const user = await User.findOne({ email });
-        if (user) {
-          user.emailVerified = true;
-          await user.save();
-        }
-      } catch (e) {
-        console.log('Note: Could not update user verification status in MongoDB:', e.message);
-      }
-    } else {
-      // Update in db.json
-      const db = readJsonDB();
-      const user = db.users?.find(u => u.email === email);
+    try {
+      const user = await User.findOne({ email });
       if (user) {
         user.emailVerified = true;
-        writeJsonDB(db);
+        await user.save();
       }
+    } catch (e) {
+      console.log('Note: Could not update user verification status in MongoDB:', e.message);
     }
 
     res.json({ success: true, message: 'Email verified successfully', email });
@@ -1209,15 +1040,7 @@ app.get('/api/users/:email/location', async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();
 
-    if (!isMongoConnected()) {
-      const db = readJsonDB();
-      db.users = db.users || [];
-      const user = db.users.find(u => (u.email || '').toLowerCase() === email);
-      const loc = user?.defaultLocation || null;
-      const label = user?.locationLabel || 'موقعي';
-      return res.json({ location: loc, label });
-    }
-
+    
     const user = await User.findOne({ email });
     const loc = user?.defaultLocation || null;
     const label = user?.locationLabel || 'موقعي';
@@ -1234,20 +1057,7 @@ app.put('/api/users/:email/location', async (req, res) => {
     const email = decodeURIComponent(req.params.email).toLowerCase();
     const { lat, lng, label = 'موقعي' } = req.body;
 
-    if (!isMongoConnected()) {
-      const db = readJsonDB();
-      db.users = db.users || [];
-      let user = db.users.find(u => (u.email || '').toLowerCase() === email);
-      if (!user) {
-        user = { email, name: '', phone: '', addresses: [], defaultLocation: null, locationLabel: 'موقعي' };
-        db.users.push(user);
-      }
-      user.defaultLocation = { lat, lng };
-      user.locationLabel = label || 'موقعي';
-      writeJsonDB(db);
-      return res.json({ success: true, location: user.defaultLocation, label: user.locationLabel });
-    }
-
+    
     const user = await User.findOneAndUpdate(
       { email },
       { 
@@ -1268,17 +1078,7 @@ app.delete('/api/users/:email/location', async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();
 
-    if (!isMongoConnected()) {
-      const db = readJsonDB();
-      db.users = db.users || [];
-      const user = db.users.find(u => (u.email || '').toLowerCase() === email);
-      if (!user) return res.status(404).json({ error: 'User not found' });
-      user.defaultLocation = null;
-      user.locationLabel = 'موقعي';
-      writeJsonDB(db);
-      return res.json({ success: true });
-    }
-
+    
     await User.findOneAndUpdate(
       { email },
       { defaultLocation: null, locationLabel: 'موقعي' },
@@ -1291,50 +1091,34 @@ app.delete('/api/users/:email/location', async (req, res) => {
   }
 });
 
-// Get footer pages - supports MongoDB and file fallback
+// Get footer pages
 app.get('/api/pages', async (req, res) => {
   try {
-    if (isMongoConnected()) {
-      const pages = await Settings.find({ key: { $in: ['about', 'returns', 'terms', 'faq'] } });
-      const result = {};
-      pages.forEach(p => result[p.key] = p.value);
-      res.json(result);
-    } else {
-      // Fallback to db.json
-      const db = readJsonDB();
-      res.json(db.pages || {});
-    }
-    } catch (err) {
+    if (!requireMongo(res, 'Pages fetch')) return;
+
+    const pages = await Settings.find({ key: { $in: ['about', 'returns', 'terms', 'faq'] } });
+    const result = {};
+    pages.forEach(p => result[p.key] = p.value);
+    res.json(result);
+  } catch (err) {
     console.error('Error fetching pages:', err);
-    // Final fallback to db.json
-    try {
-      const db = readJsonDB();
-      res.json(db.pages || {});
-    } catch (fallbackErr) {
-      res.status(500).json({ error: err.message });
-    }
+    res.status(500).json({ error: err.message });
   }
 });
 
-// Update footer page - supports MongoDB and file fallback
+// Update footer page
 app.put('/api/pages/:pageId', async (req, res) => {
   try {
+    if (!requireMongo(res, 'Page update')) return;
+
     const { pageId } = req.params;
     const { title, content } = req.body;
     
-    if (isMongoConnected()) {
-      await Settings.findOneAndUpdate(
-        { key: pageId },
-        { key: pageId, value: { title, content } },
-        { upsert: true }
-      );
-    } else {
-      // Fallback to db.json
-      const db = readJsonDB();
-      if (!db.pages) db.pages = {};
-      db.pages[pageId] = { title, content };
-      writeJsonDB(db);
-    }
+    await Settings.findOneAndUpdate(
+      { key: pageId },
+      { key: pageId, value: { title, content } },
+      { upsert: true }
+    );
     
     res.json({ message: 'Page updated', page: { title, content } });
   } catch (err) {
@@ -1397,16 +1181,12 @@ async function initData() {
 app.get('/api/status', async (req, res) => {
   try {
     const mongoStatus = isMongoConnected() ? 'connected' : 'disconnected';
-    let productCount = 0;
-    let categoryCount = 0;
-    
+    let productCount = null;
+    let categoryCount = null;
+
     if (isMongoConnected()) {
       productCount = await Product.countDocuments();
       categoryCount = await Category.countDocuments();
-    } else {
-      const db = readJsonDB();
-      productCount = (db.products || []).length;
-      categoryCount = (db.categories || []).length;
     }
     
     res.json({
@@ -1435,7 +1215,11 @@ const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📡 API available at http://localhost:${PORT}/api`);
-  await initData();
+  if (isMongoConnected()) {
+    await initData();
+  } else {
+    console.log('Skipping initData until MongoDB is connected');
+  }
 });
 
 // Handle EADDRINUSE error - kill existing process and retry
@@ -1453,7 +1237,9 @@ server.on('error', async (err) => {
           app.listen(ALT_PORT, async () => {
             console.log(`🚀 Server running on alternative port ${ALT_PORT}`);
             console.log(`📡 API available at http://localhost:${ALT_PORT}/api`);
-            await initData();
+            if (isMongoConnected()) {
+              await initData();
+            }
           });
         } else {
           console.log(`✅ Port ${PORT} freed. Retrying...`);
@@ -1461,7 +1247,9 @@ server.on('error', async (err) => {
             app.listen(PORT, async () => {
               console.log(`🚀 Server running on port ${PORT}`);
               console.log(`📡 API available at http://localhost:${PORT}/api`);
-              await initData();
+              if (isMongoConnected()) {
+                await initData();
+              }
             });
           }, 1000);
         }
@@ -1473,3 +1261,5 @@ server.on('error', async (err) => {
     console.error('Server error:', err);
   }
 });
+
+
