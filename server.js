@@ -362,8 +362,7 @@ app.get('/api/products', async (req, res) => {
     }
     if (featured === 'true') query.isFeatured = true;
     if (discount === 'true') {
-      // ✅ Only show products with actual discount (discountPrice < price)
-      // Use $expr to compare fields: discountPrice < price
+      query.discountPrice = { $type: 'number', $ne: null };
       query.$expr = { $lt: ["$discountPrice", "$price"] };
     }
     if (search) {
