@@ -219,14 +219,14 @@
                 <a href="index.html" class="breadcrumb-item text-antika-gold hover:text-antika-pink-dark transition font-semibold">
                     <i class="fas fa-home ml-1"></i> الرئيسية
                 </a>
-                <span class="text-gray-500">المنتجات</span>
+                <span id="page-breadcrumb-label" class="text-gray-500">المنتجات</span>
             </div>
         </div>
     </nav>
 
     <!-- Products Content -->
     <div class="container mx-auto px-4 py-8">
-        <h2 class="text-3xl font-bold text-antika-gold mb-8">المنتجات</h2>
+        <h2 id="page-heading-label" class="text-3xl font-bold text-antika-gold mb-8">المنتجات</h2>
 
         <!-- Filters -->
         <div class="bg-white rounded-xl shadow p-4 mb-8 flex flex-col md:flex-row gap-4">
@@ -353,30 +353,39 @@
             }
         }
 
+        function applyPageMode(isOffersView) {
+            const heading = document.getElementById('page-heading-label');
+            const breadcrumb = document.getElementById('page-breadcrumb-label');
+
+            if (isOffersView) {
+                if (heading) heading.textContent = 'العروض';
+                if (breadcrumb) breadcrumb.textContent = 'العروض';
+                document.title = 'العروض | أنتيكا ستور';
+            } else {
+                if (heading) heading.textContent = 'المنتجات';
+                if (breadcrumb) breadcrumb.textContent = 'المنتجات';
+                document.title = 'المنتجات | أنتيكا ستور';
+            }
+        }
+
         // Load products
         async function loadProducts() {
             try {
                 const urlParams = new URLSearchParams(window.location.search);
                 const category = urlParams.get('category');
                 const search = urlParams.get('search');
-                const discount = urlParams.get('discount');
+                const isOffersView = urlParams.get('discount') === 'true';
 
-                let products;
-                if (search) {
-                    // Search locally after fetching all products
-                    products = await API.getProducts();
-                    products = products.filter(p => 
-                        p.name.toLowerCase().includes(search.toLowerCase()) ||
-                        p.description.toLowerCase().includes(search.toLowerCase())
-                    );
-                } else if (category) {
-                    products = await API.getProducts(category, null, null);
+                applyPageMode(isOffersView);
+
+                const products = await API.getProducts(
+                    category || null,
+                    search || null,
+                    isOffersView ? true : null
+                );
+
+                if (category) {
                     document.getElementById('category-filter').value = category;
-                } else if (discount) {
-                    // âœ… Use API with discount parameter
-                    products = await API.getProducts(null, null, true);
-                } else {
-                    products = await API.getProducts();
                 }
 
                 allProducts = products;
