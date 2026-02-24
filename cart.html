@@ -232,6 +232,97 @@
             justify-content: center;
             font-size: 20px;
         }
+
+        /* Hybrid Checkout Modal */
+        .checkout-shell {
+            width: 100%;
+            max-width: 1100px;
+            max-height: 92vh;
+            overflow: hidden;
+            border-radius: 20px;
+            background: #fff;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.18);
+        }
+        .checkout-layout {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            min-height: 0;
+            max-height: calc(92vh - 78px);
+        }
+        .checkout-main {
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .checkout-summary {
+            border-right: 1px solid #eee;
+            background: #fcfbf9;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .checkout-summary-card {
+            position: sticky;
+            top: 0;
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 16px;
+            padding: 16px;
+        }
+        .checkout-section {
+            border: 1px solid #eee;
+            border-radius: 14px;
+            background: #fff;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        .checkout-section-toggle {
+            width: 100%;
+            border: none;
+            background: #fff;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 800;
+            color: #1f2937;
+            cursor: pointer;
+        }
+        .checkout-section-toggle:hover {
+            background: #fafafa;
+        }
+        .checkout-section-body {
+            padding: 0 16px 16px;
+        }
+        .checkout-chevron {
+            transition: transform 0.25s ease;
+        }
+        .checkout-chevron.rotated {
+            transform: rotate(180deg);
+        }
+        .checkout-coupon-input {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 10px 12px;
+            width: 100%;
+            font-weight: 600;
+        }
+        .checkout-coupon-status {
+            font-size: 12px;
+            margin-top: 8px;
+            min-height: 18px;
+        }
+        @media (max-width: 900px) {
+            .checkout-layout {
+                grid-template-columns: 1fr;
+                max-height: calc(92vh - 70px);
+            }
+            .checkout-summary {
+                border-right: none;
+                border-top: 1px solid #eee;
+            }
+            .checkout-summary-card {
+                position: static;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
@@ -273,96 +364,157 @@
 
     <!-- Checkout Modal -->
     <div id="checkout-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden p-4">
-        <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div class="p-6 border-b flex justify-between items-center">
+        <div class="checkout-shell">
+            <div class="p-5 border-b flex justify-between items-center">
                 <h3 class="text-xl font-bold text-antika-gold">إتمام الطلب</h3>
-                <button onclick="closeCheckoutModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                <button onclick="closeCheckoutModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
             </div>
-            <form id="checkout-form" class="p-6 space-y-4">
-                <div class="grid grid-cols-1 gap-3">
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">الاسم الكامل:</label>
-                        <input id="customer-name" type="text" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="الاسم الكامل" required>
-                    </div>
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">رقم الجوال:</label>
-                        <input id="customer-phone" type="tel" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="05xxxxxxxx" required>
-                    </div>
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">البريد الإلكتروني:</label>
-                        <input id="customer-email" type="email" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="example@email.com">
-                    </div>
-                </div>
-
-                <!-- Address Selection: Saved or Custom -->
-                <div>
-                    <label class="block text-gray-700 font-bold mb-3">📍 اختر عنوانك:</label>
-                    
-                    <!-- Tabs for address choice -->
-                    <div class="flex gap-2 mb-3">
-                        <button type="button" class="address-tab flex-1 py-2 px-3 rounded-lg border-2 border-gray-200 font-bold text-sm transition active" data-tab="saved">
-                            <i class="fas fa-bookmark ml-1"></i> العناوين المحفوظة
+            <form id="checkout-form" class="checkout-layout">
+                <div class="checkout-main">
+                    <div class="checkout-section">
+                        <button type="button" class="checkout-section-toggle" data-target="checkout-section-customer">
+                            <span><i class="fas fa-user ml-2 text-antika-gold"></i> بيانات العميل</span>
+                            <i class="fas fa-chevron-down checkout-chevron"></i>
                         </button>
-                        <button type="button" class="address-tab flex-1 py-2 px-3 rounded-lg border-2 border-gray-200 font-bold text-sm transition" data-tab="custom">
-                            <i class="fas fa-map ml-1"></i> عنوان مخصص
-                        </button>
-                    </div>
-
-                    <!-- Saved Addresses Tab -->
-                    <div id="address-saved-tab" class="address-tab-content space-y-2">
-                        <div id="saved-addresses-row" class="hidden">
-                            <label class="block text-xs text-gray-500 mb-2">العناوين المتاحة:</label>
-                            <select id="saved-addresses-select" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-antika-gold focus:outline-none"></select>
-                        </div>
-                        <div id="no-saved-addresses" class="text-center py-4 text-gray-500">
-                            <p class="text-sm">لا توجد عناوين محفوظة</p>
-                            <a href="addresses.html" target="_blank" class="text-antika-gold text-xs hover:underline">أضف عنوانك</a>
-                        </div>
-                        <div id="saved-addresses-list" class="hidden space-y-2">
-                            <!-- Populated by JS -->
-                        </div>
-                    </div>
-
-                    <!-- Custom Address Tab -->
-                    <div id="address-custom-tab" class="address-tab-content hidden space-y-3">
-                        <button type="button" id="open-checkout-map-btn" class="w-full py-3 px-4 text-white rounded-lg font-bold hover:opacity-90 transition text-lg" style="background-color: #D6C1A6;">
-                            <i class="fas fa-map ml-1"></i>فتح الخريطة لاختيار الموقع
-                        </button>
-                        <div id="checkout-map-container" style="display: none; border: 2px solid #E8B7B7; border-radius: 12px; padding: 12px;">
-                            <div class="mb-3">
-                                <input type="text" id="checkout-map-search" placeholder="ابحث عن موقع..." class="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-antika-gold focus:outline-none text-sm" style="direction: rtl;">
-                                <div id="checkout-search-results" class="mt-2 space-y-1 max-h-40 overflow-y-auto hidden"></div>
+                        <div id="checkout-section-customer" class="checkout-section-body">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="md:col-span-2">
+                                    <label class="block text-gray-700 font-bold mb-2">الاسم الكامل</label>
+                                    <input id="customer-name" type="text" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="الاسم الكامل" required>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 font-bold mb-2">رقم الجوال</label>
+                                    <input id="customer-phone" type="tel" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="05xxxxxxxx" required>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 font-bold mb-2">البريد الإلكتروني</label>
+                                    <input id="customer-email" type="email" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="example@email.com">
+                                </div>
                             </div>
-                            <div id="checkout-map" style="width: 100%; height: 250px; border-radius: 12px; border: 2px solid #E8B7B7;"></div>
                         </div>
-                        <div id="checkout-location-info" class="hidden p-3 bg-gray-50 rounded-lg">
-                            <p class="text-xs font-bold text-gray-700">الإحداثيات المختارة:</p>
-                            <p class="text-xs text-gray-600 mt-1"><span id="checkout-coords"></span></p>
-                        </div>
-                        <textarea id="customer-address" rows="2" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="سيتم ملؤها تلقائياً من الخريطة أو أدخل يدوياً"></textarea>
                     </div>
 
-                    <!-- Selected Address Display -->
-                    <div id="address-selected-display" class="hidden mt-3 p-3 bg-green-50 border-2 border-green-500 rounded-lg">
-                        <p class="text-xs font-bold text-green-700">✓ تم تحديد العنوان</p>
-                        <p class="text-xs text-gray-600 mt-1"><span id="selected-address-text"></span></p>
+                    <div class="checkout-section">
+                        <button type="button" class="checkout-section-toggle" data-target="checkout-section-address">
+                            <span><i class="fas fa-location-dot ml-2 text-antika-gold"></i> عنوان الشحن</span>
+                            <i class="fas fa-chevron-down checkout-chevron"></i>
+                        </button>
+                        <div id="checkout-section-address" class="checkout-section-body">
+                            <div class="flex gap-2 mb-3">
+                                <button type="button" class="address-tab flex-1 py-2 px-3 rounded-lg border-2 border-gray-200 font-bold text-sm transition active" data-tab="saved">
+                                    <i class="fas fa-bookmark ml-1"></i> العناوين المحفوظة
+                                </button>
+                                <button type="button" class="address-tab flex-1 py-2 px-3 rounded-lg border-2 border-gray-200 font-bold text-sm transition" data-tab="custom">
+                                    <i class="fas fa-map ml-1"></i> عنوان مخصص
+                                </button>
+                            </div>
+
+                            <div id="address-saved-tab" class="address-tab-content space-y-2">
+                                <div id="saved-addresses-row" class="hidden">
+                                    <label class="block text-xs text-gray-500 mb-2">العناوين المتاحة:</label>
+                                    <select id="saved-addresses-select" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-antika-gold focus:outline-none"></select>
+                                </div>
+                                <div id="no-saved-addresses" class="text-center py-4 text-gray-500">
+                                    <p class="text-sm">لا توجد عناوين محفوظة</p>
+                                    <a href="addresses.html" target="_blank" class="text-antika-gold text-xs hover:underline">أضف عنوانك</a>
+                                </div>
+                                <div id="saved-addresses-list" class="hidden space-y-2">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+
+                            <div id="address-custom-tab" class="address-tab-content hidden space-y-3">
+                                <button type="button" id="open-checkout-map-btn" class="w-full py-3 px-4 text-white rounded-lg font-bold hover:opacity-90 transition text-lg" style="background-color: #D6C1A6;">
+                                    <i class="fas fa-map ml-1"></i> فتح الخريطة لاختيار الموقع
+                                </button>
+                                <div id="checkout-map-container" style="display: none; border: 2px solid #E8B7B7; border-radius: 12px; padding: 12px;">
+                                    <div class="mb-3">
+                                        <input type="text" id="checkout-map-search" placeholder="ابحث عن موقع..." class="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-antika-gold focus:outline-none text-sm" style="direction: rtl;">
+                                        <div id="checkout-search-results" class="mt-2 space-y-1 max-h-40 overflow-y-auto hidden"></div>
+                                    </div>
+                                    <div id="checkout-map" style="width: 100%; height: 250px; border-radius: 12px; border: 2px solid #E8B7B7;"></div>
+                                </div>
+                                <div id="checkout-location-info" class="hidden p-3 bg-gray-50 rounded-lg">
+                                    <p class="text-xs font-bold text-gray-700">الإحداثيات المختارة:</p>
+                                    <p class="text-xs text-gray-600 mt-1"><span id="checkout-coords"></span></p>
+                                </div>
+                                <textarea id="customer-address" rows="2" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="سيتم ملؤها تلقائياً من الخريطة أو أدخل يدوياً"></textarea>
+                            </div>
+
+                            <div id="address-selected-display" class="hidden mt-3 p-3 bg-green-50 border-2 border-green-500 rounded-lg">
+                                <p class="text-xs font-bold text-green-700">✓ تم تحديد العنوان</p>
+                                <p class="text-xs text-gray-600 mt-1"><span id="selected-address-text"></span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="checkout-section">
+                        <button type="button" class="checkout-section-toggle" data-target="checkout-section-shipping">
+                            <span><i class="fas fa-truck ml-2 text-antika-gold"></i> شركة الشحن</span>
+                            <i class="fas fa-chevron-down checkout-chevron"></i>
+                        </button>
+                        <div id="checkout-section-shipping" class="checkout-section-body hidden">
+                            <select id="shipping-method" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+                                <option value="standard">شحن عادي (3-5 أيام) - 0 ر.س</option>
+                                <option value="express">شحن سريع (1-2 يوم) - 25 ر.س</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="checkout-section">
+                        <button type="button" class="checkout-section-toggle" data-target="checkout-section-payment">
+                            <span><i class="fas fa-wallet ml-2 text-antika-gold"></i> الدفع</span>
+                            <i class="fas fa-chevron-down checkout-chevron"></i>
+                        </button>
+                        <div id="checkout-section-payment" class="checkout-section-body hidden">
+                            <select id="payment-method" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+                                <option value="cash">الدفع عند الاستلام</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-                <div>
-                    <label class="block text-gray-700 font-bold mb-2">طريقة الدفع:</label>
-                    <select id="payment-method" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
-                        <option value="cash">الدفع عند الاستلام</option>
-                    </select>
-                </div>
-                <div class="border-t pt-4 mt-4">
-                    <div class="flex justify-between text-lg font-bold text-antika-gold">
-                        <span>الإجمالي:</span>
-                        <span id="checkout-total">0 ر.س</span>
+
+                <aside class="checkout-summary">
+                    <div class="checkout-summary-card">
+                        <h4 class="font-extrabold text-lg mb-1 text-antika-gold">ملخص الطلب</h4>
+                        <p id="checkout-items-count" class="text-sm text-gray-600 mb-3">0 منتج</p>
+                        <div id="checkout-items-preview" class="space-y-2 mb-4"></div>
+
+                        <button type="button" id="toggle-coupon-btn" class="w-full text-right border border-dashed border-antika-gold text-antika-gold rounded-lg px-3 py-2 font-bold text-sm hover:bg-antika-beige transition">
+                            <i class="fas fa-ticket-alt ml-1"></i> لدي كوبون خصم
+                        </button>
+                        <div id="checkout-coupon-box" class="hidden mt-3">
+                            <div class="flex gap-2">
+                                <input id="checkout-coupon" type="text" class="checkout-coupon-input" placeholder="أدخل رمز الكوبون">
+                                <button id="apply-coupon-btn" type="button" class="px-4 py-2 rounded-lg text-white font-bold text-sm bg-antika-gold hover:bg-antika-gold-dark transition">تطبيق</button>
+                            </div>
+                            <p id="coupon-status" class="checkout-coupon-status text-gray-500"></p>
+                        </div>
+
+                        <div class="mt-4 border-t pt-4 space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">المجموع الفرعي</span>
+                                <span id="checkout-subtotal" class="font-bold">0 ر.س</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">الشحن</span>
+                                <span id="checkout-shipping-cost" class="font-bold">0 ر.س</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">الخصم</span>
+                                <span id="checkout-discount" class="font-bold text-green-600">- 0 ر.س</span>
+                            </div>
+                            <div class="flex justify-between text-lg font-extrabold text-antika-gold border-t pt-3 mt-2">
+                                <span>الإجمالي</span>
+                                <span id="checkout-total">0 ر.س</span>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full mt-4 bg-antika-pink text-white py-4 rounded-xl font-bold hover:bg-antika-pink-dark transition text-lg">
+                            تأكيد الطلب
+                        </button>
                     </div>
-                </div>
-                <button type="submit" class="w-full bg-antika-pink text-white py-4 rounded-xl font-bold hover:bg-antika-pink-dark transition text-lg">
-                    تأكيد الطلب
-                </button>
+                </aside>
             </form>
         </div>
     </div>
@@ -378,6 +530,149 @@
     
     <script>
         let cartTotal = 0;
+        let checkoutAppliedCoupon = null;
+        const CHECKOUT_COUPONS = {
+            ANTIKA10: { type: 'percent', value: 10, label: 'خصم 10%' },
+            NEW15: { type: 'percent', value: 15, label: 'خصم 15%' },
+            SAVE20: { type: 'fixed', value: 20, label: 'خصم 20 ر.س' },
+            FREESHIP: { type: 'freeShipping', value: 0, label: 'شحن مجاني' }
+        };
+
+        function formatSAR(value) {
+            const safe = Number.isFinite(Number(value)) ? Number(value) : 0;
+            return `${safe.toFixed(2)} ر.س`;
+        }
+
+        function getShippingCost() {
+            const method = document.getElementById('shipping-method')?.value || 'standard';
+            if (method === 'express') return 25;
+            return 0;
+        }
+
+        function recalculateCheckoutTotals() {
+            const subtotal = Number(cartTotal || 0);
+            const shipping = getShippingCost();
+            let discount = 0;
+
+            if (checkoutAppliedCoupon) {
+                if (checkoutAppliedCoupon.type === 'percent') {
+                    discount = subtotal * (checkoutAppliedCoupon.value / 100);
+                } else if (checkoutAppliedCoupon.type === 'fixed') {
+                    discount = checkoutAppliedCoupon.value;
+                } else if (checkoutAppliedCoupon.type === 'freeShipping') {
+                    discount = shipping;
+                }
+            }
+
+            discount = Math.min(discount, subtotal + shipping);
+            const total = Math.max(0, subtotal + shipping - discount);
+
+            const subtotalEl = document.getElementById('checkout-subtotal');
+            const shippingEl = document.getElementById('checkout-shipping-cost');
+            const discountEl = document.getElementById('checkout-discount');
+            const totalEl = document.getElementById('checkout-total');
+
+            if (subtotalEl) subtotalEl.textContent = formatSAR(subtotal);
+            if (shippingEl) shippingEl.textContent = formatSAR(shipping);
+            if (discountEl) discountEl.textContent = `- ${formatSAR(discount)}`;
+            if (totalEl) totalEl.textContent = formatSAR(total);
+
+            return { subtotal, shipping, discount, total };
+        }
+
+        function updateCheckoutItemsPreview(cartItems) {
+            const preview = document.getElementById('checkout-items-preview');
+            const count = document.getElementById('checkout-items-count');
+            if (!preview || !count) return;
+
+            const items = Array.isArray(cartItems) ? cartItems : [];
+            const itemCount = items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+            count.textContent = `${itemCount} منتج`;
+
+            if (items.length === 0) {
+                preview.innerHTML = '<p class="text-sm text-gray-500">لا توجد منتجات في السلة</p>';
+                return;
+            }
+
+            preview.innerHTML = items.slice(0, 3).map(item => `
+                <div class="flex items-center justify-between gap-3 text-sm border-b pb-2">
+                    <span class="text-gray-700 truncate">${item.name}</span>
+                    <span class="font-bold">${Number(item.quantity) || 1}x</span>
+                </div>
+            `).join('');
+
+            if (items.length > 3) {
+                preview.innerHTML += `<p class="text-xs text-gray-500 mt-1">+ ${items.length - 3} منتجات أخرى</p>`;
+            }
+        }
+
+        function applyCheckoutCoupon() {
+            const input = document.getElementById('checkout-coupon');
+            const status = document.getElementById('coupon-status');
+            if (!input || !status) return;
+
+            const raw = (input.value || '').trim().toUpperCase();
+            if (!raw) {
+                checkoutAppliedCoupon = null;
+                status.textContent = 'اكتب رمز الكوبون أولاً';
+                status.className = 'checkout-coupon-status text-gray-500';
+                recalculateCheckoutTotals();
+                return;
+            }
+
+            const coupon = CHECKOUT_COUPONS[raw];
+            if (!coupon) {
+                checkoutAppliedCoupon = null;
+                status.textContent = 'هذا الكوبون غير صالح';
+                status.className = 'checkout-coupon-status text-red-500';
+                recalculateCheckoutTotals();
+                return;
+            }
+
+            checkoutAppliedCoupon = { code: raw, ...coupon };
+            status.textContent = `تم تطبيق الكوبون: ${coupon.label}`;
+            status.className = 'checkout-coupon-status text-green-600 font-bold';
+            recalculateCheckoutTotals();
+        }
+
+        function setupCheckoutHybridUX() {
+            document.querySelectorAll('.checkout-section-toggle').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetId = btn.dataset.target;
+                    const body = document.getElementById(targetId);
+                    const chevron = btn.querySelector('.checkout-chevron');
+                    if (!body) return;
+                    body.classList.toggle('hidden');
+                    if (chevron) chevron.classList.toggle('rotated');
+                });
+            });
+
+            const couponToggle = document.getElementById('toggle-coupon-btn');
+            const couponBox = document.getElementById('checkout-coupon-box');
+            const couponApply = document.getElementById('apply-coupon-btn');
+            const couponInput = document.getElementById('checkout-coupon');
+            const shippingSelect = document.getElementById('shipping-method');
+
+            if (couponToggle && couponBox) {
+                couponToggle.addEventListener('click', () => {
+                    couponBox.classList.toggle('hidden');
+                });
+            }
+            if (couponApply) {
+                couponApply.addEventListener('click', applyCheckoutCoupon);
+            }
+            if (couponInput) {
+                couponInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        applyCheckoutCoupon();
+                    }
+                });
+            }
+            if (shippingSelect) {
+                shippingSelect.addEventListener('change', recalculateCheckoutTotals);
+            }
+        }
 
         // Toggle Mobile Menu
         function toggleMenu() {
@@ -475,6 +770,7 @@
             await loadCart();
             await updateCartCount();
             checkLoginStatus();
+            setupCheckoutHybridUX();
             setupLocationSelector();
             setupAddressSelector();
             await loadSavedAddressesForAddressSelection();
@@ -710,7 +1006,21 @@
 
         // Checkout Modal
         async function openCheckoutModal() {
-            document.getElementById('checkout-total').textContent = cartTotal + ' ر.س';
+            checkoutAppliedCoupon = null;
+            const couponInput = document.getElementById('checkout-coupon');
+            const couponStatus = document.getElementById('coupon-status');
+            if (couponInput) couponInput.value = '';
+            if (couponStatus) {
+                couponStatus.textContent = '';
+                couponStatus.className = 'checkout-coupon-status text-gray-500';
+            }
+            const couponBox = document.getElementById('checkout-coupon-box');
+            if (couponBox) couponBox.classList.add('hidden');
+
+            const checkoutCart = await API.getCart().catch(() => []);
+            updateCheckoutItemsPreview(checkoutCart);
+            recalculateCheckoutTotals();
+
             // Autofill from account if available
             try {
                 const userRaw = localStorage.getItem('antika_user');
@@ -763,6 +1073,7 @@
             document.getElementById('checkout-modal').classList.remove('hidden');
             document.body.style.overflow = 'hidden';
             await loadSavedAddressesForAddressSelection();
+            recalculateCheckoutTotals();
         }
 
         function closeCheckoutModal() {
@@ -785,6 +1096,8 @@
                 const customerPhone = (document.getElementById('customer-phone')?.value || '').trim();
                 const customerEmail = (document.getElementById('customer-email')?.value || '').trim();
                 const customerAddress = (document.getElementById('customer-address')?.value || '').trim();
+                const totals = recalculateCheckoutTotals();
+                const shippingMethod = document.getElementById('shipping-method')?.value || 'standard';
 
                 if (!customerName || !customerPhone || !customerAddress) {
                     alert('يرجى تعبئة الاسم ورقم الجوال والعنوان قبل إتمام الطلب.');
@@ -800,6 +1113,10 @@
                     customerPhone,
                     customerEmail,
                     customerAddress,
+                    shippingMethod,
+                    shippingCost: totals.shipping,
+                    discount: totals.discount,
+                    couponCode: checkoutAppliedCoupon ? checkoutAppliedCoupon.code : null,
                     paymentMethod: document.getElementById('payment-method').value,
                     // Add location if available
                     location: location ? {
@@ -813,7 +1130,8 @@
                         image: item.image,
                         quantity: item.quantity
                     })),
-                    total: cartTotal,
+                    subTotal: totals.subtotal,
+                    total: totals.total,
                     status: 'processing'
                 };
 
