@@ -13,6 +13,38 @@ const ADMIN_CREDENTIALS = {
 const Auth = {
     // Current user data
     currentUser: null,
+    authFlowStorageKey: 'antika_auth_in_progress',
+    manualLogoutStorageKey: 'antika_manual_logout',
+
+    setAuthInProgress(flag) {
+        try {
+            if (flag) sessionStorage.setItem(this.authFlowStorageKey, '1');
+            else sessionStorage.removeItem(this.authFlowStorageKey);
+        } catch (e) {}
+    },
+
+    isAuthInProgress() {
+        try {
+            return sessionStorage.getItem(this.authFlowStorageKey) === '1';
+        } catch (e) {
+            return false;
+        }
+    },
+
+    setManualLogout(flag) {
+        try {
+            if (flag) sessionStorage.setItem(this.manualLogoutStorageKey, '1');
+            else sessionStorage.removeItem(this.manualLogoutStorageKey);
+        } catch (e) {}
+    },
+
+    wasManualLogout() {
+        try {
+            return sessionStorage.getItem(this.manualLogoutStorageKey) === '1';
+        } catch (e) {
+            return false;
+        }
+    },
     
     // Initialize auth system
     init() {
@@ -37,10 +69,14 @@ const Auth = {
                     // This prevents auto-login after manual logout
                     const hasSavedUser = localStorage.getItem('antika_user') !== null;
                     if (!hasSavedUser) {
-                        console.log('âڑ ï¸ڈ Firebase user exists but no saved data - user logged out manually');
-                        // Sign out from Firebase to sync state
-                        firebase.auth().signOut();
-                        return;
+                        const isManualLogout = this.wasManualLogout();
+                        const authInProgress = this.isAuthInProgress();
+                        if (isManualLogout && !authInProgress) {
+                            console.log('âڑ ï¸ڈ Firebase user exists but no saved data - user logged out manually');
+                            // Sign out from Firebase to sync state
+                            firebase.auth().signOut();
+                            return;
+                        }
                     }
                     
                     // Firebase user is signed in
@@ -53,8 +89,12 @@ const Auth = {
                         provider: 'firebase'
                     };
                     this.saveUserToStorage();
+                    this.setManualLogout(false);
                     console.log('âœ… Firebase user signed in:', user.email);
                 } else {
+                    if (this.isAuthInProgress()) {
+                        return;
+                    }
                     // If local user exists but Firebase session is gone, clear stale local auth
                     const savedUser = localStorage.getItem('antika_user');
                     if (savedUser) {
@@ -191,6 +231,7 @@ const Auth = {
             // Save to localStorage
             localStorage.setItem('antika_token', token);
             localStorage.setItem('antika_user', JSON.stringify(this.currentUser));
+            this.setManualLogout(false);
             
             console.log('âœ… Admin logged in successfully');
             return { success: true, user: this.currentUser };
@@ -201,6 +242,8 @@ const Auth = {
     
     // User login with Firebase
     async userLogin(email, password) {
+        this.setAuthInProgress(true);
+        this.setManualLogout(false);
         try {
             if (typeof firebase === 'undefined' || !firebase.auth) {
                 throw new Error('Firebase not initialized');
@@ -219,6 +262,7 @@ const Auth = {
             };
             
             this.saveUserToStorage();
+            this.setManualLogout(false);
             
             return { success: true, user: this.currentUser };
         } catch (error) {
@@ -241,12 +285,16 @@ const Auth = {
             }
             
             return { success: false, error: errorMessage };
+        } finally {
+            this.setAuthInProgress(false);
         }
     },
     
     // User registration with Firebase
     // originalEmail: the email the user actually entered (may be empty when registering with phone only)
     async userRegister(name, email, password, phone = '', originalEmail = null) {
+        this.setAuthInProgress(true);
+        this.setManualLogout(false);
         try {
             if (typeof firebase === 'undefined' || !firebase.auth) {
                 throw new Error('Firebase not initialized');
@@ -273,6 +321,7 @@ const Auth = {
             };
             
             this.saveUserToStorage();
+            this.setManualLogout(false);
             
             // Save to Firestore in background (async - don't wait)
             if (firebase.firestore) {
@@ -309,9 +358,13 @@ const Auth = {
             }
             
             return { success: false, error: errorMessage };
+        } finally {
+            this.setAuthInProgress(false);
         }
     },
     async googleLogin() {
+        this.setAuthInProgress(true);
+        this.setManualLogout(false);
         try {
             if (typeof firebase === 'undefined' || !firebase.auth) {
                 throw new Error('Firebase not initialized');
@@ -331,16 +384,21 @@ const Auth = {
             };
             
             this.saveUserToStorage();
+            this.setManualLogout(false);
             
             return { success: true, user: this.currentUser };
         } catch (error) {
             console.error('Google login error:', error);
             return { success: false, error: 'ظپط´ظ„ طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„ ط¨ظ€ Google' };
+        } finally {
+            this.setAuthInProgress(false);
         }
     },
     
     // Logout
     async logout() {
+        this.setAuthInProgress(false);
+        this.setManualLogout(true);
         try {
             // Sign out from Firebase if available
             if (typeof firebase !== 'undefined' && firebase.auth) {
@@ -469,9 +527,13 @@ const Auth = {
                     // Only restore Firebase user if we have saved user data
                     const hasSavedUser = localStorage.getItem('antika_user') !== null;
                     if (!hasSavedUser) {
-                        console.log('âڑ ï¸ڈ Firebase user exists but no saved data - user logged out manually');
-                        firebase.auth().signOut();
-                        return;
+                        const isManualLogout = this.wasManualLogout();
+                        const authInProgress = this.isAuthInProgress();
+                        if (isManualLogout && !authInProgress) {
+                            console.log('âڑ ï¸ڈ Firebase user exists but no saved data - user logged out manually');
+                            firebase.auth().signOut();
+                            return;
+                        }
                     }
                     
                     this.currentUser = {
@@ -483,8 +545,12 @@ const Auth = {
                         provider: 'firebase'
                     };
                     this.saveUserToStorage();
+                    this.setManualLogout(false);
                     callback(this.currentUser);
                 } else {
+                    if (this.isAuthInProgress()) {
+                        return;
+                    }
                     if (this.currentUser && this.currentUser.uid && !this.currentUser.isAdmin) {
                         this.clearLocalUserSession();
                     }
