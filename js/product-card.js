@@ -121,7 +121,7 @@ class AntikaProductCard extends HTMLElement {
                     </div>
 
                     <!-- Button -->
-                    <button onclick="event.stopPropagation(); ${isOutOfStock ? 'return false;' : 'handleAddToCart(\'' + product.id + '\')'}" class="add-to-cart-btn w-full ${buttonClass} ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''}">
+                    <button onclick="event.stopPropagation(); ${isOutOfStock ? 'return false;' : 'if (window.handleAddToCart) { handleAddToCart(\'' + product.id + '\'); } else if (window.addToCart) { addToCart(\'' + product.id + '\'); } else { console.error(\'No addToCart handler found\'); }'}" class="add-to-cart-btn w-full ${buttonClass} ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''}">
                         <i class="fas fa-shopping-cart ml-2"></i> ${isOutOfStock ? 'نفذت الكمية' : buttonText}
                     </button>
                 </div>
