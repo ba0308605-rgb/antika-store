@@ -15,6 +15,7 @@ const Auth = {
     currentUser: null,
     authFlowStorageKey: 'antika_auth_in_progress',
     manualLogoutStorageKey: 'antika_manual_logout',
+    googleProfileRequiredKey: 'antika_google_profile_required',
 
     setAuthInProgress(flag) {
         try {
@@ -44,6 +45,56 @@ const Auth = {
         } catch (e) {
             return false;
         }
+    },
+
+    setGoogleProfileRequired(flag) {
+        try {
+            if (flag) localStorage.setItem(this.googleProfileRequiredKey, '1');
+            else localStorage.removeItem(this.googleProfileRequiredKey);
+        } catch (e) {}
+    },
+
+    isGoogleProfileRequired() {
+        try {
+            return localStorage.getItem(this.googleProfileRequiredKey) === '1';
+        } catch (e) {
+            return false;
+        }
+    },
+
+    isGoogleProvider(firebaseUser) {
+        try {
+            const providers = Array.isArray(firebaseUser?.providerData) ? firebaseUser.providerData : [];
+            return providers.some((p) => p && p.providerId === 'google.com');
+        } catch (e) {
+            return false;
+        }
+    },
+
+    isProfileComplete(profile) {
+        if (!profile || typeof profile !== 'object') return false;
+        const firstName = String(profile.firstName || '').trim();
+        const birthDate = String(profile.birthDate || '').trim();
+        const gender = String(profile.gender || '').trim();
+        const hasRequiredFields = Boolean(firstName && birthDate && gender);
+        return profile.profileCompleted === true || hasRequiredFields;
+    },
+
+    maybeRedirectToGoogleProfileCompletion() {
+        try {
+            if (!this.currentUser || this.currentUser.isAdmin) return;
+            const needsProfile =
+                this.currentUser.provider === 'google' &&
+                (this.currentUser.profileCompleted === false || this.isGoogleProfileRequired());
+            if (!needsProfile) return;
+
+            const page = (window.location.pathname.split('/').pop() || '').toLowerCase();
+            const params = new URLSearchParams(window.location.search || '');
+            const isOnGoogleProfilePage = page === 'register.html' && params.get('mode') === 'google-profile';
+            if (!isOnGoogleProfilePage) {
+                window.location.href = 'register.html?mode=google-profile';
+            }
+        } catch (e) {}
     },
     
     // Initialize auth system
@@ -80,16 +131,22 @@ const Auth = {
                     }
                     
                     // Firebase user is signed in
+                    let savedProfile = {};
+                    try {
+                        savedProfile = JSON.parse(localStorage.getItem('antika_user') || '{}') || {};
+                    } catch (e) {}
                     this.currentUser = {
+                        ...savedProfile,
                         uid: user.uid,
                         email: user.email,
                         name: user.displayName || user.email.split('@')[0],
                         isAdmin: false, // Regular users are not admins
                         photoURL: user.photoURL,
-                        provider: 'firebase'
+                        provider: this.isGoogleProvider(user) ? 'google' : 'firebase'
                     };
                     this.saveUserToStorage();
                     this.setManualLogout(false);
+                    this.maybeRedirectToGoogleProfileCompletion();
                     console.log('âœ… Firebase user signed in:', user.email);
                 } else {
                     if (this.isAuthInProgress()) {
@@ -135,6 +192,7 @@ const Auth = {
     clearLocalUserSession() {
         localStorage.removeItem('antika_user');
         localStorage.removeItem('antika_token');
+        this.setGoogleProfileRequired(false);
         this.currentUser = null;
     },
 
@@ -373,20 +431,54 @@ const Auth = {
             const provider = new firebase.auth.GoogleAuthProvider();
             const result = await firebase.auth().signInWithPopup(provider);
             const user = result.user;
+
+            let profileData = {};
+            let requiresProfileCompletion = false;
+            if (firebase.firestore) {
+                const userRef = firebase.firestore().collection('users').doc(user.uid);
+                const profileSnapshot = await userRef.get();
+                if (profileSnapshot.exists) {
+                    profileData = profileSnapshot.data() || {};
+                }
+
+                requiresProfileCompletion = !this.isProfileComplete(profileData);
+
+                await userRef.set({
+                    name: profileData.name || user.displayName || (user.email ? user.email.split('@')[0] : ''),
+                    email: profileData.email || user.email || null,
+                    photoURL: profileData.photoURL || user.photoURL || '',
+                    provider: 'google',
+                    firstName: profileData.firstName || '',
+                    lastName: profileData.lastName || '',
+                    phone: profileData.phone || '',
+                    birthDate: profileData.birthDate || '',
+                    gender: profileData.gender || '',
+                    profileCompleted: requiresProfileCompletion ? false : true,
+                    lastLoginAt: new Date().toISOString(),
+                    createdAt: profileData.createdAt || new Date().toISOString()
+                }, { merge: true });
+            }
             
             this.currentUser = {
                 uid: user.uid,
                 email: user.email,
-                name: user.displayName,
+                name: profileData.name || user.displayName || (user.email ? user.email.split('@')[0] : ''),
                 photoURL: user.photoURL,
                 isAdmin: false,
-                provider: 'google'
+                provider: 'google',
+                firstName: profileData.firstName || '',
+                lastName: profileData.lastName || '',
+                phone: profileData.phone || '',
+                birthDate: profileData.birthDate || '',
+                gender: profileData.gender || '',
+                profileCompleted: !requiresProfileCompletion
             };
             
             this.saveUserToStorage();
             this.setManualLogout(false);
+            this.setGoogleProfileRequired(requiresProfileCompletion);
             
-            return { success: true, user: this.currentUser };
+            return { success: true, user: this.currentUser, requiresProfileCompletion };
         } catch (error) {
             console.error('Google login error:', error);
             return { success: false, error: 'ظپط´ظ„ طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„ ط¨ظ€ Google' };
@@ -411,6 +503,7 @@ const Auth = {
         // Clear local storage
         localStorage.removeItem('antika_token');
         localStorage.removeItem('antika_user');
+        this.setGoogleProfileRequired(false);
         
         this.currentUser = null;
         
@@ -537,15 +630,17 @@ const Auth = {
                     }
                     
                     this.currentUser = {
+                        ...(this.currentUser || {}),
                         uid: firebaseUser.uid,
                         email: firebaseUser.email,
                         name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
                         isAdmin: false,
                         photoURL: firebaseUser.photoURL,
-                        provider: 'firebase'
+                        provider: this.isGoogleProvider(firebaseUser) ? 'google' : 'firebase'
                     };
                     this.saveUserToStorage();
                     this.setManualLogout(false);
+                    this.maybeRedirectToGoogleProfileCompletion();
                     callback(this.currentUser);
                 } else {
                     if (this.isAuthInProgress()) {
@@ -591,16 +686,66 @@ const Auth = {
             // Also update Firebase if available
             if (typeof firebase !== 'undefined' && firebase.firestore && this.currentUser.uid) {
                 try {
-                    await firebase.firestore().collection('users').doc(this.currentUser.uid).update(updates);
+                    await firebase.firestore().collection('users').doc(this.currentUser.uid).set(updates, { merge: true });
                 } catch (e) {
                     console.warn('Failed to update Firebase profile:', e);
                 }
+            }
+
+            if (updates && updates.profileCompleted === true) {
+                this.setGoogleProfileRequired(false);
             }
             
             return { success: true };
         } catch (error) {
             console.error('Profile update error:', error);
             return { success: false, error: error.message };
+        }
+    },
+
+    async completeGoogleProfile(profileUpdates) {
+        try {
+            if (!this.currentUser || !this.currentUser.uid) {
+                return { success: false, error: 'يجب تسجيل الدخول أولا' };
+            }
+
+            const payload = {
+                firstName: (profileUpdates.firstName || '').trim(),
+                lastName: (profileUpdates.lastName || '').trim(),
+                birthDate: profileUpdates.birthDate || '',
+                gender: profileUpdates.gender || '',
+                name: profileUpdates.name || '',
+                phone: profileUpdates.phone || this.currentUser.phone || '',
+                email: this.currentUser.email || null,
+                provider: 'google',
+                profileCompleted: true,
+                profileCompletedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            this.currentUser = { ...this.currentUser, ...payload };
+            this.saveUserToStorage();
+            this.setGoogleProfileRequired(false);
+
+            if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser && payload.name) {
+                try {
+                    await firebase.auth().currentUser.updateProfile({ displayName: payload.name });
+                } catch (e) {
+                    console.warn('Failed to update Firebase display name:', e);
+                }
+            }
+
+            if (typeof firebase !== 'undefined' && firebase.firestore) {
+                await firebase.firestore()
+                    .collection('users')
+                    .doc(this.currentUser.uid)
+                    .set(payload, { merge: true });
+            }
+
+            return { success: true, user: this.currentUser };
+        } catch (error) {
+            console.error('completeGoogleProfile error:', error);
+            return { success: false, error: error.message || 'فشل حفظ بيانات الحساب' };
         }
     },
     

@@ -450,6 +450,90 @@
     <script>
         let currentStep = 1;
         let formData = {};
+        let isGoogleProfileMode = false;
+
+        function setupGoogleProfileMode() {
+            const params = new URLSearchParams(window.location.search || '');
+            isGoogleProfileMode = params.get('mode') === 'google-profile';
+            if (!isGoogleProfileMode) return;
+
+            let user = null;
+            if (window.Auth && typeof Auth.getCurrentUser === 'function') {
+                user = Auth.getCurrentUser();
+            } else {
+                try {
+                    user = JSON.parse(localStorage.getItem('antika_user') || 'null');
+                } catch (e) {
+                    user = null;
+                }
+            }
+
+            if (!user || !user.uid) {
+                showNotification('يجب تسجيل الدخول أولاً', 'error');
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 900);
+                return;
+            }
+
+            [1, 2, 3].forEach((stepNo) => {
+                const formEl = document.getElementById(`step-${stepNo}-form`);
+                const indicatorEl = document.getElementById(`step-${stepNo}-indicator`);
+                if (formEl) {
+                    formEl.classList.add('hidden');
+                    formEl.classList.remove('active');
+                }
+                if (indicatorEl) {
+                    indicatorEl.style.display = 'none';
+                    indicatorEl.classList.remove('active');
+                }
+            });
+
+            const step5Indicator = document.getElementById('step-5-indicator');
+            if (step5Indicator) step5Indicator.style.display = 'none';
+
+            const pageSubtitle = document.querySelector('.text-gray-500.mt-2');
+            if (pageSubtitle) pageSubtitle.textContent = 'أكمل بيانات حساب Google للمتابعة';
+
+            const step4Title = document.querySelector('#step-4-form h2');
+            if (step4Title) step4Title.textContent = 'إكمال البيانات الشخصية';
+
+            const prevButton = document.querySelector('#step-4-form .btn-secondary');
+            if (prevButton) prevButton.style.display = 'none';
+
+            const saveButton = document.querySelector('#step-4-form .btn-primary');
+            if (saveButton) {
+                saveButton.innerHTML = 'حفظ البيانات والمتابعة <i class="fas fa-check ml-2"></i>';
+            }
+
+            const nameParts = String(user.name || '').trim().split(/\s+/).filter(Boolean);
+            const firstNameInput = document.getElementById('step3-first-name');
+            const lastNameInput = document.getElementById('step3-last-name');
+            const birthDateInput = document.getElementById('step3-birth-date');
+
+            if (firstNameInput) firstNameInput.value = user.firstName || nameParts[0] || '';
+            if (lastNameInput) {
+                lastNameInput.value = user.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
+            }
+            if (birthDateInput) birthDateInput.value = user.birthDate || '';
+            if (user.gender) selectGender(user.gender);
+
+            formData.email = user.email || '';
+            formData.phone = user.phone || '';
+
+            const currentForm = document.getElementById(`step-${currentStep}-form`);
+            const currentIndicator = document.getElementById(`step-${currentStep}-indicator`);
+            if (currentForm) currentForm.classList.remove('active');
+            if (currentIndicator) currentIndicator.classList.remove('active');
+
+            currentStep = 4;
+            document.getElementById('step-4-form').classList.add('active');
+            const step4Indicator = document.getElementById('step-4-indicator');
+            if (step4Indicator) {
+                step4Indicator.classList.add('active');
+                step4Indicator.classList.remove('completed');
+            }
+        }
         
         // Navigate to next step
         async function nextStep(step) {
@@ -581,18 +665,29 @@
             
             if (step === 4) {
                 const firstName = document.getElementById('step3-first-name').value.trim();
+                const birthDate = document.getElementById('step3-birth-date').value;
+                const gender = document.getElementById('step3-gender').value;
                 
                 if (!firstName) {
                     showNotification('الرجاء إدخال الاسم الأول', 'error');
                     return;
                 }
+
+                if (isGoogleProfileMode && (!birthDate || !gender)) {
+                    showNotification('يرجى إدخال تاريخ الميلاد واختيار الجنس', 'error');
+                    return;
+                }
                 
                 formData.firstName = firstName;
                 formData.lastName = document.getElementById('step3-last-name').value.trim();
-                formData.birthDate = document.getElementById('step3-birth-date').value;
-                formData.gender = document.getElementById('step3-gender').value;
+                formData.birthDate = birthDate;
+                formData.gender = gender;
                 
                 // Proceed to final step
+                if (isGoogleProfileMode) {
+                    completeGoogleProfile();
+                    return;
+                }
                 completeRegistration();
                 return;
             }
@@ -702,6 +797,63 @@
             }
         }
         
+        async function completeGoogleProfile() {
+            showLoadingOverlay('جاري حفظ بيانات حسابك...');
+            try {
+                let user = null;
+                if (window.Auth && typeof Auth.getCurrentUser === 'function') {
+                    user = Auth.getCurrentUser();
+                } else {
+                    try {
+                        user = JSON.parse(localStorage.getItem('antika_user') || 'null');
+                    } catch (e) {
+                        user = null;
+                    }
+                }
+
+                if (!user || !user.uid) {
+                    hideLoadingOverlay();
+                    showNotification('انتهت الجلسة. سجل الدخول مرة أخرى', 'error');
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 900);
+                    return;
+                }
+
+                const firstName = (formData.firstName || '').trim();
+                const lastName = (formData.lastName || '').trim();
+                const fullName = firstName + (lastName ? ' ' + lastName : '');
+
+                const result = await Auth.completeGoogleProfile({
+                    firstName,
+                    lastName,
+                    birthDate: formData.birthDate || '',
+                    gender: formData.gender || '',
+                    phone: formData.phone || user.phone || '',
+                    name: fullName,
+                    profileCompleted: true
+                });
+
+                hideLoadingOverlay();
+                if (!result.success) {
+                    showNotification(result.error || 'فشل حفظ البيانات', 'error');
+                    return;
+                }
+
+                localStorage.setItem('isRegistered', 'true');
+                const completedEmail = (result.user && result.user.email) || user.email || '';
+                localStorage.setItem('userEmail', completedEmail);
+                showNotification('تم التسجيل بنجاح! 🎉', 'success');
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1200);
+            } catch (error) {
+                hideLoadingOverlay();
+                console.error('completeGoogleProfile error:', error);
+                showNotification('حدث خطأ أثناء حفظ البيانات', 'error');
+            }
+        }
+
         // Password validation
         function validatePasswordStrength() {
             const password = document.getElementById('step2-password').value;
@@ -952,6 +1104,7 @@
             <div class="strength-bar"></div>
         `;
         document.getElementById('password-strength').innerHTML = strengthHtml;
+        setupGoogleProfileMode();
     </script>
 </body>
 </html>

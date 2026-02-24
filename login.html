@@ -279,7 +279,14 @@
             try {
                 const result = await Auth.googleLogin();
                 if (result.success) {
-                    showNotification('تم تسجيل الدخول بنجاح! 🎉');
+                    if (result.requiresProfileCompletion) {
+                        showNotification('أكمل بيانات حسابك أولاً', 'success');
+                        setTimeout(() => {
+                            window.location.href = 'register.html?mode=google-profile';
+                        }, 900);
+                        return;
+                    }
+                    showNotification('تم تسجيل الدخول بنجاح', 'success');
                     setTimeout(() => {
                         window.location.href = 'index.html';
                     }, 1500);
