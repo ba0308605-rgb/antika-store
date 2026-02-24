@@ -54,6 +54,18 @@ const Auth = {
                     };
                     this.saveUserToStorage();
                     console.log('âœ… Firebase user signed in:', user.email);
+                } else {
+                    // If local user exists but Firebase session is gone, clear stale local auth
+                    const savedUser = localStorage.getItem('antika_user');
+                    if (savedUser) {
+                        try {
+                            const parsed = JSON.parse(savedUser);
+                            if (parsed && parsed.uid && !parsed.isAdmin) {
+                                console.warn('âڑ ï¸ڈ Firebase session expired, clearing local user');
+                                this.clearLocalUserSession();
+                            }
+                        } catch (e) {}
+                    }
                 }
             });
         }
@@ -72,6 +84,92 @@ const Auth = {
             }
         } catch (e) {}
         return false;
+    },
+
+    isPermissionDeniedError(err) {
+        const code = err && err.code ? String(err.code).toLowerCase() : '';
+        const message = err && err.message ? String(err.message).toLowerCase() : '';
+        return code.includes('permission-denied') || message.includes('insufficient permissions');
+    },
+
+    clearLocalUserSession() {
+        localStorage.removeItem('antika_user');
+        localStorage.removeItem('antika_token');
+        this.currentUser = null;
+    },
+
+    validateFirebaseSession() {
+        if (!this.hydrateCurrentUserFromStorage()) {
+            return { ok: false, error: 'يجب تسجيل الدخول أولا' };
+        }
+
+        if (this.currentUser && this.currentUser.isAdmin) {
+            return { ok: false, error: 'حساب الادمن لا يستخدم المفضلة' };
+        }
+
+        if (typeof firebase === 'undefined' || !firebase.auth || !firebase.firestore) {
+            return { ok: false, error: 'خدمة الحساب غير متاحة حاليا' };
+        }
+
+        const firebaseUser = firebase.auth().currentUser;
+        if (!firebaseUser || !this.currentUser || firebaseUser.uid !== this.currentUser.uid) {
+            this.clearLocalUserSession();
+            return { ok: false, error: 'انتهت جلسة تسجيل الدخول. سجل دخولك مرة اخرى' };
+        }
+
+        return { ok: true };
+    },
+
+    getWishlistStorageKey() {
+        const scope = String(
+            (this.currentUser && (this.currentUser.uid || this.currentUser.email)) || 'guest'
+        ).toLowerCase();
+        return `wishlist_${scope}`;
+    },
+
+    getLocalWishlistItems() {
+        try {
+            const ids = JSON.parse(localStorage.getItem(this.getWishlistStorageKey()) || '[]');
+            if (!Array.isArray(ids)) return [];
+            return ids.map(String).filter(Boolean).map((id) => ({
+                id,
+                productId: id,
+                localOnly: true
+            }));
+        } catch (e) {
+            return [];
+        }
+    },
+
+    syncWishlistLocalFromRemote(items) {
+        try {
+            const ids = (Array.isArray(items) ? items : [])
+                .map((item) => String(item.productId || item.id || ''))
+                .filter(Boolean);
+            localStorage.setItem(this.getWishlistStorageKey(), JSON.stringify(Array.from(new Set(ids))));
+        } catch (e) {}
+    },
+
+    addToLocalWishlist(productId) {
+        try {
+            const key = this.getWishlistStorageKey();
+            const current = JSON.parse(localStorage.getItem(key) || '[]');
+            const list = Array.isArray(current) ? current.map(String) : [];
+            const id = String(productId);
+            if (!list.includes(id)) list.push(id);
+            localStorage.setItem(key, JSON.stringify(list));
+        } catch (e) {}
+    },
+
+    removeFromLocalWishlist(productId) {
+        try {
+            const key = this.getWishlistStorageKey();
+            const current = JSON.parse(localStorage.getItem(key) || '[]');
+            const list = (Array.isArray(current) ? current : [])
+                .map(String)
+                .filter((id) => id !== String(productId));
+            localStorage.setItem(key, JSON.stringify(list));
+        } catch (e) {}
     },
     
     // Admin login (for admin panel)
@@ -386,7 +484,10 @@ const Auth = {
                     };
                     this.saveUserToStorage();
                     callback(this.currentUser);
-                } else if (!this.currentUser) {
+                } else {
+                    if (this.currentUser && this.currentUser.uid && !this.currentUser.isAdmin) {
+                        this.clearLocalUserSession();
+                    }
                     callback(null);
                 }
             });
@@ -561,17 +662,13 @@ const Auth = {
 
     // Get user's wishlist
     async getWishlist() {
-        if (!this.hydrateCurrentUserFromStorage()) {
-            console.warn('âڑ ï¸ڈ No logged-in user');
+        const session = this.validateFirebaseSession();
+        if (!session.ok) {
+            console.warn('âڑ ï¸ڈ', session.error);
             return [];
         }
 
         try {
-            if (typeof firebase === 'undefined' || !firebase.firestore) {
-                console.warn('âڑ ï¸ڈ Firestore not available');
-                return [];
-            }
-
             const snapshot = await firebase.firestore()
                 .collection('users')
                 .doc(this.currentUser.uid)
@@ -583,9 +680,14 @@ const Auth = {
                 wishlist.push({ id: doc.id, ...doc.data() });
             });
 
+            this.syncWishlistLocalFromRemote(wishlist);
             console.log('âœ… Wishlist loaded:', wishlist.length);
             return wishlist;
         } catch (err) {
+            if (this.isPermissionDeniedError(err)) {
+                console.warn('âڑ ï¸ڈ Wishlist permission denied - using local fallback');
+                return this.getLocalWishlistItems();
+            }
             console.error('Error loading wishlist:', err);
             return [];
         }
@@ -593,15 +695,12 @@ const Auth = {
 
     // Add product to wishlist
     async addToWishlist(productId, productName, productImage, productPrice) {
-        if (!this.hydrateCurrentUserFromStorage()) {
-            return { success: false, error: 'يجب تسجيل الدخول أولاً' };
+        const session = this.validateFirebaseSession();
+        if (!session.ok) {
+            return { success: false, error: session.error };
         }
 
         try {
-            if (typeof firebase === 'undefined' || !firebase.firestore) {
-                throw new Error('Firestore not initialized');
-            }
-
             // If product details are not provided, try to fetch them from API or localStorage
             if (!productName || productImage === undefined || productPrice === undefined) {
                 try {
@@ -644,9 +743,14 @@ const Auth = {
                 .doc(productId)
                 .set(payload);
 
+            this.addToLocalWishlist(productId);
             console.log('âœ… Product added to wishlist:', productId);
             return { success: true };
         } catch (err) {
+            if (this.isPermissionDeniedError(err)) {
+                this.addToLocalWishlist(productId);
+                return { success: true, localOnly: true };
+            }
             console.error('Error adding to wishlist:', err);
             return { success: false, error: err.message };
         }
@@ -654,15 +758,12 @@ const Auth = {
 
     // Remove product from wishlist
     async removeFromWishlist(productId) {
-        if (!this.hydrateCurrentUserFromStorage()) {
-            return { success: false, error: 'يجب تسجيل الدخول أولاً' };
+        const session = this.validateFirebaseSession();
+        if (!session.ok) {
+            return { success: false, error: session.error };
         }
 
         try {
-            if (typeof firebase === 'undefined' || !firebase.firestore) {
-                throw new Error('Firestore not initialized');
-            }
-
             await firebase.firestore()
                 .collection('users')
                 .doc(this.currentUser.uid)
@@ -670,9 +771,14 @@ const Auth = {
                 .doc(productId)
                 .delete();
 
+            this.removeFromLocalWishlist(productId);
             console.log('âœ… Product removed from wishlist:', productId);
             return { success: true };
         } catch (err) {
+            if (this.isPermissionDeniedError(err)) {
+                this.removeFromLocalWishlist(productId);
+                return { success: true, localOnly: true };
+            }
             console.error('Error removing from wishlist:', err);
             return { success: false, error: err.message };
         }
