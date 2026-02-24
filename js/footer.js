@@ -7,7 +7,38 @@ class AntikaFooter extends HTMLElement {
     }
 
     connectedCallback() {
+        this.ensureStickyFooterLayout();
         this.innerHTML = this.getTemplate();
+    }
+
+    ensureStickyFooterLayout() {
+        const body = document.body;
+        if (!body) return;
+
+        // Make page layout column-based so footer can stay at the bottom.
+        body.style.minHeight = '100vh';
+        body.style.display = 'flex';
+        body.style.flexDirection = 'column';
+
+        // Prefer stretching main content area if it exists.
+        const main = document.querySelector('main');
+        if (main) {
+            main.style.flex = '1 0 auto';
+        } else {
+            // Fallback: stretch nearest non-script sibling before footer.
+            let candidate = this.previousElementSibling;
+            while (candidate && (candidate.tagName === 'SCRIPT' || candidate.tagName === 'STYLE')) {
+                candidate = candidate.previousElementSibling;
+            }
+            if (candidate) {
+                candidate.style.flex = '1 0 auto';
+            }
+        }
+
+        // Always push footer to bottom.
+        this.style.marginTop = 'auto';
+        this.style.display = 'block';
+        this.style.width = '100%';
     }
 
     getTemplate() {
