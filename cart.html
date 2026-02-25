@@ -14,10 +14,6 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Leaflet Map (for embedded location picker) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-    
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -1256,7 +1252,7 @@
         // Initialize Map in Checkout
         let checkoutMap = null;
         let checkoutMarker = null;
-        let checkoutMapProvider = 'leaflet';
+        let checkoutMapProvider = 'google';
         let checkoutGoogleAutocompleteService = null;
         let checkoutGoogleGeocoder = null;
         let checkoutGooglePredictions = [];
@@ -1266,12 +1262,24 @@
         async function getMapsRuntimeConfig() {
             if (!mapsRuntimeConfigPromise) {
                 if (window.MapsProvider && typeof MapsProvider.getConfig === 'function') {
-                    mapsRuntimeConfigPromise = MapsProvider.getConfig().catch(() => ({ provider: 'leaflet' }));
+                    mapsRuntimeConfigPromise = MapsProvider.getConfig().catch(() => ({}));
                 } else {
-                    mapsRuntimeConfigPromise = Promise.resolve({ provider: 'leaflet' });
+                    mapsRuntimeConfigPromise = Promise.resolve({});
                 }
             }
             return mapsRuntimeConfigPromise;
+        }
+
+        async function ensureGoogleMapsReady() {
+            const cfg = await getMapsRuntimeConfig();
+            if (!cfg || !cfg.googleMapsEnabled || !cfg.googleMapsApiKey) {
+                throw new Error('Google Maps API key is not configured on server');
+            }
+            if (!window.MapsProvider || typeof MapsProvider.loadGoogleMapsApi !== 'function') {
+                throw new Error('Maps provider helper is unavailable');
+            }
+            await MapsProvider.loadGoogleMapsApi(cfg.googleMapsApiKey);
+            return cfg;
         }
 
         async function initCheckoutMap() {
@@ -1282,65 +1290,38 @@
             const defaultLng = 46.6753;
 
             try {
-                const cfg = await getMapsRuntimeConfig();
-                if (cfg.provider === 'google' && cfg.googleMapsApiKey && window.MapsProvider) {
-                    await MapsProvider.loadGoogleMapsApi(cfg.googleMapsApiKey);
-                    checkoutMapProvider = 'google';
-                    checkoutMap = new google.maps.Map(mapContainer, {
-                        center: { lat: defaultLat, lng: defaultLng },
-                        zoom: 13,
-                        mapTypeControl: false,
-                        streetViewControl: false,
-                        fullscreenControl: false,
-                        gestureHandling: 'greedy'
-                    });
+                await ensureGoogleMapsReady();
+                checkoutMapProvider = 'google';
+                checkoutMap = new google.maps.Map(mapContainer, {
+                    center: { lat: defaultLat, lng: defaultLng },
+                    zoom: 13,
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                    fullscreenControl: false,
+                    gestureHandling: 'greedy'
+                });
 
-                    checkoutMarker = new google.maps.Marker({
-                        map: checkoutMap,
-                        position: { lat: defaultLat, lng: defaultLng },
-                        draggable: true
-                    });
-
-                    checkoutMarker.addListener('dragend', () => {
-                        const pos = checkoutMarker.getPosition();
-                        updateCheckoutLocation(pos.lat(), pos.lng());
-                    });
-
-                    checkoutMap.addListener('click', (e) => {
-                        checkoutMarker.setPosition(e.latLng);
-                        updateCheckoutLocation(e.latLng.lat(), e.latLng.lng());
-                    });
-
-                    checkoutGoogleAutocompleteService = new google.maps.places.AutocompleteService();
-                    checkoutGoogleGeocoder = new google.maps.Geocoder();
-                    return;
-                }
-
-                checkoutMapProvider = 'leaflet';
-                checkoutMap = L.map(mapContainer).setView([defaultLat, defaultLng], 13);
-
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-                    subdomains: 'abcd',
-                    maxZoom: 20
-                }).addTo(checkoutMap);
-
-                checkoutMarker = L.marker([defaultLat, defaultLng], {
+                checkoutMarker = new google.maps.Marker({
+                    map: checkoutMap,
+                    position: { lat: defaultLat, lng: defaultLng },
                     draggable: true
-                }).addTo(checkoutMap);
-
-                checkoutMarker.on('dragend', () => {
-                    const latlng = checkoutMarker.getLatLng();
-                    updateCheckoutLocation(latlng.lat, latlng.lng);
                 });
 
-                checkoutMap.on('click', (e) => {
-                    checkoutMarker.setLatLng(e.latlng);
-                    updateCheckoutLocation(e.latlng.lat, e.latlng.lng);
+                checkoutMarker.addListener('dragend', () => {
+                    const pos = checkoutMarker.getPosition();
+                    updateCheckoutLocation(pos.lat(), pos.lng());
                 });
 
+                checkoutMap.addListener('click', (e) => {
+                    checkoutMarker.setPosition(e.latLng);
+                    updateCheckoutLocation(e.latLng.lat(), e.latLng.lng());
+                });
+
+                checkoutGoogleAutocompleteService = new google.maps.places.AutocompleteService();
+                checkoutGoogleGeocoder = new google.maps.Geocoder();
             } catch (error) {
                 console.error('Error initializing checkout map:', error);
+                mapContainer.innerHTML = '<div class="h-full flex items-center justify-center text-sm text-red-600 bg-red-50 rounded-lg p-3">تعذر تحميل Google Maps. تأكد من إعداد المفتاح وصلاحيات الدومين.</div>';
             }
         }
 
@@ -1371,50 +1352,36 @@
                 }
 
                 try {
-                    if (checkoutMapProvider === 'google' && checkoutGoogleAutocompleteService) {
-                        checkoutGooglePredictions = await new Promise((resolve) => {
-                            checkoutGoogleAutocompleteService.getPlacePredictions({
-                                input: query,
-                                language: 'ar',
-                                componentRestrictions: { country: 'sa' },
-                                types: ['establishment', 'geocode']
-                            }, (predictions, status) => {
-                                if (status !== google.maps.places.PlacesServiceStatus.OK || !Array.isArray(predictions)) {
-                                    return resolve([]);
-                                }
-                                resolve(predictions);
-                            });
-                        });
-
-                        if (checkoutGooglePredictions.length === 0) {
-                            resultsContainer.innerHTML = '<p class="text-xs text-gray-500 p-2">لم يتم العثور على نتائج</p>';
-                            resultsContainer.classList.remove('hidden');
-                            return;
-                        }
-
-                        resultsContainer.innerHTML = checkoutGooglePredictions.map((item, idx) => `
-                            <button type="button" class="w-full text-right p-2 hover:bg-gray-100 rounded text-xs border-b border-gray-100 transition" onclick="selectCheckoutGoogleResult(${idx})">
-                                <div class="font-bold text-gray-900">${item.structured_formatting?.main_text || item.description}</div>
-                                <div class="text-gray-600 text-xs">${item.structured_formatting?.secondary_text || item.description}</div>
-                            </button>
-                        `).join('');
+                    if (!checkoutGoogleAutocompleteService) {
+                        resultsContainer.innerHTML = '<p class="text-xs text-red-500 p-2">خدمة البحث غير جاهزة</p>';
                         resultsContainer.classList.remove('hidden');
                         return;
                     }
 
-                    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8`);
-                    const results = await response.json();
-                    
-                    if (results.length === 0) {
+                    checkoutGooglePredictions = await new Promise((resolve) => {
+                        checkoutGoogleAutocompleteService.getPlacePredictions({
+                            input: query,
+                            language: 'ar',
+                            componentRestrictions: { country: 'sa' },
+                            types: ['establishment', 'geocode']
+                        }, (predictions, status) => {
+                            if (status !== google.maps.places.PlacesServiceStatus.OK || !Array.isArray(predictions)) {
+                                return resolve([]);
+                            }
+                            resolve(predictions);
+                        });
+                    });
+
+                    if (checkoutGooglePredictions.length === 0) {
                         resultsContainer.innerHTML = '<p class="text-xs text-gray-500 p-2">لم يتم العثور على نتائج</p>';
                         resultsContainer.classList.remove('hidden');
                         return;
                     }
 
-                    resultsContainer.innerHTML = results.map(result => `
-                        <button type="button" class="w-full text-right p-2 hover:bg-gray-100 rounded text-xs border-b border-gray-100 transition" onclick="selectCheckoutMapResult('${result.lat}', '${result.lon}', '${result.name.replace(/'/g, "\\'")}')">
-                            <div class="font-bold text-gray-900">${result.name}</div>
-                            <div class="text-gray-600 text-xs">${result.display_name.substring(0, 50)}...</div>
+                    resultsContainer.innerHTML = checkoutGooglePredictions.map((item, idx) => `
+                        <button type="button" class="w-full text-right p-2 hover:bg-gray-100 rounded text-xs border-b border-gray-100 transition" onclick="selectCheckoutGoogleResult(${idx})">
+                            <div class="font-bold text-gray-900">${item.structured_formatting?.main_text || item.description}</div>
+                            <div class="text-gray-600 text-xs">${item.structured_formatting?.secondary_text || item.description}</div>
                         </button>
                     `).join('');
                     resultsContainer.classList.remove('hidden');
@@ -1427,7 +1394,7 @@
         }
 
         async function selectCheckoutGoogleResult(index) {
-            if (checkoutMapProvider !== 'google' || !checkoutGoogleGeocoder) return;
+            if (!checkoutGoogleGeocoder) return;
             const item = checkoutGooglePredictions[index];
             if (!item) return;
 
@@ -1450,16 +1417,9 @@
             if (!Number.isFinite(safeLat) || !Number.isFinite(safeLng)) return;
 
             if (checkoutMap) {
-                if (checkoutMapProvider === 'google') {
-                    checkoutMap.setCenter({ lat: safeLat, lng: safeLng });
-                    checkoutMap.setZoom(16);
-                    if (checkoutMarker) checkoutMarker.setPosition({ lat: safeLat, lng: safeLng });
-                } else {
-                    checkoutMap.setView([safeLat, safeLng], 16);
-                    if (checkoutMarker) {
-                        checkoutMarker.setLatLng([safeLat, safeLng]);
-                    }
-                }
+                checkoutMap.setCenter({ lat: safeLat, lng: safeLng });
+                checkoutMap.setZoom(16);
+                if (checkoutMarker) checkoutMarker.setPosition({ lat: safeLat, lng: safeLng });
                 updateCheckoutLocation(safeLat, safeLng);
                 document.getElementById('checkout-search-results').classList.add('hidden');
                 document.getElementById('checkout-map-search').value = name;
@@ -1950,7 +1910,7 @@
         // ============================================
         let locationPickerMap = null;
         let locationMarker = null;
-        let locationPickerProvider = 'leaflet';
+        let locationPickerProvider = 'google';
         let customLocationSelected = null;
 
         function initializeLocationPicker() {
@@ -2034,69 +1994,40 @@
             if (!mapContainer || locationPickerMap) return;
 
             try {
-                const cfg = await getMapsRuntimeConfig();
-                if (cfg.provider === 'google' && cfg.googleMapsApiKey && window.MapsProvider) {
-                    await MapsProvider.loadGoogleMapsApi(cfg.googleMapsApiKey);
-                    locationPickerProvider = 'google';
-                    locationPickerMap = new google.maps.Map(mapContainer, {
-                        center: { lat: 24.7, lng: 46.6 },
-                        zoom: 12,
-                        mapTypeControl: false,
-                        streetViewControl: false,
-                        fullscreenControl: false,
-                        gestureHandling: 'greedy'
-                    });
+                await ensureGoogleMapsReady();
+                locationPickerProvider = 'google';
+                locationPickerMap = new google.maps.Map(mapContainer, {
+                    center: { lat: 24.7, lng: 46.6 },
+                    zoom: 12,
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                    fullscreenControl: false,
+                    gestureHandling: 'greedy'
+                });
 
-                    locationPickerMap.addListener('click', (e) => {
-                        customLocationSelected = { lat: e.latLng.lat(), lng: e.latLng.lng() };
-                        updateLocationPickerMarker();
-                        updateCustomLocationInfo();
-                    });
-                    return;
-                }
+                locationPickerMap.addListener('click', (e) => {
+                    customLocationSelected = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+                    updateLocationPickerMarker();
+                    updateCustomLocationInfo();
+                });
             } catch (e) {
-                console.warn('Google location picker unavailable, fallback to Leaflet:', e);
+                console.error('Google location picker unavailable:', e);
+                mapContainer.innerHTML = '<div class="h-full flex items-center justify-center text-sm text-red-600 bg-red-50 rounded-lg p-3">تعذر تحميل Google Maps. تأكد من إعداد المفتاح وصلاحيات الدومين.</div>';
             }
-
-            locationPickerProvider = 'leaflet';
-            locationPickerMap = L.map(mapContainer).setView([24.7, 46.6], 12);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-                subdomains: 'abcd',
-                maxZoom: 20
-            }).addTo(locationPickerMap);
-
-            locationPickerMap.on('click', (e) => {
-                customLocationSelected = { lat: e.latlng.lat, lng: e.latlng.lng };
-                updateLocationPickerMarker();
-                updateCustomLocationInfo();
-            });
         }
 
         function updateLocationPickerMarker() {
             if (!customLocationSelected) return;
 
-            if (locationMarker && locationPickerProvider === 'leaflet') {
-                locationPickerMap.removeLayer(locationMarker);
-            }
-            if (locationMarker && locationPickerProvider === 'google') {
+            if (locationMarker) {
                 locationMarker.setMap(null);
             }
-
-            if (locationPickerProvider === 'google') {
-                locationMarker = new google.maps.Marker({
-                    map: locationPickerMap,
-                    position: { lat: customLocationSelected.lat, lng: customLocationSelected.lng }
-                });
-                locationPickerMap.setCenter({ lat: customLocationSelected.lat, lng: customLocationSelected.lng });
-                locationPickerMap.setZoom(15);
-                return;
-            }
-
-            locationMarker = L.marker([customLocationSelected.lat, customLocationSelected.lng])
-                .addTo(locationPickerMap)
-                .bindPopup(`📍 ${customLocationSelected.lat.toFixed(6)}, ${customLocationSelected.lng.toFixed(6)}`);
-            locationPickerMap.setView([customLocationSelected.lat, customLocationSelected.lng], 15);
+            locationMarker = new google.maps.Marker({
+                map: locationPickerMap,
+                position: { lat: customLocationSelected.lat, lng: customLocationSelected.lng }
+            });
+            locationPickerMap.setCenter({ lat: customLocationSelected.lat, lng: customLocationSelected.lng });
+            locationPickerMap.setZoom(15);
         }
 
         function updateCustomLocationInfo() {

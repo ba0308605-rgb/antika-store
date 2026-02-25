@@ -4,44 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>موقعي | انتيكا استور</title>
-    
-    <!-- Tailwind CSS -->
+
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Leaflet Map -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-    
+
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        'antika-pink': '#FFB6C1',
-                        'antika-pink-dark': '#FF69B4',
-                        'antika-gold': '#D6C1A6',
-                        'antika-gold-dark': '#C4AC8E',
-                        'antika-beige': '#FAF0E6',
-                        'antika-lavender': '#FFF0F5',
+                        "antika-pink": "#FFB6C1",
+                        "antika-pink-dark": "#FF69B4",
+                        "antika-gold": "#D6C1A6",
+                        "antika-gold-dark": "#C4AC8E",
+                        "antika-beige": "#FAF0E6",
+                        "antika-lavender": "#FFF0F5"
                     },
                     fontFamily: {
-                        'tajawal': ['Tajawal', 'sans-serif'],
+                        tajawal: ["Tajawal", "sans-serif"]
                     }
                 }
             }
-        }
+        };
     </script>
+
     <style>
-        body { font-family: 'Tajawal', sans-serif; }
-        #map { width: 100%; height: 500px; border-radius: 16px; }
+        body { font-family: "Tajawal", sans-serif; }
+        #map { width: 100%; height: 500px; border-radius: 16px; background: #e5e7eb; }
         .breadcrumb-item:not(:last-child)::after {
-            content: '›';
+            content: "›";
             margin: 0 8px;
             color: #D6C1A6;
             font-size: 1.2em;
@@ -49,14 +41,9 @@
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
-
-    <!-- Announcement Bar -->
     <antika-announcement-bar></antika-announcement-bar>
-    
-    <!-- Header -->
     <antika-header></antika-header>
 
-    <!-- Breadcrumb -->
     <nav class="breadcrumb py-3" style="background: linear-gradient(135deg, rgba(255, 182, 193, 0.1), rgba(214, 193, 166, 0.1)); border-bottom: 1px solid rgba(255, 182, 193, 0.2);">
         <div class="container mx-auto px-4">
             <div class="flex items-center text-sm">
@@ -68,13 +55,11 @@
         </div>
     </nav>
 
-    <!-- Main Content -->
     <main class="container mx-auto px-4 py-8">
-        <div class="max-w-2xl mx-auto">
-            <h1 class="text-3xl font-bold text-antika-gold mb-2">📍 موقعي</h1>
-            <p class="text-gray-600 mb-8">احفظ موقعك لاستخدامه بسرعة عند الشراء</p>
+        <div class="max-w-3xl mx-auto">
+            <h1 class="text-3xl font-bold text-antika-gold mb-2">موقعي</h1>
+            <p class="text-gray-600 mb-8">اختر موقعك واحفظه ليظهر مباشرة عند إتمام الطلب.</p>
 
-            <!-- Loading State -->
             <div id="loading" class="text-center py-8">
                 <div class="inline-block animate-spin">
                     <i class="fas fa-spinner text-3xl text-antika-pink"></i>
@@ -82,50 +67,45 @@
                 <p class="text-gray-500 mt-2">جاري التحميل...</p>
             </div>
 
-            <!-- Location Manager -->
             <div id="location-manager" class="hidden bg-white rounded-2xl shadow-lg p-6 space-y-6">
-                
-                <!-- Current Location Display -->
+                <div id="map-error" class="hidden p-3 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm"></div>
+
                 <div id="current-location" class="hidden">
-                    <h2 class="font-bold text-lg mb-3">✅ موقعك المحفوظ:</h2>
+                    <h2 class="font-bold text-lg mb-3">موقعك المحفوظ:</h2>
                     <div class="p-4 bg-antika-lavender rounded-lg">
                         <div id="current-label" class="font-bold text-gray-800"></div>
                         <div id="current-coords" class="text-sm text-gray-600 mt-1"></div>
                     </div>
                 </div>
 
-                <!-- No Location Message -->
-                <div id="no-location" class="text-center py-8">
+                <div id="no-location" class="text-center py-6">
                     <i class="fas fa-map-marked-alt text-4xl text-gray-300 mb-3"></i>
-                    <p class="text-gray-500">لم تحفظ أي موقع حتى الآن</p>
+                    <p class="text-gray-500">لا يوجد موقع محفوظ حتى الآن</p>
                 </div>
 
-                <!-- Map -->
                 <div>
-                    <label class="block font-bold text-gray-700 mb-3">اختر موقعك على الخريطة:</label>
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="block font-bold text-gray-700">حدد موقعك على الخريطة:</label>
+                        <button id="use-current-location-btn" type="button" class="text-sm px-3 py-2 rounded-lg border border-antika-gold text-antika-gold hover:bg-antika-beige transition">
+                            <i class="fas fa-location-arrow ml-1"></i> موقعي الحالي
+                        </button>
+                    </div>
                     <div id="map" class="shadow-md"></div>
-                    <p class="text-xs text-gray-500 mt-2">انقر على الخريطة لاختيار موقعك</p>
+                    <p class="text-xs text-gray-500 mt-2">انقر على الخريطة لاختيار الموقع بدقة.</p>
                 </div>
 
-                <!-- Location Info -->
                 <div id="location-info" class="hidden p-4 bg-gray-50 rounded-lg">
                     <div class="text-sm">
-                        <div><span class="font-bold">الإحداثيات:</span> <span id="info-coords"></span></div>
+                        <span class="font-bold">الإحداثيات:</span>
+                        <span id="info-coords"></span>
                     </div>
                 </div>
 
-                <!-- Label Input -->
                 <div>
-                    <label class="block font-bold text-gray-700 mb-2">اسم الموقع (مثلاً: المنزل، المكتب):</label>
-                    <input 
-                        type="text" 
-                        id="location-label" 
-                        placeholder="موقعي" 
-                        class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none"
-                    >
+                    <label class="block font-bold text-gray-700 mb-2">اسم الموقع (مثال: المنزل):</label>
+                    <input type="text" id="location-label" placeholder="موقعي" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
                 </div>
 
-                <!-- Action Buttons -->
                 <div class="flex gap-3">
                     <button id="save-location-btn" class="flex-1 bg-antika-pink text-white py-3 rounded-lg font-bold hover:bg-antika-pink-dark transition">
                         <i class="fas fa-save ml-2"></i> احفظ الموقع
@@ -138,10 +118,8 @@
         </div>
     </main>
 
-    <!-- Footer -->
     <antika-footer></antika-footer>
 
-    <!-- Scripts -->
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/header.js"></script>
@@ -151,81 +129,107 @@
     <script src="js/maps-provider.js"></script>
 
     <script>
+        const DEFAULT_CENTER = { lat: 24.7136, lng: 46.6753 };
+        const DEFAULT_ZOOM = 12;
+
         let map = null;
         let marker = null;
         let selectedLocation = null;
-        let userEmail = null;
-        let mapProvider = 'leaflet';
+        let userEmail = "";
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Get user email
-            const userRaw = localStorage.getItem('antika_user');
-            if (!userRaw) {
-                window.location.href = 'login.html';
+        function setButtonLoading(btn, loadingText, loading) {
+            if (!btn) return;
+            if (loading) {
+                btn.dataset.oldHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.textContent = loadingText;
+            } else {
+                btn.disabled = false;
+                if (btn.dataset.oldHtml) btn.innerHTML = btn.dataset.oldHtml;
+            }
+        }
+
+        function showMapError(message) {
+            const box = document.getElementById("map-error");
+            box.textContent = message;
+            box.classList.remove("hidden");
+        }
+
+        function updateLocationInfo() {
+            const info = document.getElementById("location-info");
+            const coords = document.getElementById("info-coords");
+            if (!selectedLocation) {
+                info.classList.add("hidden");
+                return;
+            }
+            coords.textContent = `${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`;
+            info.classList.remove("hidden");
+        }
+
+        function updateSavedDisplay(label, location) {
+            const current = document.getElementById("current-location");
+            const none = document.getElementById("no-location");
+            if (!location) {
+                current.classList.add("hidden");
+                none.classList.remove("hidden");
                 return;
             }
 
-            try {
-                const user = JSON.parse(userRaw);
-                userEmail = user.email;
+            current.classList.remove("hidden");
+            none.classList.add("hidden");
+            document.getElementById("current-label").textContent = label || "موقعي";
+            document.getElementById("current-coords").textContent = `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`;
+        }
 
-                // Initialize map
-                await initMap();
-
-                // Load saved location
-                await loadSavedLocation();
-
-                // Setup event listeners
-                setupEventListeners();
-
-                // Hide loading
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('location-manager').classList.remove('hidden');
-            } catch (e) {
-                console.error('Error initializing:', e);
-                document.getElementById('loading').innerHTML = '<p class="text-red-500">حدث خطأ: ' + e.message + '</p>';
+        function updateMarkerAndCenter() {
+            if (marker) {
+                marker.setMap(null);
+                marker = null;
             }
-        });
+            if (!selectedLocation || !map) return;
+
+            marker = new google.maps.Marker({
+                map,
+                position: { lat: selectedLocation.lat, lng: selectedLocation.lng },
+                draggable: true
+            });
+
+            marker.addListener("dragend", () => {
+                const pos = marker.getPosition();
+                selectedLocation = { lat: pos.lat(), lng: pos.lng() };
+                updateLocationInfo();
+            });
+
+            map.setCenter({ lat: selectedLocation.lat, lng: selectedLocation.lng });
+            map.setZoom(15);
+        }
+
+        async function ensureGoogleMapsReady() {
+            if (!window.MapsProvider || typeof window.MapsProvider.getConfig !== "function") {
+                throw new Error("Maps helper not found");
+            }
+            const cfg = await window.MapsProvider.getConfig();
+            if (!cfg || !cfg.googleMapsEnabled || !cfg.googleMapsApiKey) {
+                throw new Error("Google Maps key is not configured");
+            }
+            await window.MapsProvider.loadGoogleMapsApi(cfg.googleMapsApiKey);
+        }
 
         async function initMap() {
-            const defaultCenter = { lat: 24.7, lng: 46.6 };
+            await ensureGoogleMapsReady();
 
-            try {
-                const cfg = window.MapsProvider ? await MapsProvider.getConfig() : { provider: 'leaflet' };
-                if (cfg.provider === 'google' && cfg.googleMapsApiKey) {
-                    await MapsProvider.loadGoogleMapsApi(cfg.googleMapsApiKey);
-                    mapProvider = 'google';
-                    map = new google.maps.Map(document.getElementById('map'), {
-                        center: defaultCenter,
-                        zoom: 12,
-                        mapTypeControl: false,
-                        streetViewControl: false,
-                        fullscreenControl: false,
-                        gestureHandling: 'greedy'
-                    });
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: DEFAULT_CENTER,
+                zoom: DEFAULT_ZOOM,
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: false,
+                gestureHandling: "greedy"
+            });
 
-                    map.addListener('click', (e) => {
-                        selectedLocation = { lat: e.latLng.lat(), lng: e.latLng.lng() };
-                        updateMarker();
-                        updateLocationInfo();
-                    });
-                    return;
-                }
-            } catch (e) {
-                console.warn('Google Maps unavailable, fallback to Leaflet:', e);
-            }
-
-            mapProvider = 'leaflet';
-            map = L.map('map').setView([defaultCenter.lat, defaultCenter.lng], 12);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-                subdomains: 'abcd',
-                maxZoom: 20
-            }).addTo(map);
-
-            map.on('click', (e) => {
-                selectedLocation = { lat: e.latlng.lat, lng: e.latlng.lng };
-                updateMarker();
+            map.addListener("click", (e) => {
+                selectedLocation = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+                updateMarkerAndCenter();
                 updateLocationInfo();
             });
         }
@@ -233,134 +237,121 @@
         async function loadSavedLocation() {
             try {
                 const result = await API.getUserLocation(userEmail);
-                if (result && result.location && result.location.lat && result.location.lng) {
-                    selectedLocation = result.location;
-                    document.getElementById('location-label').value = result.label || 'موقعي';
-                    
-                    // Update UI to show current location
-                    const currentDiv = document.getElementById('current-location');
-                    const noLocDiv = document.getElementById('no-location');
-                    currentDiv.classList.remove('hidden');
-                    noLocDiv.classList.add('hidden');
-                    document.getElementById('current-label').textContent = result.label || 'موقعي';
-                    document.getElementById('current-coords').textContent = `${result.location.lat.toFixed(6)}, ${result.location.lng.toFixed(6)}`;
-
-                    // Center map on saved location
-                    if (mapProvider === 'google') {
-                        map.setCenter({ lat: result.location.lat, lng: result.location.lng });
-                        map.setZoom(15);
-                    } else {
-                        map.setView([result.location.lat, result.location.lng], 15);
-                    }
-                    updateMarker();
-                    updateLocationInfo();
-                }
-            } catch (e) {
-                console.warn('No saved location or error loading:', e);
-                document.getElementById('no-location').classList.remove('hidden');
-            }
-        }
-
-        function updateMarker() {
-            if (marker) {
-                map.removeLayer(marker);
-            }
-            if (selectedLocation) {
-                marker = L.marker([selectedLocation.lat, selectedLocation.lng])
-                    .addTo(map)
-                    .bindPopup(`📍 ${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`);
-                map.setView([selectedLocation.lat, selectedLocation.lng], 15);
-            }
-        }
-
-        // Override marker renderer to support both Google Maps and Leaflet.
-        function updateMarker() {
-            if (marker && mapProvider === 'leaflet') map.removeLayer(marker);
-            if (marker && mapProvider === 'google') marker.setMap(null);
-            if (!selectedLocation) return;
-
-            if (mapProvider === 'google') {
-                marker = new google.maps.Marker({
-                    map,
-                    position: { lat: selectedLocation.lat, lng: selectedLocation.lng }
-                });
-                map.setCenter({ lat: selectedLocation.lat, lng: selectedLocation.lng });
-                map.setZoom(15);
-                return;
-            }
-
-            marker = L.marker([selectedLocation.lat, selectedLocation.lng])
-                .addTo(map)
-                .bindPopup(`📍 ${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`);
-            map.setView([selectedLocation.lat, selectedLocation.lng], 15);
-        }
-
-        function updateLocationInfo() {
-            if (selectedLocation) {
-                document.getElementById('location-info').classList.remove('hidden');
-                document.getElementById('info-coords').textContent = `${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`;
-            }
-        }
-
-        function setupEventListeners() {
-            document.getElementById('save-location-btn').addEventListener('click', async () => {
-                if (!selectedLocation) {
-                    alert('اختر موقعاً على الخريطة');
+                if (!result || !result.location) {
+                    updateSavedDisplay("", null);
                     return;
                 }
 
-                const label = document.getElementById('location-label').value.trim() || 'موقعي';
-                
+                const lat = Number(result.location.lat);
+                const lng = Number(result.location.lng);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+                    updateSavedDisplay("", null);
+                    return;
+                }
+
+                selectedLocation = { lat, lng };
+                document.getElementById("location-label").value = result.label || "موقعي";
+                updateSavedDisplay(result.label || "موقعي", selectedLocation);
+                updateMarkerAndCenter();
+                updateLocationInfo();
+            } catch (e) {
+                console.warn("Unable to load saved location:", e);
+                updateSavedDisplay("", null);
+            }
+        }
+
+        function bindEvents() {
+            document.getElementById("use-current-location-btn").addEventListener("click", () => {
+                if (!navigator.geolocation) {
+                    alert("المتصفح لا يدعم تحديد الموقع");
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        selectedLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                        updateMarkerAndCenter();
+                        updateLocationInfo();
+                    },
+                    () => alert("تعذر الحصول على موقعك الحالي"),
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            });
+
+            document.getElementById("save-location-btn").addEventListener("click", async () => {
+                if (!selectedLocation) {
+                    alert("اختر موقعًا على الخريطة أولًا");
+                    return;
+                }
+
+                const label = document.getElementById("location-label").value.trim() || "موقعي";
+                const saveBtn = document.getElementById("save-location-btn");
+
                 try {
-                    document.getElementById('save-location-btn').disabled = true;
-                    document.getElementById('save-location-btn').textContent = '⏳ جاري الحفظ...';
-
-                    const result = await API.setUserLocation(userEmail, selectedLocation.lat, selectedLocation.lng, label);
-
-                    // Update UI
-                    const currentDiv = document.getElementById('current-location');
-                    const noLocDiv = document.getElementById('no-location');
-                    currentDiv.classList.remove('hidden');
-                    noLocDiv.classList.add('hidden');
-                    document.getElementById('current-label').textContent = label;
-                    document.getElementById('current-coords').textContent = `${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`;
-
-                    alert('✅ تم حفظ موقعك بنجاح!');
-                    document.getElementById('save-location-btn').disabled = false;
-                    document.getElementById('save-location-btn').textContent = '<i class="fas fa-save ml-2"></i> احفظ الموقع';
+                    setButtonLoading(saveBtn, "جاري الحفظ...", true);
+                    await API.setUserLocation(userEmail, selectedLocation.lat, selectedLocation.lng, label);
+                    updateSavedDisplay(label, selectedLocation);
+                    alert("تم حفظ موقعك بنجاح");
                 } catch (e) {
-                    console.error('Error saving location:', e);
-                    alert('❌ حدث خطأ أثناء حفظ الموقع');
-                    document.getElementById('save-location-btn').disabled = false;
-                    document.getElementById('save-location-btn').textContent = '<i class="fas fa-save ml-2"></i> احفظ الموقع';
+                    console.error("Save location error:", e);
+                    alert("تعذر حفظ الموقع. حاول مرة أخرى.");
+                } finally {
+                    setButtonLoading(saveBtn, "", false);
                 }
             });
 
-            document.getElementById('clear-location-btn').addEventListener('click', async () => {
-                if (!confirm('هل تريد حذف موقعك المحفوظ؟')) return;
+            document.getElementById("clear-location-btn").addEventListener("click", async () => {
+                if (!confirm("هل تريد حذف موقعك المحفوظ؟")) return;
+                const clearBtn = document.getElementById("clear-location-btn");
 
                 try {
-                    document.getElementById('clear-location-btn').disabled = true;
+                    setButtonLoading(clearBtn, "جاري الحذف...", true);
                     await API.deleteUserLocation(userEmail);
-
-                    // Reset UI
                     selectedLocation = null;
-                    if (marker && mapProvider === 'leaflet') map.removeLayer(marker);
-                    if (marker && mapProvider === 'google') marker.setMap(null);
-                    document.getElementById('location-label').value = 'موقعي';
-                    document.getElementById('location-info').classList.add('hidden');
-                    document.getElementById('current-location').classList.add('hidden');
-                    document.getElementById('no-location').classList.remove('hidden');
-
-                    alert('✅ تم حذف موقعك');
-                    document.getElementById('clear-location-btn').disabled = false;
+                    if (marker) {
+                        marker.setMap(null);
+                        marker = null;
+                    }
+                    map.setCenter(DEFAULT_CENTER);
+                    map.setZoom(DEFAULT_ZOOM);
+                    document.getElementById("location-label").value = "موقعي";
+                    updateLocationInfo();
+                    updateSavedDisplay("", null);
+                    alert("تم حذف الموقع");
                 } catch (e) {
-                    console.error('Error deleting location:', e);
-                    alert('❌ حدث خطأ أثناء حذف الموقع');
-                    document.getElementById('clear-location-btn').disabled = false;
+                    console.error("Delete location error:", e);
+                    alert("تعذر حذف الموقع. حاول مرة أخرى.");
+                } finally {
+                    setButtonLoading(clearBtn, "", false);
                 }
             });
         }
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const userRaw = localStorage.getItem("antika_user");
+            if (!userRaw) {
+                window.location.href = "login.html";
+                return;
+            }
+
+            try {
+                const user = JSON.parse(userRaw);
+                userEmail = user.email || "";
+                if (!userEmail) {
+                    window.location.href = "login.html";
+                    return;
+                }
+
+                await initMap();
+                await loadSavedLocation();
+                bindEvents();
+            } catch (e) {
+                console.error("Location page init error:", e);
+                showMapError("تعذر تحميل Google Maps. تأكد من إعداد المفتاح وصلاحيات الدومين.");
+            } finally {
+                document.getElementById("loading").classList.add("hidden");
+                document.getElementById("location-manager").classList.remove("hidden");
+            }
+        });
     </script>
 </body>
 </html>

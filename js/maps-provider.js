@@ -1,4 +1,4 @@
-// Maps provider runtime helper (Google Maps with safe fallback to Leaflet).
+// Maps provider runtime helper for Google Maps.
 (function () {
     const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
         ? 'http://localhost:3000/api'
@@ -9,7 +9,7 @@
 
     function fallbackConfig() {
         return {
-            provider: 'leaflet',
+            provider: 'google',
             googleMapsEnabled: false,
             googleMapsApiKey: ''
         };
