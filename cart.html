@@ -1266,9 +1266,10 @@
             try {
                 checkoutMap = L.map(mapContainer).setView([defaultLat, defaultLng], 13);
 
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; OpenStreetMap contributors',
-                    maxZoom: 19
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                    subdomains: 'abcd',
+                    maxZoom: 20
                 }).addTo(checkoutMap);
 
                 checkoutMarker = L.marker([defaultLat, defaultLng], {
@@ -1922,9 +1923,10 @@
             if (!mapContainer || locationPickerMap) return;
 
             locationPickerMap = L.map(mapContainer).setView([24.7, 46.6], 12);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap',
-                maxZoom: 19
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                subdomains: 'abcd',
+                maxZoom: 20
             }).addTo(locationPickerMap);
 
             locationPickerMap.on('click', (e) => {
