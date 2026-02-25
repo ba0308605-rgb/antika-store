@@ -525,6 +525,7 @@
 
     <!-- Scripts -->
     <script src="js/api.js"></script>
+    <script src="js/maps-provider.js"></script>
     <script src="js/firebase-config.js"></script>
     <script src="js/auth.js"></script>
     
@@ -1255,8 +1256,25 @@
         // Initialize Map in Checkout
         let checkoutMap = null;
         let checkoutMarker = null;
+        let checkoutMapProvider = 'leaflet';
+        let checkoutGoogleAutocompleteService = null;
+        let checkoutGoogleGeocoder = null;
+        let checkoutGooglePredictions = [];
+        let checkoutSearchListenerBound = false;
+        let mapsRuntimeConfigPromise = null;
 
-        function initCheckoutMap() {
+        async function getMapsRuntimeConfig() {
+            if (!mapsRuntimeConfigPromise) {
+                if (window.MapsProvider && typeof MapsProvider.getConfig === 'function') {
+                    mapsRuntimeConfigPromise = MapsProvider.getConfig().catch(() => ({ provider: 'leaflet' }));
+                } else {
+                    mapsRuntimeConfigPromise = Promise.resolve({ provider: 'leaflet' });
+                }
+            }
+            return mapsRuntimeConfigPromise;
+        }
+
+        async function initCheckoutMap() {
             if (checkoutMap) return; // Map already initialized
 
             const mapContainer = document.getElementById('checkout-map');
@@ -1264,6 +1282,41 @@
             const defaultLng = 46.6753;
 
             try {
+                const cfg = await getMapsRuntimeConfig();
+                if (cfg.provider === 'google' && cfg.googleMapsApiKey && window.MapsProvider) {
+                    await MapsProvider.loadGoogleMapsApi(cfg.googleMapsApiKey);
+                    checkoutMapProvider = 'google';
+                    checkoutMap = new google.maps.Map(mapContainer, {
+                        center: { lat: defaultLat, lng: defaultLng },
+                        zoom: 13,
+                        mapTypeControl: false,
+                        streetViewControl: false,
+                        fullscreenControl: false,
+                        gestureHandling: 'greedy'
+                    });
+
+                    checkoutMarker = new google.maps.Marker({
+                        map: checkoutMap,
+                        position: { lat: defaultLat, lng: defaultLng },
+                        draggable: true
+                    });
+
+                    checkoutMarker.addListener('dragend', () => {
+                        const pos = checkoutMarker.getPosition();
+                        updateCheckoutLocation(pos.lat(), pos.lng());
+                    });
+
+                    checkoutMap.addListener('click', (e) => {
+                        checkoutMarker.setPosition(e.latLng);
+                        updateCheckoutLocation(e.latLng.lat(), e.latLng.lng());
+                    });
+
+                    checkoutGoogleAutocompleteService = new google.maps.places.AutocompleteService();
+                    checkoutGoogleGeocoder = new google.maps.Geocoder();
+                    return;
+                }
+
+                checkoutMapProvider = 'leaflet';
                 checkoutMap = L.map(mapContainer).setView([defaultLat, defaultLng], 13);
 
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -1276,13 +1329,11 @@
                     draggable: true
                 }).addTo(checkoutMap);
 
-                // Update coordinates when marker is dragged
                 checkoutMarker.on('dragend', () => {
                     const latlng = checkoutMarker.getLatLng();
                     updateCheckoutLocation(latlng.lat, latlng.lng);
                 });
 
-                // Click on map to place marker
                 checkoutMap.on('click', (e) => {
                     checkoutMarker.setLatLng(e.latlng);
                     updateCheckoutLocation(e.latlng.lat, e.latlng.lng);
@@ -1309,7 +1360,8 @@
             const searchInput = document.getElementById('checkout-map-search');
             const resultsContainer = document.getElementById('checkout-search-results');
             
-            if (!searchInput) return;
+            if (!searchInput || !resultsContainer || checkoutSearchListenerBound) return;
+            checkoutSearchListenerBound = true;
 
             searchInput.addEventListener('input', async (e) => {
                 const query = e.target.value.trim();
@@ -1319,6 +1371,37 @@
                 }
 
                 try {
+                    if (checkoutMapProvider === 'google' && checkoutGoogleAutocompleteService) {
+                        checkoutGooglePredictions = await new Promise((resolve) => {
+                            checkoutGoogleAutocompleteService.getPlacePredictions({
+                                input: query,
+                                language: 'ar',
+                                componentRestrictions: { country: 'sa' },
+                                types: ['establishment', 'geocode']
+                            }, (predictions, status) => {
+                                if (status !== google.maps.places.PlacesServiceStatus.OK || !Array.isArray(predictions)) {
+                                    return resolve([]);
+                                }
+                                resolve(predictions);
+                            });
+                        });
+
+                        if (checkoutGooglePredictions.length === 0) {
+                            resultsContainer.innerHTML = '<p class="text-xs text-gray-500 p-2">لم يتم العثور على نتائج</p>';
+                            resultsContainer.classList.remove('hidden');
+                            return;
+                        }
+
+                        resultsContainer.innerHTML = checkoutGooglePredictions.map((item, idx) => `
+                            <button type="button" class="w-full text-right p-2 hover:bg-gray-100 rounded text-xs border-b border-gray-100 transition" onclick="selectCheckoutGoogleResult(${idx})">
+                                <div class="font-bold text-gray-900">${item.structured_formatting?.main_text || item.description}</div>
+                                <div class="text-gray-600 text-xs">${item.structured_formatting?.secondary_text || item.description}</div>
+                            </button>
+                        `).join('');
+                        resultsContainer.classList.remove('hidden');
+                        return;
+                    }
+
                     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8`);
                     const results = await response.json();
                     
@@ -1343,14 +1426,41 @@
             });
         }
 
+        async function selectCheckoutGoogleResult(index) {
+            if (checkoutMapProvider !== 'google' || !checkoutGoogleGeocoder) return;
+            const item = checkoutGooglePredictions[index];
+            if (!item) return;
+
+            const geocodeResults = await new Promise((resolve) => {
+                checkoutGoogleGeocoder.geocode({ placeId: item.place_id }, (results, status) => {
+                    if (status !== 'OK' || !Array.isArray(results)) return resolve([]);
+                    resolve(results);
+                });
+            });
+            if (!geocodeResults.length) return;
+
+            const loc = geocodeResults[0].geometry.location;
+            selectCheckoutMapResult(loc.lat(), loc.lng(), item.description || '');
+        }
+
         // Select location from search results
         function selectCheckoutMapResult(lat, lng, name) {
+            const safeLat = Number(lat);
+            const safeLng = Number(lng);
+            if (!Number.isFinite(safeLat) || !Number.isFinite(safeLng)) return;
+
             if (checkoutMap) {
-                checkoutMap.setView([lat, lng], 16);
-                if (checkoutMarker) {
-                    checkoutMarker.setLatLng([lat, lng]);
+                if (checkoutMapProvider === 'google') {
+                    checkoutMap.setCenter({ lat: safeLat, lng: safeLng });
+                    checkoutMap.setZoom(16);
+                    if (checkoutMarker) checkoutMarker.setPosition({ lat: safeLat, lng: safeLng });
+                } else {
+                    checkoutMap.setView([safeLat, safeLng], 16);
+                    if (checkoutMarker) {
+                        checkoutMarker.setLatLng([safeLat, safeLng]);
+                    }
                 }
-                updateCheckoutLocation(lat, lng);
+                updateCheckoutLocation(safeLat, safeLng);
                 document.getElementById('checkout-search-results').classList.add('hidden');
                 document.getElementById('checkout-map-search').value = name;
             }
@@ -1391,7 +1501,7 @@
                             checkoutMap = null; // Reset map
                             initCheckoutMap();
                             setupCheckoutMapSearch();
-                            if (checkoutMap) checkoutMap.invalidateSize();
+                            if (checkoutMap && typeof checkoutMap.invalidateSize === 'function') checkoutMap.invalidateSize();
                         }, 100);
                     } else {
                         mapContainer.style.display = 'none';
@@ -1840,6 +1950,7 @@
         // ============================================
         let locationPickerMap = null;
         let locationMarker = null;
+        let locationPickerProvider = 'leaflet';
         let customLocationSelected = null;
 
         function initializeLocationPicker() {
@@ -1918,10 +2029,36 @@
             localStorage.setItem('selectedLocation', JSON.stringify(location));
         }
 
-        function initializeLocationPickerMap() {
+        async function initializeLocationPickerMap() {
             const mapContainer = document.getElementById('location-picker-map');
             if (!mapContainer || locationPickerMap) return;
 
+            try {
+                const cfg = await getMapsRuntimeConfig();
+                if (cfg.provider === 'google' && cfg.googleMapsApiKey && window.MapsProvider) {
+                    await MapsProvider.loadGoogleMapsApi(cfg.googleMapsApiKey);
+                    locationPickerProvider = 'google';
+                    locationPickerMap = new google.maps.Map(mapContainer, {
+                        center: { lat: 24.7, lng: 46.6 },
+                        zoom: 12,
+                        mapTypeControl: false,
+                        streetViewControl: false,
+                        fullscreenControl: false,
+                        gestureHandling: 'greedy'
+                    });
+
+                    locationPickerMap.addListener('click', (e) => {
+                        customLocationSelected = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+                        updateLocationPickerMarker();
+                        updateCustomLocationInfo();
+                    });
+                    return;
+                }
+            } catch (e) {
+                console.warn('Google location picker unavailable, fallback to Leaflet:', e);
+            }
+
+            locationPickerProvider = 'leaflet';
             locationPickerMap = L.map(mapContainer).setView([24.7, 46.6], 12);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
@@ -1937,15 +2074,29 @@
         }
 
         function updateLocationPickerMarker() {
-            if (locationMarker) {
+            if (!customLocationSelected) return;
+
+            if (locationMarker && locationPickerProvider === 'leaflet') {
                 locationPickerMap.removeLayer(locationMarker);
             }
-            if (customLocationSelected) {
-                locationMarker = L.marker([customLocationSelected.lat, customLocationSelected.lng])
-                    .addTo(locationPickerMap)
-                    .bindPopup(`ًں“چ ${customLocationSelected.lat.toFixed(6)}, ${customLocationSelected.lng.toFixed(6)}`);
-                locationPickerMap.setView([customLocationSelected.lat, customLocationSelected.lng], 15);
+            if (locationMarker && locationPickerProvider === 'google') {
+                locationMarker.setMap(null);
             }
+
+            if (locationPickerProvider === 'google') {
+                locationMarker = new google.maps.Marker({
+                    map: locationPickerMap,
+                    position: { lat: customLocationSelected.lat, lng: customLocationSelected.lng }
+                });
+                locationPickerMap.setCenter({ lat: customLocationSelected.lat, lng: customLocationSelected.lng });
+                locationPickerMap.setZoom(15);
+                return;
+            }
+
+            locationMarker = L.marker([customLocationSelected.lat, customLocationSelected.lng])
+                .addTo(locationPickerMap)
+                .bindPopup(`📍 ${customLocationSelected.lat.toFixed(6)}, ${customLocationSelected.lng.toFixed(6)}`);
+            locationPickerMap.setView([customLocationSelected.lat, customLocationSelected.lng], 15);
         }
 
         function updateCustomLocationInfo() {

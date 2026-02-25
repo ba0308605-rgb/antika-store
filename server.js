@@ -28,6 +28,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'BDR-FIRST';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'B1-a2d3e4r5';
 const ADMIN_TOKEN_TTL = process.env.ADMIN_TOKEN_TTL || '8h';
+const GOOGLE_MAPS_API_KEY = (process.env.GOOGLE_MAPS_API_KEY || '').trim();
 
 if (!process.env.JWT_SECRET) {
   console.warn('⚠️ JWT_SECRET is missing; using insecure fallback secret. Set JWT_SECRET in production.');
@@ -1292,6 +1293,19 @@ app.put('/api/pages/:pageId', requireAdmin, async (req, res) => {
     console.error('Error updating page:', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ============================================
+// MAPS CONFIG
+// ============================================
+
+app.get('/api/maps/config', (req, res) => {
+  const googleMapsEnabled = Boolean(GOOGLE_MAPS_API_KEY);
+  res.json({
+    provider: googleMapsEnabled ? 'google' : 'leaflet',
+    googleMapsEnabled,
+    googleMapsApiKey: googleMapsEnabled ? GOOGLE_MAPS_API_KEY : ''
+  });
 });
 
 // ============================================

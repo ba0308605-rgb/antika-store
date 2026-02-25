@@ -148,12 +148,14 @@
     <script src="js/auth-sync.js"></script>
     <script src="js/announcement-bar.js"></script>
     <script src="js/footer.js"></script>
+    <script src="js/maps-provider.js"></script>
 
     <script>
         let map = null;
         let marker = null;
         let selectedLocation = null;
         let userEmail = null;
+        let mapProvider = 'leaflet';
 
         document.addEventListener('DOMContentLoaded', async () => {
             // Get user email
@@ -168,7 +170,7 @@
                 userEmail = user.email;
 
                 // Initialize map
-                initMap();
+                await initMap();
 
                 // Load saved location
                 await loadSavedLocation();
@@ -185,8 +187,36 @@
             }
         });
 
-        function initMap() {
-            map = L.map('map').setView([24.7, 46.6], 12);
+        async function initMap() {
+            const defaultCenter = { lat: 24.7, lng: 46.6 };
+
+            try {
+                const cfg = window.MapsProvider ? await MapsProvider.getConfig() : { provider: 'leaflet' };
+                if (cfg.provider === 'google' && cfg.googleMapsApiKey) {
+                    await MapsProvider.loadGoogleMapsApi(cfg.googleMapsApiKey);
+                    mapProvider = 'google';
+                    map = new google.maps.Map(document.getElementById('map'), {
+                        center: defaultCenter,
+                        zoom: 12,
+                        mapTypeControl: false,
+                        streetViewControl: false,
+                        fullscreenControl: false,
+                        gestureHandling: 'greedy'
+                    });
+
+                    map.addListener('click', (e) => {
+                        selectedLocation = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+                        updateMarker();
+                        updateLocationInfo();
+                    });
+                    return;
+                }
+            } catch (e) {
+                console.warn('Google Maps unavailable, fallback to Leaflet:', e);
+            }
+
+            mapProvider = 'leaflet';
+            map = L.map('map').setView([defaultCenter.lat, defaultCenter.lng], 12);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
                 subdomains: 'abcd',
@@ -216,7 +246,12 @@
                     document.getElementById('current-coords').textContent = `${result.location.lat.toFixed(6)}, ${result.location.lng.toFixed(6)}`;
 
                     // Center map on saved location
-                    map.setView([result.location.lat, result.location.lng], 15);
+                    if (mapProvider === 'google') {
+                        map.setCenter({ lat: result.location.lat, lng: result.location.lng });
+                        map.setZoom(15);
+                    } else {
+                        map.setView([result.location.lat, result.location.lng], 15);
+                    }
                     updateMarker();
                     updateLocationInfo();
                 }
@@ -236,6 +271,28 @@
                     .bindPopup(`📍 ${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`);
                 map.setView([selectedLocation.lat, selectedLocation.lng], 15);
             }
+        }
+
+        // Override marker renderer to support both Google Maps and Leaflet.
+        function updateMarker() {
+            if (marker && mapProvider === 'leaflet') map.removeLayer(marker);
+            if (marker && mapProvider === 'google') marker.setMap(null);
+            if (!selectedLocation) return;
+
+            if (mapProvider === 'google') {
+                marker = new google.maps.Marker({
+                    map,
+                    position: { lat: selectedLocation.lat, lng: selectedLocation.lng }
+                });
+                map.setCenter({ lat: selectedLocation.lat, lng: selectedLocation.lng });
+                map.setZoom(15);
+                return;
+            }
+
+            marker = L.marker([selectedLocation.lat, selectedLocation.lng])
+                .addTo(map)
+                .bindPopup(`📍 ${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`);
+            map.setView([selectedLocation.lat, selectedLocation.lng], 15);
         }
 
         function updateLocationInfo() {
@@ -288,7 +345,8 @@
 
                     // Reset UI
                     selectedLocation = null;
-                    if (marker) map.removeLayer(marker);
+                    if (marker && mapProvider === 'leaflet') map.removeLayer(marker);
+                    if (marker && mapProvider === 'google') marker.setMap(null);
                     document.getElementById('location-label').value = 'موقعي';
                     document.getElementById('location-info').classList.add('hidden');
                     document.getElementById('current-location').classList.add('hidden');

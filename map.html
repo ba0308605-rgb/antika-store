@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>اختيار الموقع - انتيكا استور</title>
+    <title>ط§ط®طھظٹط§ط± ط§ظ„ظ…ظˆظ‚ط¹ - ط§ظ†طھظٹظƒط§ ط§ط³طھظˆط±</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -212,8 +212,8 @@
     <!-- Header -->
     <div class="map-header">
         <div>
-            <h1 class="text-2xl font-bold text-gray-800">📍 اختيار موقع التوصيل</h1>
-            <p class="text-sm text-gray-500 mt-1">اضغط على الخريطة لتحديد موقعك أو استخدم زر الموقع الحالي</p>
+            <h1 class="text-2xl font-bold text-gray-800">ًں“چ ط§ط®طھظٹط§ط± ظ…ظˆظ‚ط¹ ط§ظ„طھظˆطµظٹظ„</h1>
+            <p class="text-sm text-gray-500 mt-1">ط§ط¶ط؛ط· ط¹ظ„ظ‰ ط§ظ„ط®ط±ظٹط·ط© ظ„طھط­ط¯ظٹط¯ ظ…ظˆظ‚ط¹ظƒ ط£ظˆ ط§ط³طھط®ط¯ظ… ط²ط± ط§ظ„ظ…ظˆظ‚ط¹ ط§ظ„ط­ط§ظ„ظٹ</p>
         </div>
         <a href="javascript:history.back()" class="text-gray-400 hover:text-gray-600 text-2xl">
             <i class="fas fa-times"></i>
@@ -225,16 +225,16 @@
     
     <!-- Controls -->
     <div class="map-controls">
-        <button id="current-location-btn" class="control-btn" title="موقعي الحالي">
+        <button id="current-location-btn" class="control-btn" title="ظ…ظˆظ‚ط¹ظٹ ط§ظ„ط­ط§ظ„ظٹ">
             <i class="fas fa-location-arrow"></i>
         </button>
-        <button id="reset-map-btn" class="control-btn" title="إعادة تعيين">
+        <button id="reset-map-btn" class="control-btn" title="ط¥ط¹ط§ط¯ط© طھط¹ظٹظٹظ†">
             <i class="fas fa-redo"></i>
         </button>
-        <button id="zoom-in-btn" class="control-btn" title="تقريب">
+        <button id="zoom-in-btn" class="control-btn" title="طھظ‚ط±ظٹط¨">
             <i class="fas fa-plus"></i>
         </button>
-        <button id="zoom-out-btn" class="control-btn" title="تبعيد">
+        <button id="zoom-out-btn" class="control-btn" title="طھط¨ط¹ظٹط¯">
             <i class="fas fa-minus"></i>
         </button>
     </div>
@@ -242,54 +242,54 @@
     <!-- Info Panel -->
     <div class="info-panel">
         <div class="instructions">
-            <strong>تعليمات:</strong><br>
-            ابحث عن عنوانك أو اضغط على الخريطة لاختيار موقعك
+            <strong>طھط¹ظ„ظٹظ…ط§طھ:</strong><br>
+            ط§ط¨ط­ط« ط¹ظ† ط¹ظ†ظˆط§ظ†ظƒ ط£ظˆ ط§ط¶ط؛ط· ط¹ظ„ظ‰ ط§ظ„ط®ط±ظٹط·ط© ظ„ط§ط®طھظٹط§ط± ظ…ظˆظ‚ط¹ظƒ
         </div>
 
         <!-- Search Box -->
         <div class="mb-4">
-            <input type="text" id="search-address" placeholder="ابحث عن عنوان أو موقع..." 
+            <input type="text" id="search-address" placeholder="ط§ط¨ط­ط« ط¹ظ† ط¹ظ†ظˆط§ظ† ط£ظˆ ظ…ظˆظ‚ط¹..." 
                    class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-antika-gold focus:outline-none text-sm">
             <div id="search-results" class="mt-2 max-h-40 overflow-y-auto"></div>
         </div>
 
         <!-- Enhanced Instructions -->
         <div class="instructions bg-antika-lavender border-r-4 border-antika-pink mb-4 p-3 rounded-lg text-sm text-gray-700">
-            <strong class="text-antika-pink block mb-2">🗺️ كيفية الاستخدام:</strong>
+            <strong class="text-antika-pink block mb-2">ًں—؛ï¸ڈ ظƒظٹظپظٹط© ط§ظ„ط§ط³طھط®ط¯ط§ظ…:</strong>
             <ul class="list-disc pr-5 space-y-1 text-xs">
-                <li>اضغط على أي مكان في الخريطة لاختيار الموقع</li>
-                <li>استخدم زر الموقع الحالي <strong>📍</strong> للحصول على موقعك</li>
-                <li>ابحث عن عنوان أو نوع مبنى (مطعم، مسجد، مستشفى)</li>
-                <li>اسحب العلم الأحمر لضبط الموقع بدقة</li>
-                <li>اضغط تأكيد بعد اختيار الموقع</li>
+                <li>ط§ط¶ط؛ط· ط¹ظ„ظ‰ ط£ظٹ ظ…ظƒط§ظ† ظپظٹ ط§ظ„ط®ط±ظٹط·ط© ظ„ط§ط®طھظٹط§ط± ط§ظ„ظ…ظˆظ‚ط¹</li>
+                <li>ط§ط³طھط®ط¯ظ… ط²ط± ط§ظ„ظ…ظˆظ‚ط¹ ط§ظ„ط­ط§ظ„ظٹ <strong>ًں“چ</strong> ظ„ظ„ط­طµظˆظ„ ط¹ظ„ظ‰ ظ…ظˆظ‚ط¹ظƒ</li>
+                <li>ط§ط¨ط­ط« ط¹ظ† ط¹ظ†ظˆط§ظ† ط£ظˆ ظ†ظˆط¹ ظ…ط¨ظ†ظ‰ (ظ…ط·ط¹ظ…طŒ ظ…ط³ط¬ط¯طŒ ظ…ط³طھط´ظپظ‰)</li>
+                <li>ط§ط³ط­ط¨ ط§ظ„ط¹ظ„ظ… ط§ظ„ط£ط­ظ…ط± ظ„ط¶ط¨ط· ط§ظ„ظ…ظˆظ‚ط¹ ط¨ط¯ظ‚ط©</li>
+                <li>ط§ط¶ط؛ط· طھط£ظƒظٹط¯ ط¨ط¹ط¯ ط§ط®طھظٹط§ط± ط§ظ„ظ…ظˆظ‚ط¹</li>
             </ul>
         </div>
         
         <div class="info-item">
-            <div class="info-label">خط العرض (Latitude)</div>
+            <div class="info-label">ط®ط· ط§ظ„ط¹ط±ط¶ (Latitude)</div>
             <div class="info-value" id="lat-display">--</div>
         </div>
         
         <div class="info-item">
-            <div class="info-label">خط الطول (Longitude)</div>
+            <div class="info-label">ط®ط· ط§ظ„ط·ظˆظ„ (Longitude)</div>
             <div class="info-value" id="lng-display">--</div>
         </div>
         
         <div class="info-item">
-            <div class="info-label">العنوان / نوع المبنى</div>
-            <div class="info-value" id="address-display">لم يتم تحديد موقع بعد</div>
+            <div class="info-label">ط§ظ„ط¹ظ†ظˆط§ظ† / ظ†ظˆط¹ ط§ظ„ظ…ط¨ظ†ظ‰</div>
+            <div class="info-value" id="address-display">ظ„ظ… ظٹطھظ… طھط­ط¯ظٹط¯ ظ…ظˆظ‚ط¹ ط¨ط¹ط¯</div>
         </div>
         
         <div id="status" class="status-badge status-empty">
-            <i class="fas fa-circle text-xs ml-1"></i> لم يتم الاختيار
+            <i class="fas fa-circle text-xs ml-1"></i> ظ„ظ… ظٹطھظ… ط§ظ„ط§ط®طھظٹط§ط±
         </div>
         
         <div class="action-buttons">
             <button id="confirm-btn" class="btn-primary" disabled>
-                <i class="fas fa-check ml-2"></i> تأكيد
+                <i class="fas fa-check ml-2"></i> طھط£ظƒظٹط¯
             </button>
             <button id="copy-btn" class="btn-secondary">
-                <i class="fas fa-copy ml-2"></i> نسخ
+                <i class="fas fa-copy ml-2"></i> ظ†ط³ط®
             </button>
         </div>
     </div>
@@ -297,47 +297,103 @@
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/maps-provider.js"></script>
 
 <script>
-    // Configuration
-    const MAP_CENTER = [31.5, 34.5]; // Saudi Arabia center
+    const MAP_CENTER = { lat: 31.5, lng: 34.5 };
     const DEFAULT_ZOOM = 12;
-    
+
     let map;
     let marker;
     let selectedLocation = null;
-    
-    // Initialize map
-    function initMap() {
-        map = L.map('map').setView(MAP_CENTER, DEFAULT_ZOOM);
-        
-        // Use a richer basemap style with more visible landmarks and POIs.
+    let mapProvider = 'leaflet';
+    let googleAutocompleteService = null;
+    let googleGeocoder = null;
+    let googlePredictions = [];
+
+    function escapeHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    async function initMap() {
+        try {
+            const cfg = window.MapsProvider ? await MapsProvider.getConfig() : { provider: 'leaflet' };
+            if (cfg.provider === 'google' && cfg.googleMapsApiKey) {
+                await MapsProvider.loadGoogleMapsApi(cfg.googleMapsApiKey);
+                initGoogleMap();
+            } else {
+                initLeafletMap();
+            }
+        } catch (error) {
+            console.warn('Google Maps unavailable, fallback to Leaflet:', error);
+            initLeafletMap();
+        }
+
+        setupControls();
+    }
+
+    function initLeafletMap() {
+        mapProvider = 'leaflet';
+        map = L.map('map').setView([MAP_CENTER.lat, MAP_CENTER.lng], DEFAULT_ZOOM);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
             subdomains: 'abcd',
             maxZoom: 20,
             minZoom: 2
         }).addTo(map);
-        
-        // Handle map clicks
-        map.on('click', handleMapClick);
-        
-        // Setup controls
-        setupControls();
+        map.on('click', (e) => placeMarker(e.latlng.lat, e.latlng.lng));
     }
-    
-    // Handle map click to place marker
-    function handleMapClick(e) {
-        const { lat, lng } = e.latlng;
-        placeMarker(lat, lng);
+
+    function initGoogleMap() {
+        mapProvider = 'google';
+        map = new google.maps.Map(document.getElementById('map'), {
+            center: MAP_CENTER,
+            zoom: DEFAULT_ZOOM,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+            gestureHandling: 'greedy'
+        });
+        map.addListener('click', (e) => placeMarker(e.latLng.lat(), e.latLng.lng()));
+        googleAutocompleteService = new google.maps.places.AutocompleteService();
+        googleGeocoder = new google.maps.Geocoder();
     }
-    
-    // Place or update marker
+
     function placeMarker(lat, lng) {
+        const safeLat = Number(lat);
+        const safeLng = Number(lng);
+        if (!Number.isFinite(safeLat) || !Number.isFinite(safeLng)) return;
+
+        if (mapProvider === 'google') {
+            const pos = { lat: safeLat, lng: safeLng };
+            if (marker) {
+                marker.setPosition(pos);
+            } else {
+                marker = new google.maps.Marker({
+                    map,
+                    position: pos,
+                    draggable: true
+                });
+                marker.addListener('dragend', () => {
+                    const p = marker.getPosition();
+                    updateLocation(p.lat(), p.lng());
+                });
+            }
+            updateLocation(safeLat, safeLng);
+            map.setCenter(pos);
+            if ((map.getZoom() || 0) < DEFAULT_ZOOM) map.setZoom(DEFAULT_ZOOM);
+            return;
+        }
+
         if (marker) {
-            marker.setLatLng([lat, lng]);
+            marker.setLatLng([safeLat, safeLng]);
         } else {
-            marker = L.marker([lat, lng], {
+            marker = L.marker([safeLat, safeLng], {
                 draggable: true,
                 icon: L.icon({
                     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
@@ -348,93 +404,103 @@
                     shadowSize: [41, 41]
                 })
             }).addTo(map);
-            
             marker.on('dragend', () => {
-                const pos = marker.getLatLng();
-                updateLocation(pos.lat, pos.lng);
+                const p = marker.getLatLng();
+                updateLocation(p.lat, p.lng);
             });
         }
-        
-        updateLocation(lat, lng);
-        map.setView([lat, lng], Math.max(DEFAULT_ZOOM, map.getZoom()));
+
+        updateLocation(safeLat, safeLng);
+        map.setView([safeLat, safeLng], Math.max(DEFAULT_ZOOM, map.getZoom()));
     }
-    
-    // Update location display
+
     function updateLocation(lat, lng) {
-        selectedLocation = { lat, lng };
-        
-        document.getElementById('lat-display').textContent = lat.toFixed(6);
-        document.getElementById('lng-display').textContent = lng.toFixed(6);
-        document.getElementById('address-display').textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-        
-        // Enable confirm button
+        selectedLocation = { lat: Number(lat), lng: Number(lng) };
+        document.getElementById('lat-display').textContent = selectedLocation.lat.toFixed(6);
+        document.getElementById('lng-display').textContent = selectedLocation.lng.toFixed(6);
+        document.getElementById('address-display').textContent = `${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)}`;
         document.getElementById('confirm-btn').disabled = false;
         document.getElementById('status').className = 'status-badge status-selected';
         document.getElementById('status').innerHTML = '<i class="fas fa-check-circle ml-1"></i> تم الاختيار';
-        
-        console.log('📍 Location updated:', { lat, lng });
     }
 
-    // Search for locations using Nominatim (OSM)
     async function searchLocations(query) {
         const searchResults = document.getElementById('search-results');
-        
+
         try {
-            const response = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8`
-            );
+            if (mapProvider === 'google' && googleAutocompleteService) {
+                googlePredictions = await new Promise((resolve) => {
+                    googleAutocompleteService.getPlacePredictions({
+                        input: query,
+                        language: 'ar',
+                        componentRestrictions: { country: 'sa' },
+                        types: ['establishment', 'geocode']
+                    }, (predictions, status) => {
+                        if (status !== google.maps.places.PlacesServiceStatus.OK || !Array.isArray(predictions)) {
+                            return resolve([]);
+                        }
+                        resolve(predictions);
+                    });
+                });
+
+                if (!googlePredictions.length) {
+                    searchResults.innerHTML = '<div class="text-sm text-gray-500 p-2">لا توجد نتائج</div>';
+                    return;
+                }
+
+                searchResults.innerHTML = googlePredictions.map((item, idx) => `
+                    <div class="p-2 border-b text-sm hover:bg-gray-100 cursor-pointer rounded transition" onclick="selectGoogleSearchResult(${idx})">
+                        <div class="font-medium text-gray-800">${escapeHtml(item.structured_formatting?.main_text || item.description)}</div>
+                        <div class="text-xs text-gray-500 truncate">${escapeHtml(item.structured_formatting?.secondary_text || item.description)}</div>
+                    </div>
+                `).join('');
+                return;
+            }
+
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8`);
             const results = await response.json();
-            
             if (results.length === 0) {
                 searchResults.innerHTML = '<div class="text-sm text-gray-500 p-2">لا توجد نتائج</div>';
                 return;
             }
 
-            searchResults.innerHTML = results.map((result, idx) => {
-                // Extract type/category from display_name
-                const type = result.type || 'موقع';
-                const typeEmojis = {
-                    'restaurant': '🍽️',
-                    'cafe': '☕',
-                    'hotel': '🏨',
-                    'hospital': '🏥',
-                    'pharmacy': '💊',
-                    'bank': '🏦',
-                    'school': '🏫',
-                    'mosque': '🕌',
-                    'church': '⛪',
-                    'shop': '🛍️',
-                    'market': '🏬',
-                    'parking': '🅿️',
-                    'fuel': '⛽',
-                    'police': '🚔'
-                };
-                const emoji = typeEmojis[type] || '📍';
-                
-                return `
-                    <div class="p-2 border-b text-sm hover:bg-gray-100 cursor-pointer rounded transition" 
-                         onclick="selectSearchResult(${result.lat}, ${result.lon})">
-                        <div class="font-medium text-gray-800">${emoji} ${result.name || result.display_name.split(',')[0]}</div>
-                        <div class="text-xs text-gray-500 truncate">${result.display_name.substring(0, 60)}...</div>
-                    </div>
-                `;
-            }).join('');
+            searchResults.innerHTML = results.map((result) => `
+                <div class="p-2 border-b text-sm hover:bg-gray-100 cursor-pointer rounded transition" onclick="selectSearchResult(${result.lat}, ${result.lon})">
+                    <div class="font-medium text-gray-800">${escapeHtml(result.name || result.display_name.split(',')[0])}</div>
+                    <div class="text-xs text-gray-500 truncate">${escapeHtml(result.display_name.substring(0, 60))}...</div>
+                </div>
+            `).join('');
         } catch (error) {
             console.error('Search error:', error);
             searchResults.innerHTML = '<div class="text-sm text-red-500 p-2">خطأ في البحث</div>';
         }
     }
 
-    // Select result from search
+    async function selectGoogleSearchResult(index) {
+        const item = googlePredictions[index];
+        if (!item || !googleGeocoder) return;
+
+        const geocodeResults = await new Promise((resolve) => {
+            googleGeocoder.geocode({ placeId: item.place_id }, (results, status) => {
+                if (status !== 'OK' || !Array.isArray(results)) return resolve([]);
+                resolve(results);
+            });
+        });
+
+        if (!geocodeResults.length) return;
+        const loc = geocodeResults[0].geometry.location;
+        placeMarker(loc.lat(), loc.lng());
+        document.getElementById('search-results').innerHTML = '';
+        document.getElementById('search-address').value = item.description || '';
+    }
+
     function selectSearchResult(lat, lon) {
         document.getElementById('search-results').innerHTML = '';
         document.getElementById('search-address').value = '';
-        placeMarker(lat, lon);
+        placeMarker(Number(lat), Number(lon));
     }
-    
-    // Setup control buttons
+
     function setupControls() {
-        // Search functionality
         const searchInput = document.getElementById('search-address');
         const searchResults = document.getElementById('search-results');
         let searchTimeout;
@@ -442,136 +508,114 @@
         searchInput.addEventListener('input', (e) => {
             clearTimeout(searchTimeout);
             const query = e.target.value.trim();
-            
             if (query.length < 2) {
                 searchResults.innerHTML = '';
                 return;
             }
-
-            searchTimeout = setTimeout(() => searchLocations(query), 300);
+            searchTimeout = setTimeout(() => searchLocations(query), 250);
         });
 
-        // Current location button
         document.getElementById('current-location-btn').addEventListener('click', () => {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const { latitude, longitude } = position.coords;
-                        placeMarker(latitude, longitude);
-                    },
-                    (error) => {
-                        alert('لم يتمكن من الوصول إلى موقعك. تأكد من تفعيل خدمة الموقع.');
-                        console.error('Geolocation error:', error);
-                    }
-                );
-            } else {
+            if (!navigator.geolocation) {
                 alert('المتصفح لا يدعم خدمة الموقع');
+                return;
             }
+            navigator.geolocation.getCurrentPosition(
+                (position) => placeMarker(position.coords.latitude, position.coords.longitude),
+                (error) => {
+                    alert('لم نتمكن من الوصول إلى موقعك');
+                    console.error('Geolocation error:', error);
+                }
+            );
         });
-        
-        // Reset button
+
         document.getElementById('reset-map-btn').addEventListener('click', () => {
-            map.setView(MAP_CENTER, DEFAULT_ZOOM);
-            if (marker) {
-                map.removeLayer(marker);
+            if (mapProvider === 'google') {
+                map.setCenter(MAP_CENTER);
+                map.setZoom(DEFAULT_ZOOM);
+                if (marker) marker.setMap(null);
+                marker = null;
+            } else {
+                map.setView([MAP_CENTER.lat, MAP_CENTER.lng], DEFAULT_ZOOM);
+                if (marker) map.removeLayer(marker);
                 marker = null;
             }
+
             selectedLocation = null;
             document.getElementById('lat-display').textContent = '--';
             document.getElementById('lng-display').textContent = '--';
             document.getElementById('address-display').textContent = 'لم يتم تحديد موقع بعد';
             document.getElementById('confirm-btn').disabled = true;
             document.getElementById('status').className = 'status-badge status-empty';
-            document.getElementById('status').textContent = '❌ لم يتم الاختيار';
+            document.getElementById('status').innerHTML = '<i class="fas fa-circle text-xs ml-1"></i> لم يتم الاختيار';
         });
-        
-        // Zoom controls
+
         document.getElementById('zoom-in-btn').addEventListener('click', () => {
-            map.zoomIn();
+            if (mapProvider === 'google') map.setZoom((map.getZoom() || DEFAULT_ZOOM) + 1);
+            else map.zoomIn();
         });
-        
+
         document.getElementById('zoom-out-btn').addEventListener('click', () => {
-            map.zoomOut();
+            if (mapProvider === 'google') map.setZoom((map.getZoom() || DEFAULT_ZOOM) - 1);
+            else map.zoomOut();
         });
-        
-        // Copy button
+
         document.getElementById('copy-btn').addEventListener('click', () => {
-            if (selectedLocation) {
-                const text = `${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`;
-                navigator.clipboard.writeText(text).then(() => {
-                    const btn = document.getElementById('copy-btn');
-                    const originalText = btn.innerHTML;
-                    btn.innerHTML = '<i class="fas fa-check ml-2"></i> تم النسخ';
-                    setTimeout(() => {
-                        btn.innerHTML = originalText;
-                    }, 2000);
-                });
-            } else {
+            if (!selectedLocation) {
                 alert('الرجاء تحديد موقع أولاً');
+                return;
             }
-        });
-        
-        // Confirm button
-        document.getElementById('confirm-btn').addEventListener('click', () => {
-            if (selectedLocation) {
-                // Store in localStorage for later use
-                localStorage.setItem('selectedLocation', JSON.stringify(selectedLocation));
-                
-                // ===== IMPORTANT: Save to user.locations directly =====
-                try {
-                    let user = {};
-                    try { user = JSON.parse(localStorage.getItem('antika_user') || '{}'); } catch(e){ user = {}; }
-                    
-                    user.locations = user.locations || [];
-                    
-                    // Create new location entry
-                    const newLocation = {
-                        label: `الموقع ${user.locations.length + 1}`,
-                        lat: selectedLocation.lat,
-                        lng: selectedLocation.lng,
-                        isDefault: user.locations.length === 0 // First location is default
-                    };
-                    
-                    // Add to user locations
-                    user.locations.push(newLocation);
-                    
-                    // Save to localStorage
-                    localStorage.setItem('antika_user', JSON.stringify(user));
-                    
-                    // If user is logged in, sync to server
-                    if (user.email) {
-                        fetch(`/api/users/${encodeURIComponent(user.email)}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ locations: user.locations })
-                        }).catch(err => console.error('Error syncing locations:', err));
-                    }
-                    
-                    console.log('✅ Location saved to user.locations:', newLocation);
-                } catch (err) {
-                    console.error('Error saving location to user:', err);
-                }
-                
-                // Log to console
-                console.log('✅ Location confirmed:', selectedLocation);
-                
-                // Show success message
-                alert(`تم تأكيد الموقع وحفظه:\nخط العرض: ${selectedLocation.lat.toFixed(6)}\nخط الطول: ${selectedLocation.lng.toFixed(6)}`);
-                
-                // Return to previous page or go to addresses
+            const text = `${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById('copy-btn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check ml-2"></i> تم النسخ';
                 setTimeout(() => {
-                    history.back();
-                }, 1000);
+                    btn.innerHTML = originalText;
+                }, 2000);
+            });
+        });
+
+        document.getElementById('confirm-btn').addEventListener('click', () => {
+            if (!selectedLocation) return;
+
+            localStorage.setItem('selectedLocation', JSON.stringify(selectedLocation));
+            try {
+                let user = {};
+                try { user = JSON.parse(localStorage.getItem('antika_user') || '{}'); } catch (e) { user = {}; }
+
+                user.locations = user.locations || [];
+                const newLocation = {
+                    label: `الموقع ${user.locations.length + 1}`,
+                    lat: selectedLocation.lat,
+                    lng: selectedLocation.lng,
+                    isDefault: user.locations.length === 0
+                };
+                user.locations.push(newLocation);
+                localStorage.setItem('antika_user', JSON.stringify(user));
+
+                if (user.email) {
+                    fetch(`/api/users/${encodeURIComponent(user.email)}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ locations: user.locations })
+                    }).catch(err => console.error('Error syncing locations:', err));
+                }
+            } catch (err) {
+                console.error('Error saving location to user:', err);
             }
+
+            alert(`تم تأكيد الموقع وحفظه:\nخط العرض: ${selectedLocation.lat.toFixed(6)}\nخط الطول: ${selectedLocation.lng.toFixed(6)}`);
+            setTimeout(() => history.back(), 800);
         });
     }
     
-    // Initialize on page load
     document.addEventListener('DOMContentLoaded', initMap);
-    
-    // Expose global function for testing
     window.getSelectedLocation = () => selectedLocation;
+    window.selectSearchResult = selectSearchResult;
+    window.selectGoogleSearchResult = selectGoogleSearchResult;
 </script>
 
 </body>
 </html>
+
