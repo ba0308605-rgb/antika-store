@@ -18,12 +18,19 @@ class AntikaHeader extends HTMLElement {
         return `
             <style>
                 /* Header Styles */
+                antika-header {
+                    display: block !important;
+                    position: sticky !important;
+                    top: 0 !important;
+                    z-index: 100 !important;
+                    width: 100%;
+                    background: white;
+                }
+
                 .main-header {
                     background: white;
                     border-bottom: 1px solid #eee;
-                    position: sticky;
-                    top: 0;
-                    z-index: 100;
+                    position: relative;
                 }
 
                 /* Logo Styles */
