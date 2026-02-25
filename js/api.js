@@ -196,18 +196,30 @@ const API = {
 
 // Get or create session ID
 getSessionId() {
-    // Isolate cart sessions per account to avoid user A/user B mixing on same browser.
+    // Use a stable scope key to avoid switching carts between uid/email across pages.
     let scope = 'guest';
+    let emailScope = '';
+    let uidScope = '';
     try {
         const rawUser = localStorage.getItem('antika_user');
         if (rawUser) {
-            const user = JSON.parse(rawUser);
-            scope = String(user.uid || user.email || 'guest').toLowerCase();
+            const user = JSON.parse(rawUser) || {};
+            emailScope = String(user.email || '').trim().toLowerCase();
+            uidScope = String(user.uid || '').trim().toLowerCase();
+            scope = emailScope || uidScope || 'guest';
         }
     } catch (e) {}
 
     const key = `sessionId_${scope}`;
     let sessionId = localStorage.getItem(key);
+    if (!sessionId && emailScope && uidScope && emailScope !== uidScope) {
+        const legacyUidKey = `sessionId_${uidScope}`;
+        const legacySessionId = localStorage.getItem(legacyUidKey);
+        if (legacySessionId) {
+            sessionId = legacySessionId;
+            localStorage.setItem(key, sessionId);
+        }
+    }
     if (!sessionId) {
         sessionId = `session_${scope}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
         localStorage.setItem(key, sessionId);
@@ -254,7 +266,8 @@ async getCart() {
 
     async updateCartItem(id, quantity) {
         try {
-            const response = await fetch(`${this.baseURL}/cart/${id}`, {
+            const safeId = encodeURIComponent(String(id ?? '').trim());
+            const response = await fetch(`${this.baseURL}/cart/${safeId}`, {
                 method: 'PUT',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -272,7 +285,8 @@ async getCart() {
 
     async removeFromCart(id) {
         try {
-            const response = await fetch(`${this.baseURL}/cart/${id}`, {
+            const safeId = encodeURIComponent(String(id ?? '').trim());
+            const response = await fetch(`${this.baseURL}/cart/${safeId}`, {
                 method: 'DELETE',
                 headers: {
                     'x-session-id': this.getSessionId()

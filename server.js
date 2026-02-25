@@ -299,6 +299,22 @@ function getSessionId(req) {
   return sessionId;
 }
 
+function normalizeCartRef(value) {
+  if (value === undefined || value === null) return '';
+  return String(value).trim();
+}
+
+function findCartItemByRef(items, itemRef) {
+  const ref = normalizeCartRef(itemRef);
+  if (!ref || !Array.isArray(items)) return null;
+
+  return items.find((item) => {
+    const itemId = normalizeCartRef(item && item._id);
+    const productId = normalizeCartRef(item && item.productId);
+    return itemId === ref || productId === ref;
+  }) || null;
+}
+
 // ============================================
 // ADMIN AUTH ROUTES
 // ============================================
@@ -680,17 +696,32 @@ app.post('/api/cart', async (req, res) => {
 
     const sessionId = getSessionId(req);
     const { productId, name, price, image, quantity = 1 } = req.body;
+    const normalizedProductId = normalizeCartRef(productId);
+    const normalizedName = String(name || '').trim();
+    const normalizedImage = String(image || '').trim();
+    const normalizedPrice = Number(price);
+    const normalizedQuantity = Number(quantity);
+
+    if (!normalizedProductId || normalizedProductId === 'undefined' || normalizedProductId === 'null') {
+      return res.status(400).json({ error: 'Invalid productId for cart item' });
+    }
     
     let cart = await Cart.findOne({ sessionId });
     if (!cart) {
       cart = new Cart({ sessionId, items: [] });
     }
     
-    const existingItem = cart.items.find(item => item.productId === productId);
+    const existingItem = cart.items.find(item => normalizeCartRef(item.productId) === normalizedProductId);
     if (existingItem) {
-      existingItem.quantity += quantity;
+      existingItem.quantity += Number.isFinite(normalizedQuantity) && normalizedQuantity > 0 ? Math.floor(normalizedQuantity) : 1;
     } else {
-      cart.items.push({ productId, name, price, image, quantity });
+      cart.items.push({
+        productId: normalizedProductId,
+        name: normalizedName,
+        price: Number.isFinite(normalizedPrice) ? normalizedPrice : 0,
+        image: normalizedImage,
+        quantity: Number.isFinite(normalizedQuantity) && normalizedQuantity > 0 ? Math.floor(normalizedQuantity) : 1
+      });
     }
     
     cart.updatedAt = new Date();
@@ -710,15 +741,30 @@ app.put('/api/cart/:productId', async (req, res) => {
 
     const sessionId = getSessionId(req);
     const { quantity } = req.body;
+    const itemRef = normalizeCartRef(req.params.productId);
+    const normalizedQuantity = Math.floor(Number(quantity));
+
+    if (!itemRef) {
+      return res.status(400).json({ error: 'Cart item reference is required' });
+    }
+    if (!Number.isFinite(normalizedQuantity)) {
+      return res.status(400).json({ error: 'Invalid quantity' });
+    }
     
     const cart = await Cart.findOne({ sessionId });
     if (!cart) return res.status(404).json({ error: 'Cart not found' });
     
-    const item = cart.items.find(item => item.productId === req.params.productId);
+    const item = findCartItemByRef(cart.items, itemRef);
     if (item) {
-      item.quantity = quantity;
-      if (quantity <= 0) {
-        cart.items = cart.items.filter(item => item.productId !== req.params.productId);
+      item.quantity = normalizedQuantity;
+      if (normalizedQuantity <= 0) {
+        const targetItemId = normalizeCartRef(item._id);
+        const targetProductId = normalizeCartRef(item.productId);
+        cart.items = cart.items.filter((entry) => {
+          const sameItemId = targetItemId && normalizeCartRef(entry._id) === targetItemId;
+          const sameProductId = !targetItemId && targetProductId && normalizeCartRef(entry.productId) === targetProductId;
+          return !(sameItemId || sameProductId);
+        });
       }
     }
     
@@ -738,11 +784,26 @@ app.delete('/api/cart/:productId', async (req, res) => {
     if (!requireMongo(res, 'Cart delete item')) return;
 
     const sessionId = getSessionId(req);
+    const itemRef = normalizeCartRef(req.params.productId);
+    if (!itemRef) {
+      return res.status(400).json({ error: 'Cart item reference is required' });
+    }
     
     const cart = await Cart.findOne({ sessionId });
     if (!cart) return res.status(404).json({ error: 'Cart not found' });
-    
-    cart.items = cart.items.filter(item => item.productId !== req.params.productId);
+
+    const item = findCartItemByRef(cart.items, itemRef);
+    if (!item) {
+      return res.json(cart.items);
+    }
+
+    const targetItemId = normalizeCartRef(item._id);
+    const targetProductId = normalizeCartRef(item.productId);
+    cart.items = cart.items.filter((entry) => {
+      const sameItemId = targetItemId && normalizeCartRef(entry._id) === targetItemId;
+      const sameProductId = !targetItemId && targetProductId && normalizeCartRef(entry.productId) === targetProductId;
+      return !(sameItemId || sameProductId);
+    });
     cart.updatedAt = new Date();
     await cart.save();
     

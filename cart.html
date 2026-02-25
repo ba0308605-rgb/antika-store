@@ -543,6 +543,38 @@
             return `${safe.toFixed(2)} ر.س`;
         }
 
+        function decodeCartItemRef(ref) {
+            try {
+                return decodeURIComponent(String(ref || '').trim());
+            } catch (e) {
+                return String(ref || '').trim();
+            }
+        }
+
+        function mergeAndPersistUserProfile(serverUser, currentUser = {}) {
+            const local = (currentUser && typeof currentUser === 'object') ? currentUser : {};
+            const remote = (serverUser && typeof serverUser === 'object') ? serverUser : {};
+            const merged = { ...local, ...remote };
+
+            // Keep auth identity fields from local profile to avoid session-id scope switching.
+            if (local.uid) merged.uid = local.uid;
+            if (local.provider) merged.provider = local.provider;
+            if (local.photoURL) merged.photoURL = local.photoURL;
+            if (typeof local.isAdmin === 'boolean') merged.isAdmin = local.isAdmin;
+            if (!merged.email && local.email) merged.email = local.email;
+
+            localStorage.setItem('antika_user', JSON.stringify(merged));
+            return merged;
+        }
+
+        function getStoredUserSafe() {
+            try {
+                return JSON.parse(localStorage.getItem('antika_user') || '{}') || {};
+            } catch (e) {
+                return {};
+            }
+        }
+
         function getShippingCost() {
             const method = document.getElementById('shipping-method')?.value || 'standard';
             if (method === 'express') return 25;
@@ -798,8 +830,7 @@
                     try {
                         const serverUser = await API.getUser(user.email);
                         if (serverUser && Object.keys(serverUser).length > 0) {
-                            user = Object.assign({}, serverUser);
-                            localStorage.setItem('antika_user', JSON.stringify(user));
+                            user = mergeAndPersistUserProfile(serverUser, user);
                         }
                     } catch (e) {
                         console.warn('Could not sync addresses from server', e);
@@ -895,29 +926,33 @@
 
                 container.innerHTML = `
                     <div class="md:col-span-2 space-y-4">
-                        ${cart.map(item => `
+                        ${cart.map(item => {
+                            const itemRef = encodeURIComponent(String(item._id || item.productId || ''));
+                            const productHrefId = encodeURIComponent(String(item.productId || item._id || ''));
+                            return `
                             <div class="bg-white rounded-2xl shadow-lg p-4 md:p-6 flex flex-col md:flex-row gap-4 items-center">
-                                <a href="product.html?id=${encodeURIComponent(item.productId)}" class="block" title="عرض المنتج">
+                                <a href="product.html?id=${productHrefId}" class="block" title="عرض المنتج">
                                     <img src="${item.image || 'https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store'}" class="w-24 h-24 rounded-lg object-cover">
                                 </a>
                                 <div class="flex-1 text-center md:text-right">
                                     <h3 class="font-bold text-lg text-gray-800">
-                                        <a href="product.html?id=${encodeURIComponent(item.productId)}" class="hover:text-antika-pink transition-colors">
+                                        <a href="product.html?id=${productHrefId}" class="hover:text-antika-pink transition-colors">
                                             ${item.name}
                                         </a>
                                     </h3>
                                     <p class="text-antika-pink-dark font-bold text-xl">${item.price} ر.س</p>
                                 </div>
                                 <div class="flex items-center gap-3">
-                                    <button onclick="updateQuantity('${item.productId}', ${item.quantity - 1})" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">-</button>
+                                    <button onclick="updateQuantity('${itemRef}', ${item.quantity - 1})" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">-</button>
                                     <span class="font-bold w-8 text-center">${item.quantity}</span>
-                                    <button onclick="updateQuantity('${item.productId}', ${item.quantity + 1})" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">+</button>
+                                    <button onclick="updateQuantity('${itemRef}', ${item.quantity + 1})" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">+</button>
                                 </div>
-                                <button onclick="removeItem('${item.productId}')" class="text-red-500 hover:text-red-700">
+                                <button onclick="removeItem('${itemRef}')" class="text-red-500 hover:text-red-700">
                                     <i class="fas fa-trash text-xl"></i>
                                 </button>
                             </div>
-                        `).join('')}
+                        `;
+                        }).join('')}
                     </div>
 
                     <div class="md:col-span-1">
@@ -964,13 +999,15 @@
         }
 
         // Update quantity
-        async function updateQuantity(productId, quantity) {
+        async function updateQuantity(itemRef, quantity) {
+            const decodedRef = decodeCartItemRef(itemRef);
+            if (!decodedRef) return;
             if (quantity < 1) {
-                await removeItem(productId);
+                await removeItem(decodedRef);
                 return;
             }
             try {
-                await API.updateCartItem(productId, quantity);
+                await API.updateCartItem(decodedRef, quantity);
                 await loadCart();
                 await updateCartCount();
             } catch (error) {
@@ -979,9 +1016,11 @@
         }
 
         // Remove item
-        async function removeItem(productId) {
+        async function removeItem(itemRef) {
             try {
-                await API.removeFromCart(productId);
+                const decodedRef = decodeCartItemRef(itemRef);
+                if (!decodedRef) return;
+                await API.removeFromCart(decodedRef);
                 await loadCart();
                 await updateCartCount();
             } catch (error) {
@@ -1038,9 +1077,9 @@
                     if (localUser.email) {
                         try {
                             const serverUser = await API.getUser(localUser.email);
-                            const usedUser = (serverUser && Object.keys(serverUser).length > 0) ? serverUser : localUser;
-                            // update localStorage with server copy for consistency
-                            localStorage.setItem('antika_user', JSON.stringify(usedUser));
+                            const usedUser = (serverUser && Object.keys(serverUser).length > 0)
+                                ? mergeAndPersistUserProfile(serverUser, localUser)
+                                : localUser;
 
                             const savedRow = document.getElementById('saved-addresses-row');
                             const select = document.getElementById('saved-addresses-select');
@@ -1370,8 +1409,7 @@
                     try {
                         const serverUser = await API.getUser(user.email);
                         if (serverUser && Object.keys(serverUser).length > 0) {
-                            user = Object.assign({}, serverUser);
-                            localStorage.setItem('antika_user', JSON.stringify(user));
+                            user = mergeAndPersistUserProfile(serverUser, user);
                         }
                     } catch (e) {
                         console.warn('Could not sync addresses from server', e);
@@ -1596,7 +1634,7 @@
                                 const updated = await API.deleteUserAddress(user.email, i);
                                 // updated is full user object
                                 user = updated || user;
-                                localStorage.setItem('antika_user', JSON.stringify(user));
+                                user = mergeAndPersistUserProfile(user, getStoredUserSafe());
                                 renderList();
                                 const sel = document.getElementById('saved-addresses-select');
                                 if (sel) sel.innerHTML = (user.addresses||[]).map((aa, idx) => `<option value="${idx}">${aa.label || aa.address || ('العنوان ' + (idx+1))}</option>`).join('');
@@ -1609,7 +1647,7 @@
 
                         // Fallback: delete locally
                         user.addresses.splice(i,1);
-                        localStorage.setItem('antika_user', JSON.stringify(user));
+                        user = mergeAndPersistUserProfile(user, getStoredUserSafe());
                         renderList();
                         const sel = document.getElementById('saved-addresses-select');
                         if (sel) sel.innerHTML = user.addresses.map((aa, idx) => `<option value="${idx}">${aa.label || aa.address || ('العنوان ' + (idx+1))}</option>`).join('');
@@ -1670,7 +1708,7 @@
                         }
                     }
 
-                    localStorage.setItem('antika_user', JSON.stringify(user));
+                    user = mergeAndPersistUserProfile(user, getStoredUserSafe());
                     renderList();
                     // refresh checkout saved addresses
                     try { const sel = document.getElementById('saved-addresses-select'); sel.innerHTML = (user.addresses||[]).map((a, idx) => `<option value="${idx}">${a.label || a.address || ('العنوان ' + (idx+1))}</option>`).join(''); document.getElementById('saved-addresses-row').classList.remove('hidden'); } catch(e){}
@@ -1822,20 +1860,31 @@
 
             try {
                 const user = JSON.parse(userRaw);
+                if (!user || !user.email) return;
                 const result = await API.getUserLocation(user.email);
+                const noSavedLocation = document.getElementById('no-saved-location');
+                const savedLocationDisplay = document.getElementById('saved-location-display');
+                const savedLabel = document.getElementById('saved-label');
+                const savedCoords = document.getElementById('saved-coords');
                 
-                if (result && result.location && result.location.lat && result.location.lng) {
+                const hasValidLocation =
+                    result &&
+                    result.location &&
+                    Number.isFinite(Number(result.location.lat)) &&
+                    Number.isFinite(Number(result.location.lng));
+
+                if (hasValidLocation) {
                     // Show saved location
-                    document.getElementById('no-saved-location').classList.add('hidden');
-                    document.getElementById('saved-location-display').classList.remove('hidden');
-                    document.getElementById('saved-label').textContent = result.label || 'موقعي';
-                    document.getElementById('saved-coords').textContent = `${result.location.lat.toFixed(6)}, ${result.location.lng.toFixed(6)}`;
+                    if (noSavedLocation) noSavedLocation.classList.add('hidden');
+                    if (savedLocationDisplay) savedLocationDisplay.classList.remove('hidden');
+                    if (savedLabel) savedLabel.textContent = result.label || 'موقعي';
+                    if (savedCoords) savedCoords.textContent = `${result.location.lat.toFixed(6)}, ${result.location.lng.toFixed(6)}`;
                     
                     // Use saved location by default
                     useSavedLocationInCheckout(result.location);
                 } else {
-                    document.getElementById('no-saved-location').classList.remove('hidden');
-                    document.getElementById('saved-location-display').classList.add('hidden');
+                    if (noSavedLocation) noSavedLocation.classList.remove('hidden');
+                    if (savedLocationDisplay) savedLocationDisplay.classList.add('hidden');
                 }
             } catch (e) {
                 console.error('Error loading saved location:', e);
