@@ -146,16 +146,20 @@
 
         function getStatusText(status) {
             if (status === 'delivered') return 'تم التسليم';
+            if (status === 'out_for_delivery') return 'خرج للتوصيل';
             if (status === 'shipped') return 'تم الشحن';
             if (status === 'processing') return 'قيد المعالجة';
             if (status === 'pending') return 'قيد المراجعة';
+            if (status === 'cancelled') return 'ملغي';
             return status || 'قيد المعالجة';
         }
 
         function getStatusClass(status) {
             if (status === 'delivered') return 'bg-green-100 text-green-700';
+            if (status === 'out_for_delivery') return 'bg-orange-100 text-orange-700';
             if (status === 'shipped') return 'bg-yellow-100 text-yellow-700';
             if (status === 'processing') return 'bg-blue-100 text-blue-700';
+            if (status === 'cancelled') return 'bg-red-100 text-red-700';
             return 'bg-gray-100 text-gray-700';
         }
 
@@ -198,7 +202,10 @@
                                 `).join('')}
                             </div>
                             <div class="border-t pt-3 flex items-center justify-between">
-                                <span class="text-gray-600 text-sm">عدد المنتجات: ${order.items.length}</span>
+                                <div class="text-gray-600 text-sm">
+                                    <div>عدد المنتجات: ${order.items.length}</div>
+                                    <div>المدينة: ${order.shippingCity || 'غير محددة'} - الشحن: ${Number(order.shippingCost || 0).toFixed(2)} ر.س</div>
+                                </div>
                                 <span class="font-bold text-antika-gold">${order.total} ر.س</span>
                             </div>
                         </div>
