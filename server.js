@@ -29,6 +29,12 @@ const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'BDR-FIRST';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'B1-a2d3e4r5';
 const ADMIN_TOKEN_TTL = process.env.ADMIN_TOKEN_TTL || '8h';
 const GOOGLE_MAPS_API_KEY = (process.env.GOOGLE_MAPS_API_KEY || '').trim();
+const OTO_API_BASE_URL = (process.env.OTO_API_BASE_URL || 'https://api.tryoto.com/rest/v2').trim();
+const OTO_API_TOKEN = (process.env.OTO_API_TOKEN || '').trim();
+const OTO_PICKUP_LOCATION_CODE = (process.env.OTO_PICKUP_LOCATION_CODE || '').trim();
+const OTO_DEFAULT_DELIVERY_OPTION_ID = (process.env.OTO_DEFAULT_DELIVERY_OPTION_ID || '').trim();
+const OTO_ORDER_PREFIX = (process.env.OTO_ORDER_PREFIX || 'ANTIKA').trim();
+const OTO_WEBHOOK_AUTH_KEY = (process.env.OTO_WEBHOOK_AUTH_KEY || '').trim();
 
 if (!process.env.JWT_SECRET) {
   console.warn('⚠️ JWT_SECRET is missing; using insecure fallback secret. Set JWT_SECRET in production.');
@@ -160,6 +166,75 @@ function repairArabicMojibakeDeep(value) {
     return out;
   }
   return value;
+}
+
+function isOTOConfigured() {
+  return Boolean(OTO_API_TOKEN && OTO_PICKUP_LOCATION_CODE);
+}
+
+function sanitizePhone(raw) {
+  const digits = String(raw || '').replace(/[^\d]/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('966')) return digits;
+  if (digits.startsWith('0')) return `966${digits.slice(1)}`;
+  return digits;
+}
+
+function mapOTOStatusToOrderStatus(status = '', dcStatus = '') {
+  const s = `${status} ${dcStatus}`.toLowerCase();
+  if (s.includes('deliver')) return 'delivered';
+  if (s.includes('return') || s.includes('cancel') || s.includes('failed')) return 'cancelled';
+  if (s.includes('outfordelivery') || s.includes('out_for_delivery') || s.includes('shipmentprocessing')) return 'out_for_delivery';
+  if (s.includes('shipped') || s.includes('picked') || s.includes('in_transit') || s.includes('intransit')) return 'shipped';
+  return 'processing';
+}
+
+function stripUndefinedDeep(value) {
+  if (Array.isArray(value)) {
+    return value.map(stripUndefinedDeep).filter(v => v !== undefined);
+  }
+  if (value && typeof value === 'object') {
+    const out = {};
+    Object.keys(value).forEach((k) => {
+      const cleaned = stripUndefinedDeep(value[k]);
+      if (cleaned !== undefined) out[k] = cleaned;
+    });
+    return out;
+  }
+  return value === undefined ? undefined : value;
+}
+
+function getOTOHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${OTO_API_TOKEN}`
+  };
+}
+
+async function callOTO(path, payload) {
+  const url = `${OTO_API_BASE_URL.replace(/\/$/, '')}/${String(path || '').replace(/^\//, '')}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: getOTOHeaders(),
+    body: JSON.stringify(payload)
+  });
+
+  const text = await response.text();
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch (_) {
+    data = { raw: text };
+  }
+
+  if (!response.ok) {
+    const err = new Error(data?.message || data?.error || 'OTO request failed');
+    err.status = response.status;
+    err.details = data;
+    throw err;
+  }
+
+  return data;
 }
 
 // Middleware
@@ -312,6 +387,13 @@ const orderSchema = new mongoose.Schema({
     default: 'processing'
   },
   paymentMethod: { type: String, default: 'cash' },
+  otoOrderId: { type: String, default: '' },
+  otoShipmentId: { type: String, default: '' },
+  otoTrackingNumber: { type: String, default: '' },
+  otoAwbUrl: { type: String, default: '' },
+  otoStatus: { type: String, default: '' },
+  otoDcStatus: { type: String, default: '' },
+  otoLastWebhookAt: { type: Date, default: null },
   date: { type: Date, default: Date.now }
 });
 
@@ -950,6 +1032,172 @@ app.put('/api/orders/:id', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('Error updating order:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Create OTO shipment from order (admin only)
+app.post('/api/orders/:id/create-shipment', requireAdmin, async (req, res) => {
+  try {
+    if (!requireMongo(res, 'Create OTO shipment')) return;
+
+    if (!isOTOConfigured()) {
+      return res.status(400).json({
+        error: 'OTO integration is not configured. Set OTO_API_TOKEN and OTO_PICKUP_LOCATION_CODE in environment.'
+      });
+    }
+
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    if (order.otoOrderId) {
+      return res.json({
+        success: true,
+        message: 'Shipment already linked to this order.',
+        order: repairArabicMojibakeDeep(order)
+      });
+    }
+
+    const deliveryOptionId = String(req.body?.deliveryOptionId || OTO_DEFAULT_DELIVERY_OPTION_ID || '').trim();
+    const packageWeight = Number(req.body?.packageWeight || 1);
+    const cod = String(order.paymentMethod || '').toLowerCase() === 'cash';
+    const generatedOtoOrderId = `${OTO_ORDER_PREFIX}-${String(order._id)}`;
+
+    const [lat, lng] = Array.isArray(order.location?.coordinates)
+      ? [Number(order.location.coordinates[1]), Number(order.location.coordinates[0])]
+      : [undefined, undefined];
+
+    const payload = stripUndefinedDeep({
+      orderId: generatedOtoOrderId,
+      createShipment: true,
+      pickupLocationCode: OTO_PICKUP_LOCATION_CODE,
+      payment_method: cod ? 'cod' : 'paid',
+      amount: Number(order.total || 0),
+      amount_due: cod ? Number(order.total || 0) : 0,
+      currency: 'SAR',
+      packageWeight: Number.isFinite(packageWeight) && packageWeight > 0 ? packageWeight : 1,
+      deliveryOptionId: deliveryOptionId || undefined,
+      customer: {
+        name: String(order.customerName || '').trim(),
+        mobile: sanitizePhone(order.customerPhone),
+        email: String(order.customerEmail || '').trim(),
+        country: 'SA',
+        city: String(order.shippingCity || '').trim() || 'Riyadh',
+        district: String(order.shippingRegion || '').trim() || undefined,
+        address1: String(order.customerAddress || '').trim(),
+        latitude: Number.isFinite(lat) ? lat : undefined,
+        longitude: Number.isFinite(lng) ? lng : undefined
+      },
+      items: (order.items || []).map((item, idx) => ({
+        productId: String(item.productId || `item-${idx + 1}`),
+        name: String(item.name || `Item ${idx + 1}`),
+        price: Number(item.price || 0),
+        rowTotal: Number(item.price || 0) * Number(item.quantity || 1),
+        quantity: Number(item.quantity || 1),
+        sku: String(item.productId || `SKU-${idx + 1}`)
+      })),
+      metadata: {
+        source: 'antika-store',
+        orderMongoId: String(order._id)
+      }
+    });
+
+    const otoResult = await callOTO('createOrder', payload);
+
+    order.otoOrderId = String(otoResult?.orderId || otoResult?.order?.orderId || generatedOtoOrderId);
+    order.otoShipmentId = String(otoResult?.shipmentId || otoResult?.shipment?.shipmentId || otoResult?.shipment?.id || '');
+    order.otoTrackingNumber = String(
+      otoResult?.trackingNumber ||
+      otoResult?.shipment?.trackingNumber ||
+      otoResult?.awbNumber ||
+      ''
+    );
+    order.otoAwbUrl = String(
+      otoResult?.printAWBURL ||
+      otoResult?.shipment?.printAWBURL ||
+      otoResult?.awbUrl ||
+      ''
+    );
+    order.otoStatus = String(otoResult?.status || 'shipmentCreated');
+    order.otoDcStatus = String(otoResult?.dcStatus || '');
+    order.status = mapOTOStatusToOrderStatus(order.otoStatus, order.otoDcStatus);
+    await order.save();
+
+    return res.json({
+      success: true,
+      message: 'OTO shipment created successfully',
+      oto: otoResult,
+      order: repairArabicMojibakeDeep(order)
+    });
+  } catch (err) {
+    console.error('Error creating OTO shipment:', err);
+    return res.status(err.status || 500).json({
+      error: err.message || 'Failed to create OTO shipment',
+      details: err.details || null
+    });
+  }
+});
+
+// OTO webhook endpoint to sync shipment status back to store.
+app.post('/api/oto/webhook', async (req, res) => {
+  try {
+    if (!requireMongo(res, 'OTO webhook')) return;
+
+    if (OTO_WEBHOOK_AUTH_KEY) {
+      const authCandidates = [
+        req.headers.authorization,
+        req.headers['x-authorization'],
+        req.headers['x-oto-key'],
+        req.headers['x-api-key']
+      ]
+        .filter(Boolean)
+        .map(v => String(v).replace(/^Bearer\s+/i, '').trim());
+
+      if (!authCandidates.includes(OTO_WEBHOOK_AUTH_KEY)) {
+        return res.status(401).json({ error: 'Unauthorized webhook key' });
+      }
+    }
+
+    const incoming = req.body;
+    const events = Array.isArray(incoming)
+      ? incoming
+      : Array.isArray(incoming?.data)
+        ? incoming.data
+        : [incoming];
+
+    let updatedCount = 0;
+    const updatedIds = [];
+
+    for (const eventRaw of events) {
+      const event = eventRaw?.data && typeof eventRaw.data === 'object' ? eventRaw.data : eventRaw;
+      if (!event || typeof event !== 'object') continue;
+
+      const otoOrderId = String(event.orderId || event.order_id || event.reference || '').trim();
+      if (!otoOrderId) continue;
+
+      const order = await Order.findOne({ otoOrderId });
+      if (!order) continue;
+
+      const otoStatus = String(event.status || event.orderStatus || event.shipmentStatus || '').trim();
+      const otoDcStatus = String(event.dcStatus || event.dc_status || '').trim();
+      const trackingNumber = String(event.trackingNumber || event.awbNumber || event.airwayBill || '').trim();
+      const awbUrl = String(event.printAWBURL || event.awbUrl || event.labelUrl || '').trim();
+
+      order.otoStatus = otoStatus || order.otoStatus;
+      order.otoDcStatus = otoDcStatus || order.otoDcStatus;
+      order.otoTrackingNumber = trackingNumber || order.otoTrackingNumber;
+      order.otoAwbUrl = awbUrl || order.otoAwbUrl;
+      order.otoLastWebhookAt = new Date();
+      order.status = mapOTOStatusToOrderStatus(order.otoStatus, order.otoDcStatus);
+      await order.save();
+
+      updatedCount += 1;
+      updatedIds.push(String(order._id));
+    }
+
+    return res.json({ success: true, updatedCount, updatedIds });
+  } catch (err) {
+    console.error('Error handling OTO webhook:', err);
+    return res.status(500).json({ error: err.message || 'Webhook processing failed' });
   }
 });
 

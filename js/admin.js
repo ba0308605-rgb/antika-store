@@ -236,13 +236,16 @@ async function loadOrders() {
             return;
         }
         
-        container.innerHTML = orders.map(order => `
+        container.innerHTML = orders.map(order => {
+            const orderId = order._id || order.id;
+            const orderDate = order.date ? new Date(order.date).toLocaleString('ar-SA') : '-';
+            return `
             <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden mb-4">
                 <div class="p-4 border-b border-gray-100 bg-gray-50">
                     <div class="flex justify-between items-center flex-wrap gap-2">
                         <div class="flex items-center gap-3">
-                            <span class="font-bold text-gray-800">طلب #${order.id}</span>
-                            <span class="text-sm text-gray-500">${order.date}</span>
+                            <span class="font-bold text-gray-800">طلب #${orderId}</span>
+                            <span class="text-sm text-gray-500">${orderDate}</span>
                         </div>
                         <span class="px-3 py-1 rounded-full text-sm font-semibold ${getOrderStatusClass(order.status)}">
                             ${getOrderStatusText(order.status)}
@@ -265,6 +268,8 @@ async function loadOrders() {
                             <p class="text-sm text-gray-600">المدينة: ${order.shippingCity || 'غير محددة'}</p>
                             <p class="text-sm text-gray-600">رسوم الشحن: ${Number(order.shippingCost || 0).toFixed(2)} ر.س</p>
                             <p class="text-sm text-gray-600">المدة المتوقعة: ${order.shippingEta || '-'}</p>
+                            <p class="text-sm text-gray-600">تتبع OTO: ${order.otoTrackingNumber || '-'}</p>
+                            <p class="text-sm text-gray-600">مرجع OTO: ${order.otoOrderId || '-'}</p>
                             <p class="font-bold text-antika-gold text-lg mt-2">الإجمالي: ${order.total} ر.س</p>
                         </div>
                     </div>
@@ -283,26 +288,30 @@ async function loadOrders() {
                             `).join('')}
                         </div>
                     </div>
-                    <div class="border-t border-gray-100 pt-4 mt-4 grid grid-cols-2 md:grid-cols-5 gap-2">
-                        <button onclick="updateOrderStatus('${order.id}', 'processing')" class="flex-1 bg-blue-100 text-blue-600 py-2 rounded-lg hover:bg-blue-200 transition text-sm">
+                    <div class="border-t border-gray-100 pt-4 mt-4 grid grid-cols-2 md:grid-cols-6 gap-2">
+                        <button onclick="updateOrderStatus('${orderId}', 'processing')" class="flex-1 bg-blue-100 text-blue-600 py-2 rounded-lg hover:bg-blue-200 transition text-sm">
                             قيد التجهيز
                         </button>
-                        <button onclick="updateOrderStatus('${order.id}', 'shipped')" class="flex-1 bg-yellow-100 text-yellow-600 py-2 rounded-lg hover:bg-yellow-200 transition text-sm">
+                        <button onclick="updateOrderStatus('${orderId}', 'shipped')" class="flex-1 bg-yellow-100 text-yellow-600 py-2 rounded-lg hover:bg-yellow-200 transition text-sm">
                             تم الشحن
                         </button>
-                        <button onclick="updateOrderStatus('${order.id}', 'out_for_delivery')" class="flex-1 bg-orange-100 text-orange-600 py-2 rounded-lg hover:bg-orange-200 transition text-sm">
+                        <button onclick="updateOrderStatus('${orderId}', 'out_for_delivery')" class="flex-1 bg-orange-100 text-orange-600 py-2 rounded-lg hover:bg-orange-200 transition text-sm">
                             خرج للتوصيل
                         </button>
-                        <button onclick="updateOrderStatus('${order.id}', 'delivered')" class="flex-1 bg-green-100 text-green-600 py-2 rounded-lg hover:bg-green-200 transition text-sm">
+                        <button onclick="updateOrderStatus('${orderId}', 'delivered')" class="flex-1 bg-green-100 text-green-600 py-2 rounded-lg hover:bg-green-200 transition text-sm">
                             تم التوصيل
                         </button>
-                        <button onclick="deleteOrder('${order.id}')" class="px-4 bg-red-100 text-red-600 py-2 rounded-lg hover:bg-red-200 transition text-sm">
+                        <button onclick="createOtoShipment('${orderId}')" class="px-4 bg-indigo-100 text-indigo-700 py-2 rounded-lg hover:bg-indigo-200 transition text-sm">
+                            شحنة OTO
+                        </button>
+                        <button onclick="deleteOrder('${orderId}')" class="px-4 bg-red-100 text-red-600 py-2 rounded-lg hover:bg-red-200 transition text-sm">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     } catch (error) {
         console.error('Error loading orders:', error);
     }
@@ -343,6 +352,18 @@ async function updateOrderStatus(orderId, status) {
     } catch (error) {
         console.error('Error updating order status:', error);
         showNotification('حدث خطأ أثناء تحديث حالة الطلب', 'error');
+    }
+}
+
+async function createOtoShipment(orderId) {
+    try {
+        if (!confirm('إنشاء شحنة OTO لهذا الطلب؟')) return;
+        const result = await API.createOtoShipment(orderId);
+        showNotification(result?.message || 'تم إنشاء شحنة OTO بنجاح');
+        await loadOrders();
+    } catch (error) {
+        console.error('Error creating OTO shipment:', error);
+        showNotification(error.message || 'فشل إنشاء شحنة OTO', 'error');
     }
 }
 

@@ -382,6 +382,22 @@ async getCart() {
         }
     },
 
+    async createOtoShipment(orderId, payload = {}) {
+        try {
+            const response = await fetch(`${this.baseURL}/orders/${orderId}/create-shipment`, {
+                method: 'POST',
+                headers: this.getAuthHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify(payload || {})
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || 'Failed to create OTO shipment');
+            return data;
+        } catch (error) {
+            console.error('Error creating OTO shipment:', error);
+            throw error;
+        }
+    },
+
     async deleteOrder(id) {
         try {
             const response = await fetch(`${this.baseURL}/orders/${id}`, {
