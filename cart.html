@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -822,7 +822,7 @@
             }
         });
 
-        // âœ… Show login required modal for checkout
+        // ✅ Show login required modal for checkout
         function showLoginRequiredForCheckout() {
             document.body.innerHTML = `
                 <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -979,15 +979,15 @@
         // Load cart
         async function loadCart() {
             try {
-                console.log('ًں“‚ Loading cart...');
+                console.log('📂 Loading cart...');
                 const cart = await API.getCart();
-                console.log('ًں›’ Cart data:', cart);
+                console.log('🛒 Cart data:', cart);
                 const container = document.getElementById('cart-content');
 
                 if (!cart || cart.length === 0) {
                     container.innerHTML = `
                         <div class="md:col-span-3 text-center py-16 bg-white rounded-2xl shadow-lg">
-                            <div class="text-6xl mb-4">ًں›’</div>
+                            <div class="text-6xl mb-4 text-antika-gold"><i class="fas fa-cart-shopping"></i></div>
                             <h3 class="text-2xl font-bold text-gray-400 mb-4">السلة فارغة</h3>
                             <p class="text-gray-500 mb-6">لا توجد منتجات في سلتك حالياً</p>
                             <a href="products.html" class="inline-block bg-antika-gold text-white px-8 py-3 rounded-full font-bold hover:bg-antika-gold-dark transition">
@@ -1057,12 +1057,12 @@
                     </div>
                 `;
             } catch (error) {
-                console.error('â‌Œ Error loading cart:', error);
+                console.error('❌ Error loading cart:', error);
                 // Show default empty cart message
                 const container = document.getElementById('cart-content');
                 container.innerHTML = `
                     <div class="md:col-span-3 text-center py-16 bg-white rounded-2xl shadow-lg">
-                        <div class="text-6xl mb-4">⚠️</div>
+                        <div class="text-6xl mb-4 text-antika-gold"><i class="fas fa-cart-shopping"></i></div>
                         <h3 class="text-2xl font-bold text-gray-400 mb-4">السلة غير متاحة</h3>
                         <p class="text-gray-500 mb-4">يرجى التأكد من أن السيرفر قيد التشغيل</p>
                         <p class="text-gray-500 mb-6">اضغط على الزر أدناه للعودة للتسوق</p>
