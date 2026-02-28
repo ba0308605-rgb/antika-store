@@ -1,19 +1,27 @@
-﻿// ًںŒ¸ Antika Store Admin JavaScript - Fixed Version
+// 🌸 Antika Store Admin JavaScript - Fixed Version
 
 let currentEditingProduct = null;
 let currentEditingCategory = null;
 const ADMIN_TOKEN_KEY = 'antika_admin_token';
 const ADMIN_USER_KEY = 'antika_admin_user';
 
+function safeText(value) {
+    const text = String(value ?? '');
+    if (window.API && typeof API._fixMojibakeText === 'function') {
+        return API._fixMojibakeText(text);
+    }
+    return text;
+}
+
 // ============================================
 // INITIALIZATION
 // ============================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    // ًں§¹ Clear old localStorage products to avoid conflicts with server data
+    // 🧹 Clear old localStorage products to avoid conflicts with server data
     localStorage.removeItem('antika_products');
     localStorage.removeItem('antika_categories');
-    console.log('ًں§¹ Cleared old localStorage data');
+    console.log('🧹 Cleared old localStorage data');
     checkAdminAuth();
 });
 
@@ -59,7 +67,7 @@ document.getElementById('login-form')?.addEventListener('submit', async function
     const password = document.getElementById('password').value;
 
     if (!username || !password) {
-        showNotification('ط§ظ„ط±ط¬ط§ط، ط¥ط¯ط®ط§ظ„ ط§ط³ظ… ط§ظ„ظ…ط³طھط®ط¯ظ… ظˆظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±', 'error');
+        showNotification('الرجاء إدخال اسم المستخدم وكلمة المرور', 'error');
         return;
     }
 
@@ -74,12 +82,12 @@ document.getElementById('login-form')?.addEventListener('submit', async function
 
         document.getElementById('login-modal').classList.add('hidden');
         document.getElementById('admin-panel').classList.remove('hidden');
-        showNotification('طھظ… طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„ ط¨ظ†ط¬ط§ط­!');
+        showNotification('تم تسجيل الدخول بنجاح!');
         await initAdmin();
         return;
     } catch (error) {
         console.error('Admin login error:', error);
-        showNotification('ط§ط³ظ… ط§ظ„ظ…ط³طھط®ط¯ظ… ط£ظˆ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط؛ظٹط± طµط­ظٹط­ط©!', 'error');
+        showNotification('اسم المستخدم أو كلمة المرور غير صحيحة!', 'error');
         return;
     }
 });
@@ -94,7 +102,7 @@ function logout() {
     document.getElementById('username').value = '';
     document.getElementById('password').value = '';
     
-    showNotification('طھظ… طھط³ط¬ظٹظ„ ط§ظ„ط®ط±ظˆط¬');
+    showNotification('تم تسجيل الخروج');
 }
 
 // Initialize admin panel
@@ -109,11 +117,11 @@ async function initAdmin() {
         await loadSettings();
         await loadFooterPagesSettings();
         await loadAnnouncingSettings();
-        await loadOrders(); // طھط­ظ…ظٹظ„ ط§ظ„ط·ظ„ط¨ط§طھ
-        console.log('âœ… Admin panel initialized');
+        await loadOrders(); // تحميل الطلبات
+        console.log('✅ Admin panel initialized');
     } catch (error) {
         console.error('Error initializing admin:', error);
-        showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، طھط­ظ…ظٹظ„ ظ„ظˆط­ط© ط§ظ„طھط­ظƒظ…', 'error');
+        showNotification('حدث خطأ أثناء تحميل لوحة التحكم', 'error');
     }
 }
 
@@ -184,7 +192,7 @@ async function loadRecentProducts() {
         if (!container) return;
 
         if (recent.length === 0) {
-            container.innerHTML = '<p class="text-gray-500 text-center">ظ„ط§ طھظˆط¬ط¯ ظ…ظ†طھط¬ط§طھ</p>';
+            container.innerHTML = '<p class="text-gray-500 text-center">لا توجد منتجات</p>';
             return;
         }
 
@@ -193,12 +201,12 @@ async function loadRecentProducts() {
                 <div class="flex items-center gap-3">
                     <img src="${p.images && p.images[0] ? p.images[0] : 'https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store'}" class="w-12 h-12 rounded-lg object-cover">
                     <div>
-                        <div class="font-bold text-gray-800">${p.name}</div>
-                        <div class="text-sm text-gray-500">${p.price} ط±.ط³</div>
+                        <div class="font-bold text-gray-800">${safeText(p.name)}</div>
+                        <div class="text-sm text-gray-500">${p.price} ر.س</div>
                     </div>
                 </div>
                 <span class="text-xs ${p.stock < 5 ? 'text-red-500' : 'text-green-500'}">
-                    ظ…ط®ط²ظˆظ†: ${p.stock}
+                    مخزون: ${p.stock}
                 </span>
             </div>
         `).join('');
@@ -208,7 +216,7 @@ async function loadRecentProducts() {
 }
 
 // ============================================
-// ORDERS MANAGEMENT - ط¥ط¯ط§ط±ط© ط§ظ„ط·ظ„ط¨ط§طھ
+// ORDERS MANAGEMENT - إدارة الطلبات
 // ============================================
 
 async function loadOrders() {
@@ -222,7 +230,7 @@ async function loadOrders() {
             container.innerHTML = `
                 <div class="text-center py-12">
                     <i class="fas fa-shopping-bag text-6xl text-gray-200 mb-4"></i>
-                    <p class="text-gray-500">ظ„ط§ طھظˆط¬ط¯ ط·ظ„ط¨ط§طھ ط­ط§ظ„ظٹط§ظ‹</p>
+                    <p class="text-gray-500">لا توجد طلبات حالياً</p>
                 </div>
             `;
             return;
@@ -233,7 +241,7 @@ async function loadOrders() {
                 <div class="p-4 border-b border-gray-100 bg-gray-50">
                     <div class="flex justify-between items-center flex-wrap gap-2">
                         <div class="flex items-center gap-3">
-                            <span class="font-bold text-gray-800">ط·ظ„ط¨ #${order.id}</span>
+                            <span class="font-bold text-gray-800">طلب #${order.id}</span>
                             <span class="text-sm text-gray-500">${order.date}</span>
                         </div>
                         <span class="px-3 py-1 rounded-full text-sm font-semibold ${getOrderStatusClass(order.status)}">
@@ -244,49 +252,49 @@ async function loadOrders() {
                 <div class="p-4">
                     <div class="grid md:grid-cols-2 gap-4 mb-4">
                         <div>
-                            <h4 class="font-bold text-gray-700 mb-2">ظ…ط¹ظ„ظˆظ…ط§طھ ط§ظ„ط¹ظ…ظٹظ„</h4>
+                            <h4 class="font-bold text-gray-700 mb-2">معلومات العميل</h4>
                             <p class="text-sm text-gray-600"><i class="fas fa-user ml-2 text-antika-gold"></i>${order.customerName}</p>
                             <p class="text-sm text-gray-600"><i class="fas fa-phone ml-2 text-antika-gold"></i>${order.customerPhone}</p>
-                            <p class="text-sm text-gray-600"><i class="fas fa-envelope ml-2 text-antika-gold"></i>${order.customerEmail}</p>
-                            <p class="text-sm text-gray-600"><i class="fas fa-map-marker-alt ml-2 text-antika-gold"></i>${order.customerAddress}</p>
+                            <p class="text-sm text-gray-600"><i class="fas fa-envelope ml-2 text-antika-gold"></i>${safeText(order.customerEmail)}</p>
+                            <p class="text-sm text-gray-600"><i class="fas fa-map-marker-alt ml-2 text-antika-gold"></i>${safeText(order.customerAddress)}</p>
                         </div>
                         <div>
-                            <h4 class="font-bold text-gray-700 mb-2">ظ…ظ„ط®طµ ط§ظ„ط·ظ„ط¨</h4>
-                            <p class="text-sm text-gray-600">ط¹ط¯ط¯ ط§ظ„ظ…ظ†طھط¬ط§طھ: ${order.items.length}</p>
-                            <p class="text-sm text-gray-600">ط·ط±ظٹظ‚ط© ط§ظ„ط¯ظپط¹: ${order.paymentMethod}</p>
+                            <h4 class="font-bold text-gray-700 mb-2">ملخص الطلب</h4>
+                            <p class="text-sm text-gray-600">عدد المنتجات: ${order.items.length}</p>
+                            <p class="text-sm text-gray-600">طريقة الدفع: ${order.paymentMethod}</p>
                             <p class="text-sm text-gray-600">المدينة: ${order.shippingCity || 'غير محددة'}</p>
                             <p class="text-sm text-gray-600">رسوم الشحن: ${Number(order.shippingCost || 0).toFixed(2)} ر.س</p>
                             <p class="text-sm text-gray-600">المدة المتوقعة: ${order.shippingEta || '-'}</p>
-                            <p class="font-bold text-antika-gold text-lg mt-2">ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ: ${order.total} ط±.ط³</p>
+                            <p class="font-bold text-antika-gold text-lg mt-2">الإجمالي: ${order.total} ر.س</p>
                         </div>
                     </div>
                     <div class="border-t border-gray-100 pt-4">
-                        <h4 class="font-bold text-gray-700 mb-2">ط§ظ„ظ…ظ†طھط¬ط§طھ</h4>
+                        <h4 class="font-bold text-gray-700 mb-2">المنتجات</h4>
                         <div class="space-y-2">
                             ${order.items.map(item => `
                                 <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
                                     <img src="${item.image}" alt="${item.name}" class="w-12 h-12 rounded-lg object-cover">
                                     <div class="flex-1">
                                         <p class="font-semibold text-sm">${item.name}</p>
-                                        <p class="text-xs text-gray-500">${item.quantity} أ— ${item.price} ط±.ط³</p>
+                                        <p class="text-xs text-gray-500">${item.quantity} × ${item.price} ر.س</p>
                                     </div>
-                                    <span class="font-bold text-antika-gold">${item.quantity * item.price} ط±.ط³</span>
+                                    <span class="font-bold text-antika-gold">${item.quantity * item.price} ر.س</span>
                                 </div>
                             `).join('')}
                         </div>
                     </div>
                     <div class="border-t border-gray-100 pt-4 mt-4 grid grid-cols-2 md:grid-cols-5 gap-2">
                         <button onclick="updateOrderStatus('${order.id}', 'processing')" class="flex-1 bg-blue-100 text-blue-600 py-2 rounded-lg hover:bg-blue-200 transition text-sm">
-                            ظ‚ظٹط¯ ط§ظ„طھط¬ظ‡ظٹط²
+                            قيد التجهيز
                         </button>
                         <button onclick="updateOrderStatus('${order.id}', 'shipped')" class="flex-1 bg-yellow-100 text-yellow-600 py-2 rounded-lg hover:bg-yellow-200 transition text-sm">
-                            طھظ… ط§ظ„ط´ط­ظ†
+                            تم الشحن
                         </button>
                         <button onclick="updateOrderStatus('${order.id}', 'out_for_delivery')" class="flex-1 bg-orange-100 text-orange-600 py-2 rounded-lg hover:bg-orange-200 transition text-sm">
                             خرج للتوصيل
                         </button>
                         <button onclick="updateOrderStatus('${order.id}', 'delivered')" class="flex-1 bg-green-100 text-green-600 py-2 rounded-lg hover:bg-green-200 transition text-sm">
-                            طھظ… ط§ظ„طھظˆطµظٹظ„
+                            تم التوصيل
                         </button>
                         <button onclick="deleteOrder('${order.id}')" class="px-4 bg-red-100 text-red-600 py-2 rounded-lg hover:bg-red-200 transition text-sm">
                             <i class="fas fa-trash"></i>
@@ -314,12 +322,12 @@ function getOrderStatusClass(status) {
 
 function getOrderStatusText(status) {
     const texts = {
-        'pending': 'ط¨ط§ظ†طھط¸ط§ط± ط§ظ„ط¯ظپط¹',
-        'processing': 'ظ‚ظٹط¯ ط§ظ„طھط¬ظ‡ظٹط²',
-        'shipped': 'طھظ… ط§ظ„ط´ط­ظ†',
+        'pending': 'بانتظار الدفع',
+        'processing': 'قيد التجهيز',
+        'shipped': 'تم الشحن',
         'out_for_delivery': 'خرج للتوصيل',
-        'delivered': 'طھظ… ط§ظ„طھظˆطµظٹظ„',
-        'cancelled': 'ظ…ظ„ط؛ظٹ'
+        'delivered': 'تم التوصيل',
+        'cancelled': 'ملغي'
     };
     return texts[status] || status;
 }
@@ -328,29 +336,29 @@ async function updateOrderStatus(orderId, status) {
     try {
         if (API.updateOrderStatus) {
             await API.updateOrderStatus(orderId, status);
-            showNotification('طھظ… طھط­ط¯ظٹط« ط­ط§ظ„ط© ط§ظ„ط·ظ„ط¨ ط¨ظ†ط¬ط§ط­!');
+            showNotification('تم تحديث حالة الطلب بنجاح!');
             await loadOrders();
             await updateStats();
         }
     } catch (error) {
         console.error('Error updating order status:', error);
-        showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، طھط­ط¯ظٹط« ط­ط§ظ„ط© ط§ظ„ط·ظ„ط¨', 'error');
+        showNotification('حدث خطأ أثناء تحديث حالة الطلب', 'error');
     }
 }
 
 async function deleteOrder(orderId) {
-    if (!confirm('ظ‡ظ„ ط£ظ†طھ ظ…طھط£ظƒط¯ ظ…ظ† ط­ط°ظپ ظ‡ط°ط§ ط§ظ„ط·ظ„ط¨طں')) return;
+    if (!confirm('هل أنت متأكد من حذف هذا الطلب؟')) return;
     
     try {
         if (API.deleteOrder) {
             await API.deleteOrder(orderId);
-            showNotification('طھظ… ط­ط°ظپ ط§ظ„ط·ظ„ط¨ ط¨ظ†ط¬ط§ط­');
+            showNotification('تم حذف الطلب بنجاح');
             await loadOrders();
             await updateStats();
         }
     } catch (error) {
         console.error('Error deleting order:', error);
-        showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، ط­ط°ظپ ط§ظ„ط·ظ„ط¨', 'error');
+        showNotification('حدث خطأ أثناء حذف الطلب', 'error');
     }
 }
 
@@ -367,7 +375,7 @@ async function loadAdminProducts() {
         if (!container) return;
 
         if (products.length === 0) {
-            container.innerHTML = '<p class="text-gray-500 col-span-full text-center">ظ„ط§ طھظˆط¬ط¯ ظ…ظ†طھط¬ط§طھ</p>';
+            container.innerHTML = '<p class="text-gray-500 col-span-full text-center">لا توجد منتجات</p>';
             return;
         }
 
@@ -384,26 +392,26 @@ async function loadAdminProducts() {
                 <div class="relative aspect-square">
                     <img src="${imageUrl}" class="w-full h-full object-cover">
                     ${hasDiscount ? `<div class="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">-${Math.round(product.discountPercentage || 0)}%</div>` : ''}
-                    ${isNew ? `<div class="absolute top-2 right-2 bg-antika-pink text-white px-2 py-1 rounded text-xs font-bold">ط¬ط¯ظٹط¯</div>` : ''}
+                    ${isNew ? `<div class="absolute top-2 right-2 bg-antika-pink text-white px-2 py-1 rounded text-xs font-bold">جديد</div>` : ''}
                     ${product.images && product.images.length > 1 ? `<div class="absolute bottom-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs"><i class="fas fa-images"></i> ${product.images.length}</div>` : ''}
                 </div>
                 <div class="p-3">
-                    <h4 class="font-bold text-gray-800 text-sm truncate mb-1">${product.name}</h4>
-                    <p class="text-xs text-gray-500 mb-2">${category ? category.name : ''}</p>
+                    <h4 class="font-bold text-gray-800 text-sm truncate mb-1">${safeText(product.name)}</h4>
+                    <p class="text-xs text-gray-500 mb-2">${category ? safeText(category.name) : ''}</p>
                     <div class="mb-3">
                         ${hasDiscount ? `
                             <span class="text-gray-400 line-through text-xs">${product.price}</span>
-                            <span class="text-antika-pink-dark font-bold text-sm mr-1">${product.discountPrice} ط±.ط³</span>
+                            <span class="text-antika-pink-dark font-bold text-sm mr-1">${product.discountPrice} ر.س</span>
                         ` : `
-                            <span class="text-antika-gold font-bold text-sm">${product.price} ط±.ط³</span>
+                            <span class="text-antika-gold font-bold text-sm">${product.price} ر.س</span>
                         `}
                     </div>
                     <div class="flex gap-2">
                         <button onclick='editProduct(${JSON.stringify(productId)})' class="flex-1 bg-blue-100 text-blue-600 py-2 rounded-lg hover:bg-blue-200 transition text-xs">
-                            <i class="fas fa-edit"></i> طھط¹ط¯ظٹظ„
+                            <i class="fas fa-edit"></i> تعديل
                         </button>
                         <button onclick='deleteProduct(${JSON.stringify(productId)})' class="flex-1 bg-red-100 text-red-600 py-2 rounded-lg hover:bg-red-200 transition text-xs">
-                            <i class="fas fa-trash"></i> ط­ط°ظپ
+                            <i class="fas fa-trash"></i> حذف
                         </button>
                     </div>
                 </div>
@@ -412,7 +420,7 @@ async function loadAdminProducts() {
         }).join('');
     } catch (error) {
         console.error('Error loading admin products:', error);
-        showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، طھط­ظ…ظٹظ„ ط§ظ„ظ…ظ†طھط¬ط§طھ', 'error');
+        showNotification('حدث خطأ أثناء تحميل المنتجات', 'error');
     }
 }
 
@@ -459,9 +467,9 @@ function openProductModal(productId = null) {
 
     if (productId) {
         loadProductForEdit(productId);
-        if (title) title.textContent = 'طھط¹ط¯ظٹظ„ ظ…ظ†طھط¬';
+        if (title) title.textContent = 'تعديل منتج';
     } else {
-        if (title) title.textContent = 'ط¥ط¶ط§ظپط© ظ…ظ†طھط¬ ط¬ط¯ظٹط¯';
+        if (title) title.textContent = 'إضافة منتج جديد';
     }
 
     modal.classList.remove('hidden');
@@ -473,7 +481,7 @@ async function loadProductForEdit(productId) {
         const product = await API.getProduct(productId);
         if (!product) {
             console.error('Product not found:', productId);
-            showNotification('ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…ظˆط¬ظˆط¯ (ID: ' + productId + ')', 'error');
+            showNotification('المنتج غير موجود (ID: ' + productId + ')', 'error');
             return;
         }
         console.log('Product loaded successfully:', product.name);
@@ -491,11 +499,11 @@ async function loadProductForEdit(productId) {
         const newInput = document.getElementById('product-new');
         const freeShippingInput = document.getElementById('product-free-shipping');
         
-        console.log('ًں“‌ Loading product data:', product);
+        console.log('📝 Loading product data:', product);
         if (nameInput) nameInput.value = product.name || '';
         if (skuInput) {
             skuInput.value = product.sku || '';
-            console.log('ًں“‌ SKU loaded:', product.sku, 'Input value:', skuInput.value);
+            console.log('📝 SKU loaded:', product.sku, 'Input value:', skuInput.value);
         }
         if (originalPriceInput) originalPriceInput.value = product.price || '';
         if (salePriceInput) salePriceInput.value = product.discountPrice || product.price || '';
@@ -505,7 +513,7 @@ async function loadProductForEdit(productId) {
         if (newInput) newInput.checked = product.isNew || false;
         if (freeShippingInput) {
             freeShippingInput.checked = product.freeShipping !== false;
-            console.log('ًں“‌ Free Shipping loaded:', product.freeShipping, 'Input checked:', freeShippingInput.checked);
+            console.log('📝 Free Shipping loaded:', product.freeShipping, 'Input checked:', freeShippingInput.checked);
         }
 
         calculateDiscount();
@@ -541,13 +549,13 @@ async function loadProductForEdit(productId) {
             if (newExpiryDate) newExpiryDate.value = product.newExpiryDate;
         }
 
-        // ًںŒں Custom Product Features
-        console.log('ًں“‌ Product customFeatures from DB:', product.customFeatures);
+        // 🌟 Custom Product Features
+        console.log('📝 Product customFeatures from DB:', product.customFeatures);
         loadCustomFeatures(product.customFeatures || []);
 
     } catch (error) {
         console.error('Error loading product for edit:', error);
-        showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، طھط­ظ…ظٹظ„ ط¨ظٹط§ظ†ط§طھ ط§ظ„ظ…ظ†طھط¬', 'error');
+        showNotification('حدث خطأ أثناء تحميل بيانات المنتج', 'error');
     }
 }
 
@@ -622,7 +630,7 @@ function calculateDiscount() {
     
     if (originalPrice > 0 && salePrice > 0 && salePrice < originalPrice) {
         const discount = Math.round(((originalPrice - salePrice) / originalPrice) * 100);
-        display.textContent = `ط®طµظ… ${discount}% (ظˆظپط± ${originalPrice - salePrice} ط±.ط³)`;
+        display.textContent = `خصم ${discount}% (وفر ${originalPrice - salePrice} ر.س)`;
     } else {
         display.textContent = '';
     }
@@ -666,7 +674,7 @@ function toggleNewProductDate() {
 }
 
 // ============================================
-// ًںŒں CUSTOM FEATURES MANAGEMENT
+// 🌟 CUSTOM FEATURES MANAGEMENT
 // ============================================
 
 function addCustomFeature(value = '') {
@@ -676,7 +684,7 @@ function addCustomFeature(value = '') {
     const div = document.createElement('div');
     div.className = 'custom-feature-row flex gap-2 items-center';
     div.innerHTML = `
-        <input type="text" value="${value}" placeholder="ظ…ط«ط§ظ„: ط¬ظˆط¯ط© ط¹ط§ظ„ظٹط© ظˆظ…طھط§ظ†ط©" 
+        <input type="text" value="${value}" placeholder="مثال: جودة عالية ومتانة" 
             class="custom-feature-input flex-1 border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none text-sm">
         <button type="button" onclick="this.closest('.custom-feature-row').remove()" class="text-red-500 hover:text-red-700 p-2">
             <i class="fas fa-trash"></i>
@@ -687,37 +695,37 @@ function addCustomFeature(value = '') {
 
 function getCustomFeatures() {
     const inputs = document.querySelectorAll('.custom-feature-input');
-    console.log('ًں”چ Found custom feature inputs:', inputs.length);
+    console.log('🔍 Found custom feature inputs:', inputs.length);
     const features = [];
     inputs.forEach((input, index) => {
         const value = input.value.trim();
         console.log(`  Input ${index}:`, value);
         if (value) features.push(value);
     });
-    console.log('âœ… Collected features:', features);
+    console.log('✅ Collected features:', features);
     return features;
 }
 
 function loadCustomFeatures(features) {
-    console.log('ًں“¥ Loading custom features:', features);
+    console.log('📥 Loading custom features:', features);
     const container = document.getElementById('custom-features-container');
     if (!container) {
-        console.error('â‌Œ Custom features container not found!');
+        console.error('❌ Custom features container not found!');
         return;
     }
     
     container.innerHTML = '';
     
     if (features && features.length > 0) {
-        console.log('âœ… Loading existing features:', features);
+        console.log('✅ Loading existing features:', features);
         features.forEach(feature => addCustomFeature(feature));
     } else {
         // Add default empty rows
-        console.log('â„¹ï¸ڈ No features found, adding defaults');
-        addCustomFeature('ط¬ظˆط¯ط© ط¹ط§ظ„ظٹط© ظˆظ…طھط§ظ†ط©');
-        addCustomFeature('طھطµظ…ظٹظ… ط£ظ†ظٹظ‚ ظˆط¹طµط±ظٹ');
-        addCustomFeature('ظ…ظ†ط§ط³ط¨ ظ„ظ„ط§ط³طھط®ط¯ط§ظ… ط§ظ„ظٹظˆظ…ظٹ');
-        addCustomFeature('ط¶ظ…ط§ظ† ط´ط§ظ…ظ„');
+        console.log('ℹ️ No features found, adding defaults');
+        addCustomFeature('جودة عالية ومتانة');
+        addCustomFeature('تصميم أنيق وعصري');
+        addCustomFeature('مناسب للاستخدام اليومي');
+        addCustomFeature('ضمان شامل');
     }
 }
 
@@ -729,7 +737,7 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
     const selectedCategories = Array.from(document.querySelectorAll('.category-checkbox:checked')).map(cb => cb.value);
 
     if (selectedCategories.length === 0) {
-        showNotification('ط§ظ„ط±ط¬ط§ط، ط§ط®طھظٹط§ط± طھطµظ†ظٹظپ ظˆط§ط­ط¯ ط¹ظ„ظ‰ ط§ظ„ط£ظ‚ظ„!', 'error');
+        showNotification('الرجاء اختيار تصنيف واحد على الأقل!', 'error');
         return;
     }
 
@@ -738,8 +746,8 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
     
     const skuValue = document.getElementById('product-sku')?.value || '';
     const freeShippingValue = document.getElementById('product-free-shipping')?.checked || false;
-    console.log('ًں”چ SKU:', skuValue);
-    console.log('ًں”چ Free Shipping:', freeShippingValue);
+    console.log('🔍 SKU:', skuValue);
+    console.log('🔍 Free Shipping:', freeShippingValue);
     
     const productData = {
         name: document.getElementById('product-name')?.value || '',
@@ -753,11 +761,11 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
 
         images: JSON.parse(document.getElementById('product-images-data')?.value || '[]')
     };
-    console.log('ًں“¦ Product Data to save:', productData);
+    console.log('📦 Product Data to save:', productData);
 
     // Stock text
     if (productData.stockDisplay === 'text') {
-        productData.stockText = document.getElementById('stock-text')?.value || 'ظ…طھظˆظپط±';
+        productData.stockText = document.getElementById('stock-text')?.value || 'متوفر';
     }
 
     // Discount price
@@ -779,17 +787,17 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
         productData.newExpiryDate = null;
     }
 
-    // ًںŒں Custom Product Features
+    // 🌟 Custom Product Features
     const customFeatures = getCustomFeatures();
     productData.customFeatures = customFeatures; // Always send customFeatures (even if empty)
 
     try {
         if (currentEditingProduct) {
             await API.updateProduct(currentEditingProduct, productData);
-            showNotification('طھظ… طھط­ط¯ظٹط« ط§ظ„ظ…ظ†طھط¬ ط¨ظ†ط¬ط§ط­! ًںژ‰');
+            showNotification('تم تحديث المنتج بنجاح! 🎉');
         } else {
             await API.addProduct(productData);
-            showNotification('طھظ… ط¥ط¶ط§ظپط© ط§ظ„ظ…ظ†طھط¬ ط¨ظ†ط¬ط§ط­! ًںژ‰');
+            showNotification('تم إضافة المنتج بنجاح! 🎉');
         }
 
         closeProductModal();
@@ -798,7 +806,7 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
         await loadRecentProducts();
     } catch (error) {
         console.error('Error saving product:', error);
-        showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، ط­ظپط¸ ط§ظ„ظ…ظ†طھط¬', 'error');
+        showNotification('حدث خطأ أثناء حفظ المنتج', 'error');
     }
 });
 
@@ -807,40 +815,40 @@ async function editProduct(id) {
 }
 
 async function deleteProduct(id) {
-    console.log('ًں—‘ï¸ڈ deleteProduct called with ID:', id, '| Type:', typeof id);
+    console.log('🗑️ deleteProduct called with ID:', id, '| Type:', typeof id);
     
     if (!id || id === 'undefined' || id === 'null') {
-        console.error('â‌Œ Invalid product ID:', id);
-        showNotification('ظ…ط¹ط±ظپ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± طµط§ظ„ط­', 'error');
+        console.error('❌ Invalid product ID:', id);
+        showNotification('معرف المنتج غير صالح', 'error');
         return;
     }
     
-    if (!confirm('ظ‡ظ„ ط£ظ†طھ ظ…طھط£ظƒط¯ ظ…ظ† ط­ط°ظپ ظ‡ط°ط§ ط§ظ„ظ…ظ†طھط¬طں')) return;
+    if (!confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
 
     try {
-        console.log('ًں“¤ Calling API.deleteProduct with ID:', id);
+        console.log('📤 Calling API.deleteProduct with ID:', id);
         const result = await API.deleteProduct(id);
-        console.log('âœ… Delete API result:', result);
+        console.log('✅ Delete API result:', result);
         await loadAdminProducts();
         await updateStats();
-        showNotification('طھظ… ط­ط°ظپ ط§ظ„ظ…ظ†طھط¬ ط¨ظ†ط¬ط§ط­');
+        showNotification('تم حذف المنتج بنجاح');
     } catch (error) {
-        console.error('â‌Œ Error deleting product:', error);
+        console.error('❌ Error deleting product:', error);
         console.error('Error details:', error.message, error.stack);
-        showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، ط­ط°ظپ ط§ظ„ظ…ظ†طھط¬: ' + error.message, 'error');
+        showNotification('حدث خطأ أثناء حذف المنتج: ' + error.message, 'error');
     }
 }
 
-// ًں§¹ DELETE ALL PRODUCTS
+// 🧹 DELETE ALL PRODUCTS
 async function deleteAllProducts() {
-    if (!confirm('âڑ ï¸ڈ طھط­ط°ظٹط±!\n\nظ‡ظ„ ط£ظ†طھ ظ…طھط£ظƒط¯ ظ…ظ† ط­ط°ظپ ط¬ظ…ظٹط¹ ط§ظ„ظ…ظ†طھط¬ط§طھطں\n\nظ‡ط°ط§ ط§ظ„ط¥ط¬ط±ط§ط، ظ„ط§ ظٹظ…ظƒظ† ط§ظ„طھط±ط§ط¬ط¹ ط¹ظ†ظ‡!')) return;
+    if (!confirm('⚠️ تحذير!\n\nهل أنت متأكد من حذف جميع المنتجات؟\n\nهذا الإجراء لا يمكن التراجع عنه!')) return;
     
-    if (!confirm('طھط£ظƒظٹط¯ ظ†ظ‡ط§ط¦ظٹ:\n\nط³ظٹطھظ… ط­ط°ظپ ط¬ظ…ظٹط¹ ط§ظ„ظ…ظ†طھط¬ط§طھ ظ†ظ‡ط§ط¦ظٹط§ظ‹.\nظ‡ظ„ طھط±ظٹط¯ ط§ظ„ظ…طھط§ط¨ط¹ط©طں')) return;
+    if (!confirm('تأكيد نهائي:\n\nسيتم حذف جميع المنتجات نهائياً.\nهل تريد المتابعة؟')) return;
 
     try {
-        console.log('ًں—‘ï¸ڈ Deleting all products...');
+        console.log('🗑️ Deleting all products...');
         const result = await API.deleteAllProducts();
-        console.log('âœ… All products deleted:', result);
+        console.log('✅ All products deleted:', result);
         
         // Clear localStorage backup
         localStorage.removeItem('products_backup');
@@ -848,10 +856,10 @@ async function deleteAllProducts() {
         
         await loadAdminProducts();
         await updateStats();
-        showNotification(`طھظ… ط­ط°ظپ ${result.count || 'ط¬ظ…ظٹط¹'} ط§ظ„ظ…ظ†طھط¬ط§طھ ط¨ظ†ط¬ط§ط­`);
+        showNotification(`تم حذف ${result.count || 'جميع'} المنتجات بنجاح`);
     } catch (error) {
-        console.error('â‌Œ Error deleting all products:', error);
-        showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، ط­ط°ظپ ط§ظ„ظ…ظ†طھط¬ط§طھ: ' + error.message, 'error');
+        console.error('❌ Error deleting all products:', error);
+        showNotification('حدث خطأ أثناء حذف المنتجات: ' + error.message, 'error');
     }
 }
 
@@ -867,17 +875,17 @@ async function loadCategoriesTable() {
         if (!tbody) return;
 
         if (categories.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">ظ„ط§ طھظˆط¬ط¯ طھطµظ†ظٹظپط§طھ</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">لا توجد تصنيفات</td></tr>';
             return;
         }
 
         tbody.innerHTML = categories.map(cat => `
             <tr class="border-b border-gray-100 hover:bg-gray-50">
-                <td class="px-6 py-4 text-2xl">${cat.icon || 'ًں“¦'}</td>
-                <td class="px-6 py-4 font-semibold">${cat.name}</td>
+                <td class="px-6 py-4 text-2xl">${cat.icon || '📦'}</td>
+                <td class="px-6 py-4 font-semibold">${safeText(cat.name)}</td>
                 <td class="px-6 py-4">
                     ${cat.subcategories && cat.subcategories.length > 0 ? cat.subcategories.map(sub => 
-                        `<span class="inline-block bg-gray-100 px-2 py-1 rounded text-sm ml-1">${sub}</span>`
+                        `<span class="inline-block bg-gray-100 px-2 py-1 rounded text-sm ml-1">${safeText(sub)}</span>`
                     ).join('') : '-'}
                 </td>
                 <td class="px-6 py-4">
@@ -908,9 +916,9 @@ function openCategoryModal(categoryId = null) {
 
     if (categoryId) {
         loadCategoryForEdit(categoryId);
-        if (title) title.textContent = 'طھط¹ط¯ظٹظ„ طھطµظ†ظٹظپ';
+        if (title) title.textContent = 'تعديل تصنيف';
     } else {
-        if (title) title.textContent = 'ط¥ط¶ط§ظپط© طھطµظ†ظٹظپ';
+        if (title) title.textContent = 'إضافة تصنيف';
     }
 
     modal.classList.remove('hidden');
@@ -949,23 +957,23 @@ document.getElementById('category-form')?.addEventListener('submit', async funct
     const subInput = document.getElementById('category-subcategories');
 
     const categoryData = {
-        icon: iconInput?.value || 'ًں“¦',
+        icon: iconInput?.value || '📦',
         name: nameInput?.value || '',
         subcategories: subInput?.value ? subInput.value.split(',').map(s => s.trim()).filter(s => s) : []
     };
 
     if (!categoryData.name) {
-        showNotification('ط§ظ„ط±ط¬ط§ط، ط¥ط¯ط®ط§ظ„ ط§ط³ظ… ط§ظ„طھطµظ†ظٹظپ', 'error');
+        showNotification('الرجاء إدخال اسم التصنيف', 'error');
         return;
     }
 
     try {
         if (currentEditingCategory) {
             await API.updateCategory(currentEditingCategory, categoryData);
-            showNotification('طھظ… طھط­ط¯ظٹط« ط§ظ„طھطµظ†ظٹظپ ط¨ظ†ط¬ط§ط­! ًںڈ·ï¸ڈ');
+            showNotification('تم تحديث التصنيف بنجاح! 🏷️');
         } else {
             await API.addCategory(categoryData);
-            showNotification('طھظ… ط¥ط¶ط§ظپط© ط§ظ„طھطµظ†ظٹظپ ط¨ظ†ط¬ط§ط­! ًںڈ·ï¸ڈ');
+            showNotification('تم إضافة التصنيف بنجاح! 🏷️');
         }
 
         closeCategoryModal();
@@ -973,7 +981,7 @@ document.getElementById('category-form')?.addEventListener('submit', async funct
         await populateCategorySelects();
     } catch (error) {
         console.error('Error saving category:', error);
-        showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، ط­ظپط¸ ط§ظ„طھطµظ†ظٹظپ', 'error');
+        showNotification('حدث خطأ أثناء حفظ التصنيف', 'error');
     }
 });
 
@@ -982,16 +990,16 @@ async function editCategory(id) {
 }
 
 async function deleteCategory(id) {
-    if (!confirm('ظ‡ظ„ ط£ظ†طھ ظ…طھط£ظƒط¯طں ط³ظٹطھظ… ط­ط°ظپ ط¬ظ…ظٹط¹ ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ظ…ط±طھط¨ط·ط© ط¨ظ‡ط°ط§ ط§ظ„طھطµظ†ظٹظپ!')) return;
+    if (!confirm('هل أنت متأكد؟ سيتم حذف جميع المنتجات المرتبطة بهذا التصنيف!')) return;
 
     try {
         await API.deleteCategory(id);
         await loadCategoriesTable();
         await populateCategorySelects();
-        showNotification('طھظ… ط­ط°ظپ ط§ظ„طھطµظ†ظٹظپ ط¨ظ†ط¬ط§ط­');
+        showNotification('تم حذف التصنيف بنجاح');
     } catch (error) {
         console.error('Error deleting category:', error);
-        showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، ط­ط°ظپ ط§ظ„طھطµظ†ظٹظپ', 'error');
+        showNotification('حدث خطأ أثناء حذف التصنيف', 'error');
     }
 }
 
@@ -1006,7 +1014,7 @@ async function populateCategorySelects() {
             container.innerHTML = categories.map(cat => `
                 <label class="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 px-2 rounded">
                     <input type="checkbox" value="${cat.id}" class="category-checkbox w-4 h-4 text-antika-pink rounded accent-antika-pink">
-                    <span>${cat.icon || 'ًں“¦'} ${cat.name}</span>
+                    <span>${cat.icon || '📦'} ${safeText(cat.name)}</span>
                 </label>
             `).join('');
         }
@@ -1015,8 +1023,8 @@ async function populateCategorySelects() {
         const filter = document.getElementById('product-category-filter');
         if (filter) {
             const currentValue = filter.value;
-            filter.innerHTML = '<option value="">ط¬ظ…ظٹط¹ ط§ظ„طھطµظ†ظٹظپط§طھ</option>' + 
-                categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
+            filter.innerHTML = '<option value="">جميع التصنيفات</option>' + 
+                categories.map(cat => `<option value="${cat.id}">${safeText(cat.name)}</option>`).join('');
             filter.value = currentValue;
         }
     } catch (error) {
@@ -1036,7 +1044,7 @@ async function loadBulkDiscountProducts() {
         if (!container) return;
 
         if (products.length === 0) {
-            container.innerHTML = '<p class="text-gray-500 text-center py-4">ظ„ط§ طھظˆط¬ط¯ ظ…ظ†طھط¬ط§طھ</p>';
+            container.innerHTML = '<p class="text-gray-500 text-center py-4">لا توجد منتجات</p>';
             return;
         }
 
@@ -1048,7 +1056,7 @@ async function loadBulkDiscountProducts() {
                 <img src="${p.images && p.images[0] ? p.images[0] : 'https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store'}" class="w-12 h-12 rounded object-cover">
                 <div class="flex-1">
                     <div class="font-semibold">${p.name}</div>
-                    <div class="text-sm text-gray-500">${p.price} ط±.ط³</div>
+                    <div class="text-sm text-gray-500">${p.price} ر.س</div>
                 </div>
             </label>
             `;
@@ -1063,7 +1071,7 @@ async function applyBulkDiscount() {
     const productIds = Array.from(checkboxes).map(cb => cb.value);
 
     if (productIds.length === 0) {
-        showNotification('ط§ظ„ط±ط¬ط§ط، ط§ط®طھظٹط§ط± ظ…ظ†طھط¬ ظˆط§ط­ط¯ ط¹ظ„ظ‰ ط§ظ„ط£ظ‚ظ„!', 'error');
+        showNotification('الرجاء اختيار منتج واحد على الأقل!', 'error');
         return;
     }
 
@@ -1072,18 +1080,18 @@ async function applyBulkDiscount() {
     const endDate = document.getElementById('bulk-discount-end')?.value || null;
 
     if (!discountValue || discountValue <= 0) {
-        showNotification('ط§ظ„ط±ط¬ط§ط، ط¥ط¯ط®ط§ظ„ ظ‚ظٹظ…ط© ط®طµظ… طµط­ظٹط­ط©!', 'error');
+        showNotification('الرجاء إدخال قيمة خصم صحيحة!', 'error');
         return;
     }
 
     try {
         await API.applyBulkDiscount(productIds, discountType, discountValue, endDate);
-        showNotification(`طھظ… طھط·ط¨ظٹظ‚ ط§ظ„ط®طµظ… ط¹ظ„ظ‰ ${productIds.length} ظ…ظ†طھط¬ ط¨ظ†ط¬ط§ط­! ًںژ‰`);
+        showNotification(`تم تطبيق الخصم على ${productIds.length} منتج بنجاح! 🎉`);
         await loadBulkDiscountProducts();
         await loadAdminProducts();
     } catch (error) {
         console.error('Error applying bulk discount:', error);
-        showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، طھط·ط¨ظٹظ‚ ط§ظ„ط®طµظ…', 'error');
+        showNotification('حدث خطأ أثناء تطبيق الخصم', 'error');
     }
 }
 
@@ -1147,10 +1155,10 @@ async function saveBannerSettings() {
 
     try {
         await API.updateSettings(settings);
-        showNotification('طھظ… ط­ظپط¸ ط¥ط¹ط¯ط§ط¯ط§طھ ط§ظ„ط¨ط§ظ†ط± ط§ظ„ط±ط¦ظٹط³ظٹ!');
+        showNotification('تم حفظ إعدادات البانر الرئيسي!');
     } catch (error) {
         console.error('Error saving banner settings:', error);
-        showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، ط§ظ„ط­ظپط¸', 'error');
+        showNotification('حدث خطأ أثناء الحفظ', 'error');
     }
 }
 
@@ -1165,10 +1173,10 @@ async function savePromoSettings() {
 
     try {
         await API.updateSettings(settings);
-        showNotification('طھظ… ط­ظپط¸ ط¥ط¹ط¯ط§ط¯ط§طھ ط¨ط§ظ†ط± ط§ظ„ط¹ط±ظˆط¶!');
+        showNotification('تم حفظ إعدادات بانر العروض!');
     } catch (error) {
         console.error('Error saving promo settings:', error);
-        showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، ط§ظ„ط­ظپط¸', 'error');
+        showNotification('حدث خطأ أثناء الحفظ', 'error');
     }
 }
 
@@ -1185,10 +1193,10 @@ async function saveFooterSettings() {
 
     try {
         await API.updateSettings(settings);
-        showNotification('طھظ… ط­ظپط¸ ط¥ط¹ط¯ط§ط¯ط§طھ ط§ظ„ظپظˆطھط± ط¨ظ†ط¬ط§ط­!');
+        showNotification('تم حفظ إعدادات الفوتر بنجاح!');
     } catch (error) {
         console.error('Error saving footer settings:', error);
-        showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، ط§ظ„ط­ظپط¸', 'error');
+        showNotification('حدث خطأ أثناء الحفظ', 'error');
     }
 }
 
@@ -1241,7 +1249,7 @@ async function savePageSettings(pageId) {
     const contentInput = document.getElementById(`page-${pageId}-content`);
 
     if (!titleInput || !contentInput) {
-        showNotification('ط®ط·ط£: ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ط­ظ‚ظˆظ„ ط§ظ„ط¥ط¯ط®ط§ظ„', 'error');
+        showNotification('خطأ: لم يتم العثور على حقول الإدخال', 'error');
         return;
     }
 
@@ -1251,16 +1259,16 @@ async function savePageSettings(pageId) {
     };
 
     if (!pageData.title) {
-        showNotification('ط§ظ„ط±ط¬ط§ط، ط¥ط¯ط®ط§ظ„ ط¹ظ†ظˆط§ظ† ط§ظ„طµظپط­ط©', 'error');
+        showNotification('الرجاء إدخال عنوان الصفحة', 'error');
         return;
     }
 
     try {
         await API.updateFooterPage(pageId, pageData);
-        showNotification(`طھظ… ط­ظپط¸ طµظپط­ط© "${pageData.title}" ط¨ظ†ط¬ط§ط­! ًں’¾`);
+        showNotification(`تم حفظ صفحة "${pageData.title}" بنجاح! 💾`);
     } catch (error) {
         console.error('Error saving page settings:', error);
-        showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، ط§ظ„ط­ظپط¸', 'error');
+        showNotification('حدث خطأ أثناء الحفظ', 'error');
     }
 }
 
@@ -1295,16 +1303,16 @@ async function saveAnnouncingSettings() {
     const isVisible = visibleInput ? visibleInput.checked : true;
     
     if (!text) {
-        showNotification('ط§ظ„ط±ط¬ط§ط، ط¥ط¯ط®ط§ظ„ ظ†طµ ط§ظ„ط´ط±ظٹط· ط§ظ„ظ…طھط­ط±ظƒ', 'error');
+        showNotification('الرجاء إدخال نص الشريط المتحرك', 'error');
         return;
     }
 
     try {
         await API.updateAnnouncingSettings({ text, isVisible });
-        showNotification('طھظ… ط­ظپط¸ ط¥ط¹ط¯ط§ط¯ط§طھ ط§ظ„ط´ط±ظٹط· ط§ظ„ظ…طھط­ط±ظƒ ط¨ظ†ط¬ط§ط­! ًں“¢');
+        showNotification('تم حفظ إعدادات الشريط المتحرك بنجاح! 📢');
     } catch (error) {
         console.error('Error saving announcing settings:', error);
-        showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، ط§ظ„ط­ظپط¸', 'error');
+        showNotification('حدث خطأ أثناء الحفظ', 'error');
     }
 }
 
@@ -1334,7 +1342,7 @@ function showNotification(message, type = 'success') {
 
 
 // ============================================
-// ًںژ¨ ADVANCED VARIANTS SYSTEM
+// 🎨 ADVANCED VARIANTS SYSTEM
 // ============================================
 
 function toggleVariantsSection() {
@@ -1352,8 +1360,8 @@ function addVariantOption() {
     const row = document.createElement('div');
     row.className = 'variant-option-row flex gap-2 items-center';
     row.innerHTML = `
-        <input type="text" placeholder="ط§ط³ظ… ط§ظ„ط®ط§طµظٹط© (ظ…ط«ط§ظ„: ط§ظ„ظ…ظ‚ط§ط³)" class="variant-option-name flex-1 border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none">
-        <input type="text" placeholder="ط§ظ„ظ‚ظٹظ… (ظ…ط«ط§ظ„: SطŒ MطŒ LطŒ XL)" class="variant-option-values flex-[2] border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none">
+        <input type="text" placeholder="اسم الخاصية (مثال: المقاس)" class="variant-option-name flex-1 border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none">
+        <input type="text" placeholder="القيم (مثال: S، M، L، XL)" class="variant-option-values flex-[2] border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none">
         <button type="button" onclick="this.closest('.variant-option-row').remove()" class="text-red-500 hover:text-red-700 p-2">
             <i class="fas fa-trash"></i>
         </button>
@@ -1368,7 +1376,7 @@ function generateVariants() {
     
     optionRows.forEach(row => {
         const name = row.querySelector('.variant-option-name')?.value.trim();
-        const values = row.querySelector('.variant-option-values')?.value.split('طŒ').map(v => v.trim()).filter(v => v);
+        const values = row.querySelector('.variant-option-values')?.value.split('،').map(v => v.trim()).filter(v => v);
         
         if (name && values.length > 0) {
             options.push({ name, values });
@@ -1376,7 +1384,7 @@ function generateVariants() {
     });
     
     if (options.length === 0) {
-        showNotification('ط§ظ„ط±ط¬ط§ط، ط¥ط¶ط§ظپط© ط®ط§طµظٹط© ظˆط§ط­ط¯ط© ط¹ظ„ظ‰ ط§ظ„ط£ظ‚ظ„ ظ…ط¹ ظ‚ظٹظ…ظ‡ط§', 'error');
+        showNotification('الرجاء إضافة خاصية واحدة على الأقل مع قيمها', 'error');
         return;
     }
     
@@ -1424,20 +1432,20 @@ function renderVariantsList(combinations, options) {
                 </div>
                 <div class="grid grid-cols-3 gap-3">
                     <div>
-                        <label class="block text-xs text-gray-600 mb-1">ط§ظ„ط³ط¹ط± (ط§ط®طھظٹط§ط±ظٹ)</label>
+                        <label class="block text-xs text-gray-600 mb-1">السعر (اختياري)</label>
                         <input type="number" class="variant-price w-full border border-gray-200 rounded px-2 py-1 text-sm" placeholder="${basePrice}" min="0">
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-600 mb-1">ط§ظ„ظ…ط®ط²ظˆظ†</label>
+                        <label class="block text-xs text-gray-600 mb-1">المخزون</label>
                         <input type="number" class="variant-stock w-full border border-gray-200 rounded px-2 py-1 text-sm" value="0" min="0">
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-600 mb-1">SKU (ط§ط®طھظٹط§ط±ظٹ)</label>
-                        <input type="text" class="variant-sku w-full border border-gray-200 rounded px-2 py-1 text-sm" placeholder="ط±ظ…ط² ط§ظ„ظ…ظ†طھط¬">
+                        <label class="block text-xs text-gray-600 mb-1">SKU (اختياري)</label>
+                        <input type="text" class="variant-sku w-full border border-gray-200 rounded px-2 py-1 text-sm" placeholder="رمز المنتج">
                     </div>
                 </div>
                 <div class="mt-3">
-                    <label class="block text-xs text-gray-600 mb-1">طµظˆط± ط§ظ„ظ…طھط؛ظٹط± (ط±ظˆط§ط¨ط· ظ…ظپطµظˆظ„ط© ط¨ظپط§طµظ„ط©)</label>
+                    <label class="block text-xs text-gray-600 mb-1">صور المتغير (روابط مفصولة بفاصلة)</label>
                     <input type="text" class="variant-images w-full border border-gray-200 rounded px-2 py-1 text-sm" placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg">
                 </div>
             </div>
@@ -1493,7 +1501,7 @@ function loadVariantsData(product) {
                     const firstRow = container.querySelector('.variant-option-row');
                     if (firstRow) {
                         firstRow.querySelector('.variant-option-name').value = opt.name;
-                        firstRow.querySelector('.variant-option-values').value = opt.values.join('طŒ ');
+                        firstRow.querySelector('.variant-option-values').value = opt.values.join('، ');
                         return;
                     }
                 }
@@ -1502,8 +1510,8 @@ function loadVariantsData(product) {
                 const row = document.createElement('div');
                 row.className = 'variant-option-row flex gap-2 items-center';
                 row.innerHTML = `
-                    <input type="text" value="${opt.name}" placeholder="ط§ط³ظ… ط§ظ„ط®ط§طµظٹط©" class="variant-option-name flex-1 border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none">
-                    <input type="text" value="${opt.values.join('طŒ ')}" placeholder="ط§ظ„ظ‚ظٹظ…" class="variant-option-values flex-[2] border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none">
+                    <input type="text" value="${opt.name}" placeholder="اسم الخاصية" class="variant-option-name flex-1 border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none">
+                    <input type="text" value="${opt.values.join('، ')}" placeholder="القيم" class="variant-option-values flex-[2] border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none">
                     <button type="button" onclick="this.closest('.variant-option-row').remove()" class="text-red-500 hover:text-red-700 p-2">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -1519,7 +1527,7 @@ function loadVariantsData(product) {
         if (container) {
             container.innerHTML = product.variants.map(variant => {
                 const comboLabel = variant.options.map((v, i) => {
-                    const optName = product.variantOptions?.[i]?.name || `ط®ط§طµظٹط© ${i+1}`;
+                    const optName = product.variantOptions?.[i]?.name || `خاصية ${i+1}`;
                     return `${optName}: ${v}`;
                 }).join(' | ');
                 
@@ -1533,21 +1541,21 @@ function loadVariantsData(product) {
                         </div>
                         <div class="grid grid-cols-3 gap-3">
                             <div>
-                                <label class="block text-xs text-gray-600 mb-1">ط§ظ„ط³ط¹ط± (ط§ط®طھظٹط§ط±ظٹ)</label>
-                                <input type="number" class="variant-price w-full border border-gray-200 rounded px-2 py-1 text-sm" value="${variant.price || ''}" placeholder="ط§ظ„ط³ط¹ط± ط§ظ„ط§ظپطھط±ط§ط¶ظٹ" min="0">
+                                <label class="block text-xs text-gray-600 mb-1">السعر (اختياري)</label>
+                                <input type="number" class="variant-price w-full border border-gray-200 rounded px-2 py-1 text-sm" value="${variant.price || ''}" placeholder="السعر الافتراضي" min="0">
                             </div>
                             <div>
-                                <label class="block text-xs text-gray-600 mb-1">ط§ظ„ظ…ط®ط²ظˆظ†</label>
+                                <label class="block text-xs text-gray-600 mb-1">المخزون</label>
                                 <input type="number" class="variant-stock w-full border border-gray-200 rounded px-2 py-1 text-sm" value="${variant.stock}" min="0">
                             </div>
                             <div>
-                                <label class="block text-xs text-gray-600 mb-1">SKU (ط§ط®طھظٹط§ط±ظٹ)</label>
-                                <input type="text" class="variant-sku w-full border border-gray-200 rounded px-2 py-1 text-sm" value="${variant.sku || ''}" placeholder="ط±ظ…ط² ط§ظ„ظ…ظ†طھط¬">
+                                <label class="block text-xs text-gray-600 mb-1">SKU (اختياري)</label>
+                                <input type="text" class="variant-sku w-full border border-gray-200 rounded px-2 py-1 text-sm" value="${variant.sku || ''}" placeholder="رمز المنتج">
                             </div>
                         </div>
                         <div class="mt-3">
-                            <label class="block text-xs text-gray-600 mb-1">طµظˆط± ط§ظ„ظ…طھط؛ظٹط± (ط±ظˆط§ط¨ط· ظ…ظپطµظˆظ„ط© ط¨ظپط§طµظ„ط©)</label>
-                            <input type="text" class="variant-images w-full border border-gray-200 rounded px-2 py-1 text-sm" value="${variant.images?.join(', ') || ''}" placeholder="ط±ظˆط§ط¨ط· ط§ظ„طµظˆط±">
+                            <label class="block text-xs text-gray-600 mb-1">صور المتغير (روابط مفصولة بفاصلة)</label>
+                            <input type="text" class="variant-images w-full border border-gray-200 rounded px-2 py-1 text-sm" value="${variant.images?.join(', ') || ''}" placeholder="روابط الصور">
                         </div>
                     </div>
                 `;
@@ -1585,7 +1593,7 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
         
         optionRows.forEach(row => {
             const name = row.querySelector('.variant-option-name')?.value.trim();
-            const values = row.querySelector('.variant-option-values')?.value.split('طŒ').map(v => v.trim()).filter(v => v);
+            const values = row.querySelector('.variant-option-values')?.value.split('،').map(v => v.trim()).filter(v => v);
             
             if (name && values.length > 0) {
                 variantOptions.push({ name, values });
@@ -1619,7 +1627,7 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
         const selectedCategories = Array.from(document.querySelectorAll('.category-checkbox:checked')).map(cb => cb.value);
 
         if (selectedCategories.length === 0) {
-            showNotification('ط§ظ„ط±ط¬ط§ط، ط§ط®طھظٹط§ط± طھطµظ†ظٹظپ ظˆط§ط­ط¯ ط¹ظ„ظ‰ ط§ظ„ط£ظ‚ظ„!', 'error');
+            showNotification('الرجاء اختيار تصنيف واحد على الأقل!', 'error');
             return;
         }
 
@@ -1628,8 +1636,8 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
         
         const skuValue = document.getElementById('product-sku')?.value || '';
         const freeShippingValue = document.getElementById('product-free-shipping')?.checked || false;
-        console.log('ًں”چ SKU (variants):', skuValue);
-        console.log('ًں”چ Free Shipping (variants):', freeShippingValue);
+        console.log('🔍 SKU (variants):', skuValue);
+        console.log('🔍 Free Shipping (variants):', freeShippingValue);
         
         const productData = {
             name: document.getElementById('product-name')?.value || '',
@@ -1643,11 +1651,11 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
     
             images: JSON.parse(document.getElementById('product-images-data')?.value || '[]')
         };
-        console.log('ًں“¦ Product Data (variants) to save:', productData);
+        console.log('📦 Product Data (variants) to save:', productData);
 
         // Stock text
         if (productData.stockDisplay === 'text') {
-            productData.stockText = document.getElementById('stock-text')?.value || 'ظ…طھظˆظپط±';
+            productData.stockText = document.getElementById('stock-text')?.value || 'متوفر';
         }
 
         // Discount price
@@ -1669,11 +1677,11 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
             productData.newExpiryDate = null;
         }
 
-        // ًںŒں Custom Product Features
+        // 🌟 Custom Product Features
         const customFeatures = getCustomFeatures();
         productData.customFeatures = customFeatures; // Always send customFeatures (even if empty)
 
-        // ًںژ¨ Variants data
+        // 🎨 Variants data
         const hasVariants = document.getElementById('product-has-variants')?.checked;
         if (hasVariants && window.variantsData) {
             productData.hasVariants = true;
@@ -1688,10 +1696,10 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
         try {
             if (currentEditingProduct) {
                 await API.updateProduct(currentEditingProduct, productData);
-                showNotification('طھظ… طھط­ط¯ظٹط« ط§ظ„ظ…ظ†طھط¬ ط¨ظ†ط¬ط§ط­! ًںژ‰');
+                showNotification('تم تحديث المنتج بنجاح! 🎉');
             } else {
                 await API.addProduct(productData);
-                showNotification('طھظ… ط¥ط¶ط§ظپط© ط§ظ„ظ…ظ†طھط¬ ط¨ظ†ط¬ط§ط­! ًںژ‰');
+                showNotification('تم إضافة المنتج بنجاح! 🎉');
             }
 
             closeProductModal();
@@ -1700,7 +1708,7 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
             await loadRecentProducts();
         } catch (error) {
             console.error('Error saving product:', error);
-            showNotification('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، ط­ظپط¸ ط§ظ„ظ…ظ†طھط¬', 'error');
+            showNotification('حدث خطأ أثناء حفظ المنتج', 'error');
         }
     });
 })();

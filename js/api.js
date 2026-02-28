@@ -56,7 +56,9 @@ const API = {
             if (!response.ok) throw new Error('Failed to fetch products');
             const data = await response.json();
             // Normalize products to ensure they all have an 'id' field
-            const normalizedData = Array.isArray(data) ? data.map(p => this._normalizeProduct(p)) : data;
+            const normalizedData = Array.isArray(data)
+                ? data.map(p => this._normalizeProduct(p))
+                : this._normalizeTextDeep(data);
             return normalizedData;
         } catch (error) {
             console.error('Error fetching products:', error);
@@ -139,7 +141,8 @@ const API = {
         try {
             const response = await fetch(`${this.baseURL}/categories`);
             if (!response.ok) throw new Error('Failed to fetch categories');
-            return await response.json();
+            const categories = await response.json();
+            return this._normalizeTextDeep(categories);
         } catch (error) {
             console.error('Error fetching categories:', error);
             return [];
@@ -235,7 +238,8 @@ async getCart() {
             }
         });
         if (!response.ok) throw new Error('Failed to fetch cart');
-        return await response.json();
+        const cart = await response.json();
+        return this._normalizeTextDeep(cart);
     } catch (error) {
         console.error('Error fetching cart:', error);
         return [];
@@ -326,7 +330,8 @@ async getCart() {
                 headers: this.getAuthHeaders()
             });
             if (!response.ok) throw new Error('Failed to fetch orders');
-            return await response.json();
+            const orders = await response.json();
+            return this._normalizeTextDeep(orders);
         } catch (error) {
             console.error('Error fetching orders:', error);
             return [];
@@ -339,7 +344,8 @@ async getCart() {
                 headers: this.getAuthHeaders()
             });
             if (!response.ok) throw new Error('Failed to fetch order');
-            return await response.json();
+            const order = await response.json();
+            return this._normalizeTextDeep(order);
         } catch (error) {
             console.error('Error fetching order:', error);
             return null;
@@ -532,25 +538,78 @@ async getCart() {
     // HELPER METHODS
     // ============================================
 
+    _fixMojibakeText(value) {
+        if (typeof value !== 'string' || !value) return value;
+
+        const pairMap = {
+            // Common mojibake pairs (UTF-8 Arabic decoded incorrectly)
+            'ط§': 'ا', 'ط¢': 'آ', 'ط£': 'أ', 'ط¥': 'إ', 'ط¦': 'ئ', 'ط¤': 'ؤ',
+            'ط¨': 'ب', 'ط©': 'ة', 'طھ': 'ت', 'ط«': 'ث', 'ط¬': 'ج', 'ط­': 'ح', 'ط®': 'خ',
+            'ط¯': 'د', 'ط°': 'ذ', 'ط±': 'ر', 'ط²': 'ز', 'ط³': 'س', 'ط´': 'ش',
+            'طµ': 'ص', 'ط¶': 'ض', 'ط·': 'ط', 'ط¸': 'ظ', 'ط¹': 'ع', 'ط؛': 'غ',
+            'ط': 'ف', 'ط‚': 'ق', 'طƒ': 'ك', 'ط„': 'ل', 'ط…': 'م', 'ط†': 'ن',
+            'ط‡': 'ه', 'طˆ': 'و', 'ط‰': 'ى', 'طٹ': 'ي',
+            'ظپ': 'ف', 'ظ‚': 'ق', 'ظƒ': 'ك', 'ظ„': 'ل', 'ظ…': 'م', 'ظ†': 'ن',
+            'ظ‡': 'ه', 'ظˆ': 'و', 'ظ‰': 'ى', 'ظٹ': 'ي', 'ظ‘': 'ّ', 'ظْ': 'ْ',
+            'ظ‹': 'ً', 'ظŒ': '،', 'ظ؟': '؟', 'ظ€': 'ـ',
+            'ط،': '،', 'ط›': '؛', 'طں': '؟'
+        };
+
+        let text = value
+            .replaceAll('âڑ ️', '⚠️')
+            .replaceAll('âڑ ï¸ڈ', '⚠️')
+            .replaceAll('âœ…', '✅')
+            .replaceAll('â‌Œ', '❌')
+            .replaceAll('â„¹ï¸ڈ', 'ℹ️')
+            .replaceAll('â„¹️', 'ℹ️')
+            .replaceAll('أ—', '×');
+
+        // Fix sequences like: ط§ظ„ظ…...
+        if (/(?:ط.|ظ.){2,}/.test(text)) {
+            text = text.replace(/ط.|ظ./g, (m) => pairMap[m] || m);
+        }
+
+        return text;
+    },
+
+    _normalizeTextDeep(value) {
+        if (typeof value === 'string') {
+            return this._fixMojibakeText(value);
+        }
+
+        if (Array.isArray(value)) {
+            return value.map((item) => this._normalizeTextDeep(item));
+        }
+
+        if (value && typeof value === 'object') {
+            const normalized = {};
+            Object.keys(value).forEach((key) => {
+                normalized[key] = this._normalizeTextDeep(value[key]);
+            });
+            return normalized;
+        }
+
+        return value;
+    },
+
     _normalizeProduct(product) {
         if (!product) return null;
-        console.log('🔧 Normalizing product:', product.name, '| Raw SKU:', product.sku, '| Raw freeShipping:', product.freeShipping);
+        const cleanedProduct = this._normalizeTextDeep(product);
         // Ensure product has a valid id
-        let productId = product._id || product.id;
-        if (!productId && product.name) {
+        let productId = cleanedProduct._id || cleanedProduct.id;
+        if (!productId && cleanedProduct.name) {
             // Generate a temporary id if none exists (fallback)
             productId = 'temp_' + Math.random().toString(36).substr(2, 9);
-            console.warn('Product missing ID, generated temporary ID:', productId, product.name);
+            console.warn('Product missing ID, generated temporary ID:', productId, cleanedProduct.name);
         }
         const normalized = {
-            ...product,
+            ...cleanedProduct,
             id: productId,
-            sku: product.sku || '',
-            freeShipping: product.freeShipping !== undefined ? product.freeShipping : true,
-            categories: product.categories || (product.category ? [product.category] : []),
-            images: product.images || []
+            sku: cleanedProduct.sku || '',
+            freeShipping: cleanedProduct.freeShipping !== undefined ? cleanedProduct.freeShipping : true,
+            categories: cleanedProduct.categories || (cleanedProduct.category ? [cleanedProduct.category] : []),
+            images: cleanedProduct.images || []
         };
-        console.log('🔧 Normalized product:', normalized.name, '| SKU:', normalized.sku, '| freeShipping:', normalized.freeShipping);
         return normalized;
     },
 
