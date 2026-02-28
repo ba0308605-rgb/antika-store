@@ -9,7 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -28,14 +28,19 @@
                         'antika-lavender': '#FFF0F5',
                     },
                     fontFamily: {
-                        'tajawal': ['Tajawal', 'sans-serif'],
+                        'tajawal': ['Cairo', 'Tajawal', 'Segoe UI', 'Tahoma', 'Arial', 'sans-serif'],
                     }
                 }
             }
         }
     </script>
     <style>
-        body { font-family: 'Tajawal', sans-serif; }
+        body {
+            font-family: 'Cairo', 'Tajawal', 'Segoe UI', 'Tahoma', 'Arial', sans-serif;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
         .sidebar-item:hover { background: linear-gradient(90deg, rgba(255,182,193,0.2) 0%, transparent 100%); }
         .stat-card { transition: all 0.3s ease; }
         .stat-card:hover { transform: translateY(-5px); }
