@@ -8,8 +8,8 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <!-- Google Fonts (optional fallback only) -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -28,15 +28,16 @@
                         'antika-lavender': '#FFF0F5',
                     },
                     fontFamily: {
-                        'tajawal': ['Cairo', 'Tajawal', 'Segoe UI', 'Tahoma', 'Arial', 'sans-serif'],
+                        'tajawal': ['Tahoma', 'Segoe UI', 'Arial', 'sans-serif'],
                     }
                 }
             }
         }
     </script>
     <style>
-        body {
-            font-family: 'Cairo', 'Tajawal', 'Segoe UI', 'Tahoma', 'Arial', sans-serif;
+        body,
+        body * {
+            font-family: 'Tahoma', 'Segoe UI', 'Arial', 'Cairo', sans-serif !important;
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
@@ -824,6 +825,6 @@
 
     <!-- Scripts -->
     <script src="js/api.js"></script>
-    <script src="js/admin.js"></script>
+    <script src="js/admin.js?v=20260228-3"></script>
 </body>
 </html>
