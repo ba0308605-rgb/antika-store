@@ -138,6 +138,20 @@ function repairArabicMojibakeText(value) {
 function repairArabicMojibakeDeep(value) {
   if (typeof value === 'string') return repairArabicMojibakeText(value);
   if (Array.isArray(value)) return value.map(repairArabicMojibakeDeep);
+
+  // Convert mongoose documents to plain objects first.
+  if (value && typeof value === 'object' && typeof value.toObject === 'function') {
+    return repairArabicMojibakeDeep(value.toObject({ virtuals: false, getters: false }));
+  }
+
+  // Keep date values untouched.
+  if (value instanceof Date) return value;
+
+  // Preserve ObjectId values.
+  if (value && typeof value === 'object' && (value._bsontype === 'ObjectId' || typeof value.toHexString === 'function')) {
+    return typeof value.toHexString === 'function' ? value.toHexString() : String(value);
+  }
+
   if (value && typeof value === 'object') {
     const out = {};
     Object.keys(value).forEach((k) => {
