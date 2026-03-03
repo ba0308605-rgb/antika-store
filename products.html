@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -334,7 +334,7 @@
                     });
                 }
                 
-                // âœ… Load into mobile menu (same as index.html)
+                // ✅ Load into mobile menu (same as index.html)
                 const mobileCategories = document.getElementById('mobile-categories');
                 if (mobileCategories) {
                     if (categories.length === 0) {
@@ -419,7 +419,7 @@
             const imageUrl = product.images && product.images[0] ? product.images[0] : 'https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store';
             const isNew = product.isNew && product.newExpiryDate && new Date(product.newExpiryDate) > new Date();
             
-            // âœ… Stock display - based on stockDisplay setting
+            // ✅ Stock display - based on stockDisplay setting
             let stockHtml = '';
             if (product.stockDisplay !== 'hidden') {
                 let stockText = '';
@@ -436,7 +436,7 @@
                 }
             }
             
-            // âœ… REAL Rating display - shows empty stars if no reviews
+            // ✅ REAL Rating display - shows empty stars if no reviews
             let ratingHtml = '';
             if (!product.reviews || product.reviews === 0) {
                 ratingHtml = '<span class="text-gray-300">☆☆☆☆☆</span><span class="text-gray-400 mr-1 text-xs">(0)</span>';
@@ -526,9 +526,9 @@
         // Add to cart
         async function addToCart(productId) {
             try {
-                console.log('ًں›’ Adding to cart:', productId);
+                console.log('🛒 Adding to cart:', productId);
                 const product = await API.getProduct(productId);
-                console.log('ًں“¦ Product fetched:', product);
+                console.log('📦 Product fetched:', product);
                 if (product && product.stock > 0) {
                     const cartItem = {
                         productId: product._id || product.id,
@@ -537,16 +537,16 @@
                         image: product.images && product.images[0] ? product.images[0] : 'https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store',
                         quantity: 1
                     };
-                    console.log('ًں’¾ Sending to API:', cartItem);
+                    console.log('💾 Sending to API:', cartItem);
                     await API.addToCart(cartItem);
-                    console.log('âœ… Added successfully');
+                    console.log('✅ Added successfully');
                     await updateCartCount();
                     showNotification(`تمت إضافة "${product.name}" للسلة`);
                 } else {
                     showNotification('عذرًا، المنتج غير متوفر حاليًا', 'error');
                 }
             } catch (error) {
-                console.error('â‌Œ Error adding to cart:', error);
+                console.error('❌ Error adding to cart:', error);
                 showNotification('حدث خطأ، حاول مرة أخرى', 'error');
             }
         }
@@ -575,7 +575,7 @@
             setTimeout(() => notification.remove(), 3000);
         }
 
-        // Wishlist from cards removed â€” wishlist actions happen in product page and quick-view
+        // Wishlist from cards removed — wishlist actions happen in product page and quick-view
 
         // Check login status
         function checkLoginStatus() {

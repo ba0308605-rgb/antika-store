@@ -1,4 +1,4 @@
-﻿// ًںŒ¸ Antika Store - Authentication Module
+// 🌸 Antika Store - Authentication Module
 // Handles user authentication with Firebase and Admin login
 
 // Admin credentials (hardcoded for admin access)
@@ -105,7 +105,7 @@ const Auth = {
         if (savedUser) {
             try {
                 this.currentUser = JSON.parse(savedUser);
-                console.log('âœ… User restored from localStorage:', this.currentUser.name);
+                console.log('✅ User restored from localStorage:', this.currentUser.name);
             } catch (e) {
                 console.error('Error parsing user data:', e);
                 this.logout();
@@ -123,7 +123,7 @@ const Auth = {
                         const isManualLogout = this.wasManualLogout();
                         const authInProgress = this.isAuthInProgress();
                         if (isManualLogout && !authInProgress) {
-                            console.log('âڑ ï¸ڈ Firebase user exists but no saved data - user logged out manually');
+                            console.log('⚠️ Firebase user exists but no saved data - user logged out manually');
                             // Sign out from Firebase to sync state
                             firebase.auth().signOut();
                             return;
@@ -147,7 +147,7 @@ const Auth = {
                     this.saveUserToStorage();
                     this.setManualLogout(false);
                     this.maybeRedirectToGoogleProfileCompletion();
-                    console.log('âœ… Firebase user signed in:', user.email);
+                    console.log('✅ Firebase user signed in:', user.email);
                 } else {
                     if (this.isAuthInProgress()) {
                         return;
@@ -158,7 +158,7 @@ const Auth = {
                         try {
                             const parsed = JSON.parse(savedUser);
                             if (parsed && parsed.uid && !parsed.isAdmin) {
-                                console.warn('âڑ ï¸ڈ Firebase session expired, clearing local user');
+                                console.warn('⚠️ Firebase session expired, clearing local user');
                                 this.clearLocalUserSession();
                             }
                         } catch (e) {}
@@ -291,11 +291,11 @@ const Auth = {
             localStorage.setItem('antika_user', JSON.stringify(this.currentUser));
             this.setManualLogout(false);
             
-            console.log('âœ… Admin logged in successfully');
+            console.log('✅ Admin logged in successfully');
             return { success: true, user: this.currentUser };
         }
         
-        return { success: false, error: 'ط§ط³ظ… ط§ظ„ظ…ط³طھط®ط¯ظ… ط£ظˆ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط؛ظٹط± طµط­ظٹط­ط©!' };
+        return { success: false, error: 'اسم المستخدم أو كلمة المرور غير صحيحة!' };
     },
     
     // User login with Firebase
@@ -325,20 +325,20 @@ const Auth = {
             return { success: true, user: this.currentUser };
         } catch (error) {
             console.error('Login error:', error);
-            let errorMessage = 'ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„';
+            let errorMessage = 'حدث خطأ أثناء تسجيل الدخول';
             
             switch (error.code) {
                 case 'auth/user-not-found':
-                    errorMessage = 'ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط¥ظ„ظƒطھط±ظˆظ†ظٹ ط؛ظٹط± ظ…ط³ط¬ظ„';
+                    errorMessage = 'البريد الإلكتروني غير مسجل';
                     break;
                 case 'auth/wrong-password':
-                    errorMessage = 'ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط؛ظٹط± طµط­ظٹط­ط©';
+                    errorMessage = 'كلمة المرور غير صحيحة';
                     break;
                 case 'auth/invalid-email':
-                    errorMessage = 'ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط¥ظ„ظƒطھط±ظˆظ†ظٹ ط؛ظٹط± طµط§ظ„ط­';
+                    errorMessage = 'البريد الإلكتروني غير صالح';
                     break;
                 case 'auth/user-disabled':
-                    errorMessage = 'طھظ… طھط¹ط·ظٹظ„ ط§ظ„ط­ط³ط§ط¨';
+                    errorMessage = 'تم تعطيل الحساب';
                     break;
             }
             
@@ -358,11 +358,11 @@ const Auth = {
                 throw new Error('Firebase not initialized');
             }
             
-            console.log('ًں“‌ Creating Firebase auth user...');
+            console.log('📝 Creating Firebase auth user...');
             const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
             const user = userCredential.user;
             
-            console.log('âœ… Auth user created:', user.uid);
+            console.log('✅ Auth user created:', user.uid);
             
             // Update profile with name
             await user.updateProfile({ displayName: name });
@@ -393,25 +393,25 @@ const Auth = {
                     createdAt: new Date().toISOString(),
                     isAdmin: false
                 }).catch(err => {
-                    console.warn('âڑ ï¸ڈ Firestore save failed in background:', err.message);
+                    console.warn('⚠️ Firestore save failed in background:', err.message);
                 });
             }
             
-            console.log('âœ… User registration complete - redirecting now');
+            console.log('✅ User registration complete - redirecting now');
             return { success: true, user: this.currentUser };
         } catch (error) {
-            console.error('â‌Œ Registration error:', error);
-            let errorMessage = 'ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، ط§ظ„طھط³ط¬ظٹظ„';
+            console.error('❌ Registration error:', error);
+            let errorMessage = 'حدث خطأ أثناء التسجيل';
             
             switch (error.code) {
                 case 'auth/email-already-in-use':
-                    errorMessage = 'ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط¥ظ„ظƒطھط±ظˆظ†ظٹ ظ…ط³طھط®ط¯ظ… ط¨ط§ظ„ظپط¹ظ„';
+                    errorMessage = 'البريد الإلكتروني مستخدم بالفعل';
                     break;
                 case 'auth/invalid-email':
-                    errorMessage = 'ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط¥ظ„ظƒطھط±ظˆظ†ظٹ ط؛ظٹط± طµط§ظ„ط­';
+                    errorMessage = 'البريد الإلكتروني غير صالح';
                     break;
                 case 'auth/weak-password':
-                    errorMessage = 'ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط¶ط¹ظٹظپط© ط¬ط¯ط§ظ‹ (6 ط£ط­ط±ظپ ط¹ظ„ظ‰ ط§ظ„ط£ظ‚ظ„)';
+                    errorMessage = 'كلمة المرور ضعيفة جداً (6 أحرف على الأقل)';
                     break;
             }
             
@@ -481,7 +481,7 @@ const Auth = {
             return { success: true, user: this.currentUser, requiresProfileCompletion };
         } catch (error) {
             console.error('Google login error:', error);
-            return { success: false, error: 'ظپط´ظ„ طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„ ط¨ظ€ Google' };
+            return { success: false, error: 'فشل تسجيل الدخول بـ Google' };
         } finally {
             this.setAuthInProgress(false);
         }
@@ -507,7 +507,7 @@ const Auth = {
         
         this.currentUser = null;
         
-        console.log('âœ… User logged out');
+        console.log('✅ User logged out');
         return { success: true };
     },
 
@@ -518,7 +518,7 @@ const Auth = {
             if (!user || !user.email) return { success: false, error: 'No user logged in' };
 
             // Ask for confirmation
-            const ok = window.confirm('ظ‡ظ„ ط£ظ†طھ ظ…طھط£ظƒط¯ ظ…ظ† ط­ط°ظپ ط­ط³ط§ط¨ظƒ ظ†ظ‡ط§ط¦ظٹط§ظ‹طں ط³ظٹطھظ… ط­ط°ظپ ط¬ظ…ظٹط¹ ط§ظ„ط·ظ„ط¨ط§طھ ظˆط§ظ„ط¹ظ†ط§ظˆظٹظ† ط§ظ„ظ…ط±طھط¨ط·ط© ظˆظ„ظ† ظٹظ…ظƒظ† ط§ط³طھط¹ط§ط¯طھظ‡ط§.');
+            const ok = window.confirm('هل أنت متأكد من حذف حسابك نهائياً؟ سيتم حذف جميع الطلبات والعناوين المرتبطة ولن يمكن استعادتها.');
             if (!ok) return { success: false, error: 'Cancelled' };
 
             // Call server endpoint to remove orders and user record
@@ -540,7 +540,7 @@ const Auth = {
                     // If deletion requires recent login, sign out and ask user to re-login
                     console.warn('Firebase delete error:', err);
                     if (err.code === 'auth/requires-recent-login') {
-                        alert('ظ„ط­ظ…ط§ظٹط© ط­ط³ط§ط¨ظƒطŒ ظٹظ„ط²ظ… ط¥ط¹ط§ط¯ط© طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„ ظ‚ط¨ظ„ ط­ط°ظپ ط§ظ„ط­ط³ط§ط¨ ظ†ظ‡ط§ط¦ظٹظ‹ط§. ظٹط±ط¬ظ‰ طھط³ط¬ظٹظ„ ط§ظ„ط®ط±ظˆط¬ ط«ظ… طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„ ظ…ط¬ط¯ط¯ظ‹ط§ ظˆط§ظ„ظ…ط­ط§ظˆظ„ط©.');
+                        alert('لحماية حسابك، يلزم إعادة تسجيل الدخول قبل حذف الحساب نهائيًا. يرجى تسجيل الخروج ثم تسجيل الدخول مجددًا والمحاولة.');
                         return { success: false, error: 'requires-recent-login' };
                     }
                 }
@@ -623,7 +623,7 @@ const Auth = {
                         const isManualLogout = this.wasManualLogout();
                         const authInProgress = this.isAuthInProgress();
                         if (isManualLogout && !authInProgress) {
-                            console.log('âڑ ï¸ڈ Firebase user exists but no saved data - user logged out manually');
+                            console.log('⚠️ Firebase user exists but no saved data - user logged out manually');
                             firebase.auth().signOut();
                             return;
                         }
@@ -758,17 +758,17 @@ const Auth = {
             }
             
             await firebase.auth().sendPasswordResetEmail(email);
-            return { success: true, message: 'طھظ… ط¥ط±ط³ط§ظ„ ط±ط§ط¨ط· ط¥ط¹ط§ط¯ط© طھط¹ظٹظٹظ† ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط¥ظ„ظ‰ ط¨ط±ظٹط¯ظƒ' };
+            return { success: true, message: 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك' };
         } catch (error) {
             console.error('Reset password error:', error);
-            let errorMessage = 'ظپط´ظ„ ط¥ط±ط³ط§ظ„ ط±ط§ط¨ط· ط¥ط¹ط§ط¯ط© ط§ظ„طھط¹ظٹظٹظ†';
+            let errorMessage = 'فشل إرسال رابط إعادة التعيين';
             
             switch (error.code) {
                 case 'auth/user-not-found':
-                    errorMessage = 'ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط¥ظ„ظƒطھط±ظˆظ†ظٹ ط؛ظٹط± ظ…ط³ط¬ظ„';
+                    errorMessage = 'البريد الإلكتروني غير مسجل';
                     break;
                 case 'auth/invalid-email':
-                    errorMessage = 'ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط¥ظ„ظƒطھط±ظˆظ†ظٹ ط؛ظٹط± طµط§ظ„ط­';
+                    errorMessage = 'البريد الإلكتروني غير صالح';
                     break;
             }
             
@@ -783,13 +783,13 @@ const Auth = {
     // Get user's addresses
     async getAddresses() {
         if (!this.hydrateCurrentUserFromStorage()) {
-            console.warn('âڑ ï¸ڈ No logged-in user');
+            console.warn('⚠️ No logged-in user');
             return [];
         }
 
         try {
             if (typeof firebase === 'undefined' || !firebase.firestore) {
-                console.warn('âڑ ï¸ڈ Firestore not available');
+                console.warn('⚠️ Firestore not available');
                 return [];
             }
 
@@ -804,7 +804,7 @@ const Auth = {
                 addresses.push({ id: doc.id, ...doc.data() });
             });
 
-            console.log('âœ… Addresses loaded:', addresses.length);
+            console.log('✅ Addresses loaded:', addresses.length);
             return addresses;
         } catch (err) {
             console.error('Error loading addresses:', err);
@@ -828,7 +828,7 @@ const Auth = {
                 .doc(this.currentUser.uid)
                 .collection('addresses')
                 .add({
-                    label: address.label || 'ط§ظ„ط¹ظ†ظˆط§ظ†',
+                    label: address.label || 'العنوان',
                     address: address.address,
                     location: {
                         lat: address.lat || null,
@@ -837,7 +837,7 @@ const Auth = {
                     createdAt: new Date().toISOString()
                 });
 
-            console.log('âœ… Address added:', addressRef.id);
+            console.log('✅ Address added:', addressRef.id);
             return { success: true, id: addressRef.id };
         } catch (err) {
             console.error('Error adding address:', err);
@@ -863,7 +863,7 @@ const Auth = {
                 .doc(addressId)
                 .delete();
 
-            console.log('âœ… Address deleted:', addressId);
+            console.log('✅ Address deleted:', addressId);
             return { success: true };
         } catch (err) {
             console.error('Error deleting address:', err);
@@ -875,7 +875,7 @@ const Auth = {
     async getWishlist() {
         const session = this.validateFirebaseSession();
         if (!session.ok) {
-            console.warn('âڑ ï¸ڈ', session.error);
+            console.warn('⚠️', session.error);
             return [];
         }
 
@@ -892,11 +892,11 @@ const Auth = {
             });
 
             this.syncWishlistLocalFromRemote(wishlist);
-            console.log('âœ… Wishlist loaded:', wishlist.length);
+            console.log('✅ Wishlist loaded:', wishlist.length);
             return wishlist;
         } catch (err) {
             if (this.isPermissionDeniedError(err)) {
-                console.warn('âڑ ï¸ڈ Wishlist permission denied - using local fallback');
+                console.warn('⚠️ Wishlist permission denied - using local fallback');
                 return this.getLocalWishlistItems();
             }
             console.error('Error loading wishlist:', err);
@@ -938,7 +938,7 @@ const Auth = {
                 .get();
 
             if (existing.exists) {
-                return { success: false, error: 'ط§ظ„ظ…ظ†طھط¬ ظ…ظˆط¬ظˆط¯ ط¨ط§ظ„ظپط¹ظ„ ظپظٹ ط§ظ„ظ…ظپط¶ظ„ط©' };
+                return { success: false, error: 'المنتج موجود بالفعل في المفضلة' };
             }
 
             // Build payload without undefined values (Firestore rejects undefined)
@@ -955,7 +955,7 @@ const Auth = {
                 .set(payload);
 
             this.addToLocalWishlist(productId);
-            console.log('âœ… Product added to wishlist:', productId);
+            console.log('✅ Product added to wishlist:', productId);
             return { success: true };
         } catch (err) {
             if (this.isPermissionDeniedError(err)) {
@@ -983,7 +983,7 @@ const Auth = {
                 .delete();
 
             this.removeFromLocalWishlist(productId);
-            console.log('âœ… Product removed from wishlist:', productId);
+            console.log('✅ Product removed from wishlist:', productId);
             return { success: true };
         } catch (err) {
             if (this.isPermissionDeniedError(err)) {
@@ -998,13 +998,13 @@ const Auth = {
     // Get user's orders
     async getOrders() {
         if (!this.hydrateCurrentUserFromStorage()) {
-            console.warn('âڑ ï¸ڈ No logged-in user');
+            console.warn('⚠️ No logged-in user');
             return [];
         }
 
         try {
             if (typeof firebase === 'undefined' || !firebase.firestore) {
-                console.warn('âڑ ï¸ڈ Firestore not available');
+                console.warn('⚠️ Firestore not available');
                 return [];
             }
 
@@ -1020,7 +1020,7 @@ const Auth = {
                 orders.push({ id: doc.id, ...doc.data() });
             });
 
-            console.log('âœ… Orders loaded:', orders.length);
+            console.log('✅ Orders loaded:', orders.length);
             return orders;
         } catch (err) {
             console.error('Error loading orders:', err);
@@ -1050,7 +1050,7 @@ const Auth = {
                     updatedAt: new Date().toISOString()
                 });
 
-            console.log('âœ… Order created:', orderRef.id);
+            console.log('✅ Order created:', orderRef.id);
             return { success: true, id: orderRef.id };
         } catch (err) {
             console.error('Error creating order:', err);

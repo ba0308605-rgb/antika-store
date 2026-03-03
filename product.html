@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -947,19 +947,19 @@
             }
             
             // Free Shipping Badge
-            console.log('ًںڑڑ Free Shipping value:', product.freeShipping);
+            console.log('🚚 Free Shipping value:', product.freeShipping);
             const freeShippingBadge = document.getElementById('freeShippingBadge');
             if (freeShippingBadge) {
                 if (product.freeShipping === false) {
                     freeShippingBadge.style.display = 'none';
-                    console.log('ًںڑڑ Hiding free shipping badge');
+                    console.log('🚚 Hiding free shipping badge');
                 } else {
                     freeShippingBadge.style.display = 'flex';
-                    console.log('ًںڑڑ Showing free shipping badge');
+                    console.log('🚚 Showing free shipping badge');
                 }
             }
             
-            // ًںŒں Custom Features
+            // 🌟 Custom Features
             const featuresContainer = document.getElementById('productFeatures');
             if (featuresContainer) {
                 if (product.customFeatures && product.customFeatures.length > 0) {
@@ -980,7 +980,7 @@
                 }
             }
             
-            // ًںژ¨ Color Option - Show only if product has variants
+            // 🎨 Color Option - Show only if product has variants
             const colorRow = document.getElementById('colorOptionRow');
             if (colorRow) {
                 if (product.hasVariants && product.variantOptions) {

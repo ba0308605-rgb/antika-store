@@ -230,10 +230,13 @@
         }
 
         /* Hybrid Checkout Modal */
+        #checkout-modal {
+            --checkout-viewport-height: calc(100dvh - 20px);
+        }
         .checkout-shell {
             width: 100%;
             max-width: 1100px;
-            max-height: 92vh;
+            max-height: var(--checkout-viewport-height);
             overflow: hidden;
             border-radius: 20px;
             background: #fff;
@@ -243,7 +246,7 @@
             display: grid;
             grid-template-columns: 1.5fr 1fr;
             min-height: 0;
-            max-height: calc(92vh - 78px);
+            max-height: calc(var(--checkout-viewport-height) - 78px);
         }
         .checkout-main {
             overflow-y: auto;
@@ -307,9 +310,12 @@
             min-height: 18px;
         }
         @media (max-width: 900px) {
+            #checkout-modal {
+                --checkout-viewport-height: calc(100dvh - 12px);
+            }
             .checkout-layout {
                 grid-template-columns: 1fr;
-                max-height: calc(92vh - 70px);
+                max-height: calc(var(--checkout-viewport-height) - 70px);
             }
             .checkout-summary {
                 border-right: none;
@@ -359,11 +365,11 @@
     </div>
 
     <!-- Checkout Modal -->
-    <div id="checkout-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden p-4">
+    <div id="checkout-modal" class="fixed inset-0 bg-black/55 flex items-start sm:items-center justify-center z-[2000] hidden p-2 sm:p-4 overflow-y-auto">
         <div class="checkout-shell">
-            <div class="p-5 border-b flex justify-between items-center">
+            <div class="p-5 border-b flex justify-between items-center sticky top-0 bg-white z-10">
                 <h3 class="text-xl font-bold text-antika-gold">إتمام الطلب</h3>
-                <button onclick="closeCheckoutModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                <button onclick="closeCheckoutModal()" class="w-10 h-10 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-100 text-2xl leading-none flex items-center justify-center" aria-label="إغلاق">&times;</button>
             </div>
             <form id="checkout-form" class="checkout-layout">
                 <div class="checkout-main">
@@ -458,8 +464,8 @@
 
                             <label class="block text-sm font-bold text-gray-700 mb-2">نوع الشحن</label>
                             <select id="shipping-method" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
-                                <option value="standard">شحن عادي</option>
-                                <option value="express">شحن سريع (+20 ر.س)</option>
+                                <option value="redbox_locker">ريد بوكس (خزانة) - 20 ر.س</option>
+                                <option value="aramex_home">أرامكس (توصيل منزلي) - 30 ر.س</option>
                             </select>
                             <p id="shipping-method-note" class="text-xs text-gray-500 mt-2">سنعرض المدة المتوقعة بعد اختيار المدينة ونوع الشحن.</p>
                         </div>
@@ -473,7 +479,9 @@
                         <div id="checkout-section-payment" class="checkout-section-body hidden">
                             <select id="payment-method" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
                                 <option value="cash">الدفع عند الاستلام</option>
+                                <option value="online">دفع إلكتروني (بدون رسوم إضافية)</option>
                             </select>
+                            <p class="text-xs text-gray-500 mt-2">رسوم الدفع عند الاستلام: 17 ر.س</p>
                         </div>
                     </div>
                 </div>
@@ -503,6 +511,10 @@
                             <div class="flex justify-between">
                                 <span class="text-gray-600">الشحن</span>
                                 <span id="checkout-shipping-cost" class="font-bold">0 ر.س</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">رسوم الدفع عند الاستلام</span>
+                                <span id="checkout-cod-fee" class="font-bold">0 ر.س</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-gray-600">الخصم</span>
@@ -537,19 +549,20 @@
         let cartTotal = 0;
         let checkoutAppliedCoupon = null;
         const DELIVERY_ZONES = [
-            { id: 'riyadh', name: 'الرياض', region: 'الوسطى', baseFee: 12, etaStandard: '2-3 أيام', etaExpress: 'خلال 24 ساعة' },
-            { id: 'jeddah', name: 'جدة', region: 'الغربية', baseFee: 15, etaStandard: '2-4 أيام', etaExpress: '1-2 يوم' },
-            { id: 'makkah', name: 'مكة المكرمة', region: 'الغربية', baseFee: 15, etaStandard: '2-4 أيام', etaExpress: '1-2 يوم' },
-            { id: 'madinah', name: 'المدينة المنورة', region: 'الغربية', baseFee: 18, etaStandard: '3-5 أيام', etaExpress: '1-2 يوم' },
-            { id: 'dammam', name: 'الدمام', region: 'الشرقية', baseFee: 18, etaStandard: '3-5 أيام', etaExpress: '2 يوم' },
-            { id: 'khobar', name: 'الخبر', region: 'الشرقية', baseFee: 18, etaStandard: '3-5 أيام', etaExpress: '2 يوم' },
-            { id: 'taif', name: 'الطائف', region: 'الغربية', baseFee: 20, etaStandard: '3-6 أيام', etaExpress: '2-3 أيام' },
-            { id: 'other', name: 'مدن أخرى', region: 'أخرى', baseFee: 25, etaStandard: '4-7 أيام', etaExpress: '2-4 أيام' }
+            { id: 'riyadh', name: 'الرياض', region: 'الوسطى', baseFee: 0, etaStandard: '2-4 أيام', etaExpress: '2-4 أيام' },
+            { id: 'jeddah', name: 'جدة', region: 'الغربية', baseFee: 0, etaStandard: '2-4 أيام', etaExpress: '2-4 أيام' },
+            { id: 'makkah', name: 'مكة المكرمة', region: 'الغربية', baseFee: 0, etaStandard: '2-4 أيام', etaExpress: '2-4 أيام' },
+            { id: 'madinah', name: 'المدينة المنورة', region: 'الغربية', baseFee: 0, etaStandard: '2-5 أيام', etaExpress: '2-5 أيام' },
+            { id: 'dammam', name: 'الدمام', region: 'الشرقية', baseFee: 0, etaStandard: '2-5 أيام', etaExpress: '2-5 أيام' },
+            { id: 'khobar', name: 'الخبر', region: 'الشرقية', baseFee: 0, etaStandard: '2-5 أيام', etaExpress: '2-5 أيام' },
+            { id: 'taif', name: 'الطائف', region: 'الغربية', baseFee: 0, etaStandard: '3-6 أيام', etaExpress: '3-6 أيام' },
+            { id: 'other', name: 'مدن أخرى', region: 'أخرى', baseFee: 0, etaStandard: '3-7 أيام', etaExpress: '3-7 أيام' }
         ];
         const SHIPPING_METHODS = {
-            standard: { label: 'شحن عادي', extraFee: 0 },
-            express: { label: 'شحن سريع', extraFee: 20 }
+            redbox_locker: { label: 'ريد بوكس (خزانة)', extraFee: 20 },
+            aramex_home: { label: 'أرامكس (توصيل منزلي)', extraFee: 30 }
         };
+        const COD_FEE = 17;
         const CHECKOUT_COUPONS = {
             ANTIKA10: { type: 'percent', value: 10, label: 'خصم 10%' },
             NEW15: { type: 'percent', value: 15, label: 'خصم 15%' },
@@ -608,13 +621,13 @@
         }
 
         function getShippingBreakdown() {
-            const method = document.getElementById('shipping-method')?.value || 'standard';
+            const method = document.getElementById('shipping-method')?.value || 'redbox_locker';
             const zone = getSelectedShippingZone();
-            const methodConfig = SHIPPING_METHODS[method] || SHIPPING_METHODS.standard;
+            const methodConfig = SHIPPING_METHODS[method] || SHIPPING_METHODS.redbox_locker;
             const baseFee = zone ? Number(zone.baseFee || 0) : 0;
             const methodExtraFee = Number(methodConfig.extraFee || 0);
             const total = baseFee + methodExtraFee;
-            const eta = zone ? (method === 'express' ? zone.etaExpress : zone.etaStandard) : '';
+            const eta = zone ? zone.etaStandard : '';
             return {
                 method,
                 methodLabel: methodConfig.label,
@@ -638,7 +651,7 @@
             const breakdown = getShippingBreakdown();
             if (cityNoteEl) {
                 cityNoteEl.textContent = breakdown.cityName
-                    ? `رسوم ${breakdown.cityName}: ${formatSAR(breakdown.baseFee)}`
+                    ? `المدينة المختارة: ${breakdown.cityName}`
                     : 'اختر المدينة لحساب رسوم التوصيل.';
             }
             if (methodNoteEl) {
@@ -652,6 +665,8 @@
             const subtotal = Number(cartTotal || 0);
             const shippingInfo = getShippingBreakdown();
             const shipping = shippingInfo.total;
+            const paymentMethod = document.getElementById('payment-method')?.value || 'cash';
+            const codFee = paymentMethod === 'cash' ? COD_FEE : 0;
             let discount = 0;
 
             if (checkoutAppliedCoupon) {
@@ -664,21 +679,23 @@
                 }
             }
 
-            discount = Math.min(discount, subtotal + shipping);
-            const total = Math.max(0, subtotal + shipping - discount);
+            discount = Math.min(discount, subtotal + shipping + codFee);
+            const total = Math.max(0, subtotal + shipping + codFee - discount);
 
             const subtotalEl = document.getElementById('checkout-subtotal');
             const shippingEl = document.getElementById('checkout-shipping-cost');
+            const codFeeEl = document.getElementById('checkout-cod-fee');
             const discountEl = document.getElementById('checkout-discount');
             const totalEl = document.getElementById('checkout-total');
 
             if (subtotalEl) subtotalEl.textContent = formatSAR(subtotal);
             if (shippingEl) shippingEl.textContent = formatSAR(shipping);
+            if (codFeeEl) codFeeEl.textContent = formatSAR(codFee);
             if (discountEl) discountEl.textContent = `- ${formatSAR(discount)}`;
             if (totalEl) totalEl.textContent = formatSAR(total);
 
             updateShippingHint();
-            return { subtotal, shipping, discount, total, shippingInfo };
+            return { subtotal, shipping, codFee, discount, total, shippingInfo, paymentMethod };
         }
 
         function updateCheckoutItemsPreview(cartItems) {
@@ -754,6 +771,7 @@
             const couponInput = document.getElementById('checkout-coupon');
             const shippingCitySelect = document.getElementById('shipping-city');
             const shippingSelect = document.getElementById('shipping-method');
+            const paymentMethodSelect = document.getElementById('payment-method');
 
             if (couponToggle && couponBox) {
                 couponToggle.addEventListener('click', () => {
@@ -776,6 +794,9 @@
             }
             if (shippingCitySelect) {
                 shippingCitySelect.addEventListener('change', recalculateCheckoutTotals);
+            }
+            if (paymentMethodSelect) {
+                paymentMethodSelect.addEventListener('change', recalculateCheckoutTotals);
             }
 
             populateShippingCities();
@@ -1213,7 +1234,8 @@
                 const customerAddress = (document.getElementById('customer-address')?.value || '').trim();
                 const totals = recalculateCheckoutTotals();
                 const shippingInfo = totals.shippingInfo || getShippingBreakdown();
-                const shippingMethod = shippingInfo.method || (document.getElementById('shipping-method')?.value || 'standard');
+                const shippingMethod = shippingInfo.method || (document.getElementById('shipping-method')?.value || 'redbox_locker');
+                const paymentMethod = totals.paymentMethod || (document.getElementById('payment-method')?.value || 'cash');
 
                 if (!customerName || !customerPhone || !customerAddress) {
                     alert('يرجى تعبئة الاسم ورقم الجوال والعنوان قبل إتمام الطلب.');
@@ -1238,12 +1260,14 @@
                     shippingRegion: shippingInfo.region,
                     shippingEta: shippingInfo.eta,
                     shippingMethod,
+                    shippingMethodLabel: shippingInfo.methodLabel,
                     shippingCost: shippingInfo.total,
                     shippingBaseFee: shippingInfo.baseFee,
                     shippingMethodExtraFee: shippingInfo.methodExtraFee,
+                    codFee: totals.codFee || 0,
                     discount: totals.discount,
                     couponCode: checkoutAppliedCoupon ? checkoutAppliedCoupon.code : null,
-                    paymentMethod: document.getElementById('payment-method').value,
+                    paymentMethod,
                     // Add location if available
                     location: location ? {
                         type: 'Point',

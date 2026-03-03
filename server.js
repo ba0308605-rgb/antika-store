@@ -35,6 +35,7 @@ const OTO_PICKUP_LOCATION_CODE = (process.env.OTO_PICKUP_LOCATION_CODE || '').tr
 const OTO_DEFAULT_DELIVERY_OPTION_ID = (process.env.OTO_DEFAULT_DELIVERY_OPTION_ID || '').trim();
 const OTO_ORDER_PREFIX = (process.env.OTO_ORDER_PREFIX || 'ANTIKA').trim();
 const OTO_WEBHOOK_AUTH_KEY = (process.env.OTO_WEBHOOK_AUTH_KEY || '').trim();
+const COD_SURCHARGE_SAR = Number(process.env.COD_SURCHARGE_SAR || 17);
 
 if (!process.env.JWT_SECRET) {
   console.warn('⚠️ JWT_SECRET is missing; using insecure fallback secret. Set JWT_SECRET in production.');
@@ -237,6 +238,97 @@ async function callOTO(path, payload) {
   return data;
 }
 
+function formatSar(value) {
+  const amount = Number(value || 0);
+  return `${Number.isFinite(amount) ? amount.toFixed(2) : '0.00'} ر.س`;
+}
+
+function getOrderStatusTextAr(status = '') {
+  const map = {
+    pending: 'بانتظار المراجعة',
+    processing: 'قيد التجهيز',
+    shipped: 'تم الشحن',
+    out_for_delivery: 'خرج للتوصيل',
+    delivered: 'تم التسليم',
+    cancelled: 'ملغي'
+  };
+  return map[String(status || '').trim()] || String(status || 'قيد المعالجة');
+}
+
+function generateOrderCode(orderId, date = new Date()) {
+  const safeDate = date instanceof Date ? date : new Date();
+  const y = safeDate.getFullYear();
+  const m = String(safeDate.getMonth() + 1).padStart(2, '0');
+  const d = String(safeDate.getDate()).padStart(2, '0');
+  const suffix = String(orderId || '').slice(-6).toUpperCase();
+  return `ANT-${y}${m}${d}-${suffix || '000000'}`;
+}
+
+function appendOrderTimeline(order, { status = '', title = '', message = '', source = 'system', at = new Date() } = {}) {
+  const entry = {
+    status: String(status || order?.status || '').trim(),
+    title: String(title || '').trim(),
+    message: String(message || '').trim(),
+    source: String(source || 'system').trim(),
+    at: at instanceof Date ? at : new Date()
+  };
+
+  if (!Array.isArray(order.statusTimeline)) {
+    order.statusTimeline = [];
+  }
+
+  order.statusTimeline.push(entry);
+  if (order.statusTimeline.length > 50) {
+    order.statusTimeline = order.statusTimeline.slice(-50);
+  }
+}
+
+async function sendOrderCustomerNotification(order, { title = '', message = '', subject = '' } = {}) {
+  const toEmail = String(order?.customerEmail || '').trim();
+  if (!toEmail || !toEmail.includes('@')) {
+    return { sent: false, reason: 'missing-email' };
+  }
+
+  const trackingNumber = String(order?.trackingNumber || order?.otoTrackingNumber || '').trim();
+  const trackingUrl = String(order?.trackingUrl || order?.otoAwbUrl || '').trim();
+  const carrier = String(order?.shippingCarrier || '').trim();
+  const orderCode = String(order?.orderCode || order?._id || '').trim();
+
+  const safeSubject = subject || `تحديث طلبك ${orderCode ? `#${orderCode}` : ''}`.trim();
+  const safeTitle = title || 'تحديث جديد على طلبك';
+  const safeMessage = message || `حالة الطلب الحالية: ${getOrderStatusTextAr(order?.status)}`;
+
+  const html = `
+    <div style="font-family:Tahoma,Arial,sans-serif;direction:rtl;text-align:right;line-height:1.9;color:#1f2937">
+      <h2 style="margin:0 0 12px;color:#8B6F47;">${safeTitle}</h2>
+      <p style="margin:0 0 10px;">${safeMessage}</p>
+      <p style="margin:0 0 6px;"><strong>رقم الطلب:</strong> ${orderCode || '-'}</p>
+      <p style="margin:0 0 6px;"><strong>الحالة:</strong> ${getOrderStatusTextAr(order?.status)}</p>
+      <p style="margin:0 0 6px;"><strong>شركة الشحن:</strong> ${carrier || '-'}</p>
+      <p style="margin:0 0 6px;"><strong>رقم التتبع:</strong> ${trackingNumber || '-'}</p>
+      ${trackingUrl ? `<p style="margin:0 0 6px;"><a href="${trackingUrl}" target="_blank" rel="noopener">رابط تتبع الشحنة</a></p>` : ''}
+      <p style="margin-top:14px;color:#6b7280;">شكراً لتسوقك من متجر أنتيكا.</p>
+    </div>
+  `;
+
+  const gmailUser = process.env.GMAIL_USER || '';
+  const gmailPass = process.env.GMAIL_APP_PASSWORD || '';
+  const isPlaceholderCreds = gmailUser.includes('your-email') || gmailPass.includes('your-app-password') || !gmailUser || !gmailPass;
+  if (isPlaceholderCreds) {
+    console.log(`[ORDER NOTIFY DEV] ${toEmail} | ${safeSubject} | ${safeMessage}`);
+    return { sent: true, devMode: true };
+  }
+
+  await emailTransporter.sendMail({
+    from: process.env.GMAIL_USER,
+    to: toEmail,
+    subject: safeSubject,
+    html
+  });
+
+  return { sent: true, devMode: false };
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -360,14 +452,21 @@ const orderSchema = new mongoose.Schema({
   customerEmail: { type: String, required: true },
   customerPhone: { type: String, required: true },
   customerAddress: { type: String, required: true },
+  orderCode: { type: String, default: '' },
   shippingCity: { type: String, default: '' },
   shippingCityId: { type: String, default: '' },
   shippingRegion: { type: String, default: '' },
   shippingEta: { type: String, default: '' },
   shippingMethod: { type: String, default: 'standard' },
+  shippingMethodLabel: { type: String, default: '' },
   shippingCost: { type: Number, default: 0 },
   shippingBaseFee: { type: Number, default: 0 },
   shippingMethodExtraFee: { type: Number, default: 0 },
+  shippingCarrier: { type: String, default: '' },
+  trackingNumber: { type: String, default: '' },
+  trackingUrl: { type: String, default: '' },
+  shipmentReference: { type: String, default: '' },
+  codFee: { type: Number, default: 0 },
   // 📍 GeoJSON location for maps integration
   location: {
     type: { type: String, default: 'Point' },
@@ -387,6 +486,17 @@ const orderSchema = new mongoose.Schema({
     default: 'processing'
   },
   paymentMethod: { type: String, default: 'cash' },
+  statusTimeline: [{
+    status: { type: String, default: '' },
+    title: { type: String, default: '' },
+    message: { type: String, default: '' },
+    source: { type: String, default: 'system' },
+    at: { type: Date, default: Date.now }
+  }],
+  shippedAt: { type: Date, default: null },
+  outForDeliveryAt: { type: Date, default: null },
+  deliveredAt: { type: Date, default: null },
+  customerNotifiedAt: { type: Date, default: null },
   otoOrderId: { type: String, default: '' },
   otoShipmentId: { type: String, default: '' },
   otoTrackingNumber: { type: String, default: '' },
@@ -395,7 +505,7 @@ const orderSchema = new mongoose.Schema({
   otoDcStatus: { type: String, default: '' },
   otoLastWebhookAt: { type: Date, default: null },
   date: { type: Date, default: Date.now }
-});
+}, { timestamps: true });
 
 // Settings Schema
 const settingsSchema = new mongoose.Schema({
@@ -1012,9 +1122,39 @@ app.post('/api/orders', async (req, res) => {
   try {
     if (!requireMongo(res, 'Order create')) return;
 
-    const order = new Order(req.body);
+    const payload = { ...(req.body || {}) };
+    const paymentMethod = String(payload.paymentMethod || 'cash').toLowerCase();
+    const codFeeInput = Number(payload.codFee);
+    payload.codFee = Number.isFinite(codFeeInput) ? codFeeInput : (paymentMethod === 'cash' ? COD_SURCHARGE_SAR : 0);
+    payload.paymentMethod = paymentMethod;
+    payload.status = String(payload.status || 'processing').trim() || 'processing';
+
+    const order = new Order(payload);
+    if (!order.orderCode) {
+      order.orderCode = generateOrderCode(order._id, order.date || new Date());
+    }
+    appendOrderTimeline(order, {
+      status: order.status,
+      title: 'تم استلام الطلب',
+      message: `استلمنا طلبك بنجاح. حالة الطلب الحالية: ${getOrderStatusTextAr(order.status)}`,
+      source: 'system'
+    });
     await order.save();
-    res.json(order);
+
+    try {
+      const notifyResult = await sendOrderCustomerNotification(order, {
+        title: 'تم استلام طلبك',
+        message: `رقم طلبك ${order.orderCode}. سنقوم بتجهيزه وإشعارك بكل خطوة.`
+      });
+      if (notifyResult.sent) {
+        order.customerNotifiedAt = new Date();
+        await order.save();
+      }
+    } catch (notifyErr) {
+      console.error('Order create notification failed:', notifyErr.message);
+    }
+
+    res.json(repairArabicMojibakeDeep(order));
   } catch (err) {
     console.error('Error creating order:', err);
     res.status(500).json({ error: err.message });
@@ -1026,9 +1166,114 @@ app.put('/api/orders/:id', requireAdmin, async (req, res) => {
   try {
     if (!requireMongo(res, 'Order update')) return;
 
-    const order = await Order.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
-    res.json(order);
+
+    const allowedFields = [
+      'status',
+      'shippingCarrier',
+      'trackingNumber',
+      'trackingUrl',
+      'shipmentReference',
+      'shippingMethod',
+      'shippingMethodLabel',
+      'shippingCity',
+      'shippingRegion',
+      'shippingEta',
+      'shippingCost',
+      'shippingBaseFee',
+      'shippingMethodExtraFee',
+      'codFee',
+      'paymentMethod',
+      'otoTrackingNumber',
+      'otoAwbUrl',
+      'otoStatus',
+      'otoDcStatus'
+    ];
+
+    const before = {
+      status: String(order.status || ''),
+      shippingCarrier: String(order.shippingCarrier || ''),
+      trackingNumber: String(order.trackingNumber || order.otoTrackingNumber || ''),
+      trackingUrl: String(order.trackingUrl || order.otoAwbUrl || '')
+    };
+
+    for (const field of allowedFields) {
+      if (Object.prototype.hasOwnProperty.call(req.body, field) && req.body[field] !== undefined) {
+        order[field] = req.body[field];
+      }
+    }
+
+    const nextStatus = String(order.status || '').trim() || 'processing';
+    order.status = nextStatus;
+
+    const after = {
+      status: String(order.status || ''),
+      shippingCarrier: String(order.shippingCarrier || ''),
+      trackingNumber: String(order.trackingNumber || order.otoTrackingNumber || ''),
+      trackingUrl: String(order.trackingUrl || order.otoAwbUrl || '')
+    };
+
+    const statusChanged = before.status !== after.status;
+    const trackingChanged = before.trackingNumber !== after.trackingNumber || before.trackingUrl !== after.trackingUrl;
+    const carrierChanged = before.shippingCarrier !== after.shippingCarrier;
+    const manualNote = String(req.body?.note || '').trim();
+
+    if (statusChanged) {
+      if (after.status === 'shipped' && !order.shippedAt) order.shippedAt = new Date();
+      if (after.status === 'out_for_delivery' && !order.outForDeliveryAt) order.outForDeliveryAt = new Date();
+      if (after.status === 'delivered' && !order.deliveredAt) order.deliveredAt = new Date();
+
+      appendOrderTimeline(order, {
+        status: after.status,
+        title: 'تحديث حالة الطلب',
+        message: `تم تحديث حالة الطلب إلى: ${getOrderStatusTextAr(after.status)}`,
+        source: 'admin'
+      });
+    }
+
+    if (trackingChanged || carrierChanged) {
+      appendOrderTimeline(order, {
+        status: after.status,
+        title: 'تحديث بيانات الشحنة',
+        message: `شركة الشحن: ${after.shippingCarrier || '-'} | رقم التتبع: ${after.trackingNumber || '-'}`,
+        source: 'admin'
+      });
+    }
+
+    if (manualNote) {
+      appendOrderTimeline(order, {
+        status: after.status,
+        title: 'ملاحظة على الطلب',
+        message: manualNote,
+        source: 'admin'
+      });
+    }
+
+    await order.save();
+
+    let notificationSent = false;
+    if (statusChanged || trackingChanged || carrierChanged || manualNote) {
+      try {
+        const notifyResult = await sendOrderCustomerNotification(order, {
+          title: statusChanged ? `حالة الطلب: ${getOrderStatusTextAr(after.status)}` : 'تحديث على بيانات الشحنة',
+          message: manualNote || `شركة الشحن: ${after.shippingCarrier || '-'} | رقم التتبع: ${after.trackingNumber || '-'}`
+        });
+        if (notifyResult.sent) {
+          notificationSent = true;
+          order.customerNotifiedAt = new Date();
+          await order.save();
+        }
+      } catch (notifyErr) {
+        console.error('Order update notification failed:', notifyErr.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      notificationSent,
+      order: repairArabicMojibakeDeep(order)
+    });
   } catch (err) {
     console.error('Error updating order:', err);
     res.status(500).json({ error: err.message });
@@ -1120,7 +1365,32 @@ app.post('/api/orders/:id/create-shipment', requireAdmin, async (req, res) => {
     order.otoStatus = String(otoResult?.status || 'shipmentCreated');
     order.otoDcStatus = String(otoResult?.dcStatus || '');
     order.status = mapOTOStatusToOrderStatus(order.otoStatus, order.otoDcStatus);
+    if (!order.shippingCarrier) order.shippingCarrier = 'OTO';
+    if (order.otoTrackingNumber && !order.trackingNumber) order.trackingNumber = order.otoTrackingNumber;
+    if (order.otoAwbUrl && !order.trackingUrl) order.trackingUrl = order.otoAwbUrl;
+    if (order.status === 'shipped' && !order.shippedAt) order.shippedAt = new Date();
+    if (order.status === 'out_for_delivery' && !order.outForDeliveryAt) order.outForDeliveryAt = new Date();
+    if (order.status === 'delivered' && !order.deliveredAt) order.deliveredAt = new Date();
+    appendOrderTimeline(order, {
+      status: order.status,
+      title: 'تم إنشاء شحنة',
+      message: `تم إنشاء الشحنة بنجاح عبر OTO. رقم التتبع: ${order.trackingNumber || '-'}`,
+      source: 'system'
+    });
     await order.save();
+
+    try {
+      const notifyResult = await sendOrderCustomerNotification(order, {
+        title: 'تم إنشاء شحنتك',
+        message: `شركة الشحن: ${order.shippingCarrier || 'OTO'} | رقم التتبع: ${order.trackingNumber || '-'}`
+      });
+      if (notifyResult.sent) {
+        order.customerNotifiedAt = new Date();
+        await order.save();
+      }
+    } catch (notifyErr) {
+      console.error('OTO create shipment notification failed:', notifyErr.message);
+    }
 
     return res.json({
       success: true,
@@ -1182,13 +1452,48 @@ app.post('/api/oto/webhook', async (req, res) => {
       const trackingNumber = String(event.trackingNumber || event.awbNumber || event.airwayBill || '').trim();
       const awbUrl = String(event.printAWBURL || event.awbUrl || event.labelUrl || '').trim();
 
+      const previousStatus = String(order.status || '');
+      const previousTracking = String(order.trackingNumber || order.otoTrackingNumber || '');
+
       order.otoStatus = otoStatus || order.otoStatus;
       order.otoDcStatus = otoDcStatus || order.otoDcStatus;
       order.otoTrackingNumber = trackingNumber || order.otoTrackingNumber;
       order.otoAwbUrl = awbUrl || order.otoAwbUrl;
       order.otoLastWebhookAt = new Date();
       order.status = mapOTOStatusToOrderStatus(order.otoStatus, order.otoDcStatus);
+      order.shippingCarrier = order.shippingCarrier || 'OTO';
+      if (order.otoTrackingNumber) order.trackingNumber = order.otoTrackingNumber;
+      if (order.otoAwbUrl) order.trackingUrl = order.otoAwbUrl;
+      if (order.status === 'shipped' && !order.shippedAt) order.shippedAt = new Date();
+      if (order.status === 'out_for_delivery' && !order.outForDeliveryAt) order.outForDeliveryAt = new Date();
+      if (order.status === 'delivered' && !order.deliveredAt) order.deliveredAt = new Date();
+
+      const statusChanged = previousStatus !== String(order.status || '');
+      const trackingChanged = previousTracking !== String(order.trackingNumber || '');
+      if (statusChanged || trackingChanged) {
+        appendOrderTimeline(order, {
+          status: order.status,
+          title: 'تحديث تلقائي من شركة الشحن',
+          message: `الحالة: ${getOrderStatusTextAr(order.status)} | رقم التتبع: ${order.trackingNumber || '-'}`,
+          source: 'oto-webhook'
+        });
+      }
       await order.save();
+
+      if (statusChanged || trackingChanged) {
+        try {
+          const notifyResult = await sendOrderCustomerNotification(order, {
+            title: `تحديث الشحنة: ${getOrderStatusTextAr(order.status)}`,
+            message: `تم تحديث شحنتك تلقائياً من شركة الشحن. رقم التتبع: ${order.trackingNumber || '-'}`
+          });
+          if (notifyResult.sent) {
+            order.customerNotifiedAt = new Date();
+            await order.save();
+          }
+        } catch (notifyErr) {
+          console.error('OTO webhook notification failed:', notifyErr.message);
+        }
+      }
 
       updatedCount += 1;
       updatedIds.push(String(order._id));

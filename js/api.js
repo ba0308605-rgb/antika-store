@@ -375,9 +375,26 @@ async getCart() {
                 body: JSON.stringify({ status })
             });
             if (!response.ok) throw new Error('Failed to update order status');
-            return await response.json();
+            const data = await response.json();
+            return data?.order || data;
         } catch (error) {
             console.error('Error updating order status:', error);
+            throw error;
+        }
+    },
+
+    async updateOrder(id, payload = {}) {
+        try {
+            const response = await fetch(`${this.baseURL}/orders/${id}`, {
+                method: 'PUT',
+                headers: this.getAuthHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify(payload || {})
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || 'Failed to update order');
+            return data?.order || data;
+        } catch (error) {
+            console.error('Error updating order:', error);
             throw error;
         }
     },
