@@ -105,7 +105,8 @@
                 document.getElementById('menu-' + idx).classList.toggle('hidden');
             });
         });
-        document.addEventListener('click', () => {
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.dropdown-trigger') || e.target.closest('.dropdown-menu')) return;
             document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
         });
     }
@@ -205,7 +206,7 @@
             center, zoom: 13,
             disableDefaultUI: true,
             zoomControl: true,
-            styles: []
+            styles: [{ featureType: 'poi', stylers: [{ visibility: 'off' }] }]
         });
 
         marker = new google.maps.Marker({
