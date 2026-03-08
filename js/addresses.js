@@ -205,7 +205,7 @@
             center, zoom: 13,
             disableDefaultUI: true,
             zoomControl: true,
-            styles: [{ featureType: 'poi', stylers: [{ visibility: 'off' }] }]
+            styles: []
         });
 
         marker = new google.maps.Marker({
