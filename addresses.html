@@ -8,165 +8,335 @@
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root{
-            --antika-card: #0f1720; /* dark card */
-            --antika-gold: #D6C1A6;
-            --antika-pink: #E8B7B7;
-            --antika-teal: #D6C1A6; /* main action color - same as footer */
-            --antika-green: #16A34A;
-            --antika-muted: #94a3b8;
-            --antika-bg: #ffffff;
+        :root {
+            --gold: #D6C1A6;
+            --gold-dark: #C4AC8E;
+            --gold-light: #EDE0CF;
+            --pink: #E8B7B7;
+            --pink-dark: #D4A0A0;
+            --bg: #FAFAF8;
+            --white: #FFFFFF;
+            --text: #1a1a1a;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --green: #16A34A;
+            --red: #DC2626;
         }
+
+        * { box-sizing: border-box; }
         html { overflow-y: scroll; }
-        body{font-family:'Tajawal',sans-serif;background:var(--antika-bg);}
-        .dark-gradient { background: linear-gradient(135deg, #0b0b0b 0%, #0f1112 100%); }
-        .card-hover { transition: all 0.24s ease; }
-        .card-hover:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(0,0,0,0.06); }
+        body { font-family: 'Tajawal', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-        /* Utility color classes used in this page */
-        .text-antika-gold { color: var(--antika-gold) !important; }
-        .text-antika-pink { color: var(--antika-pink) !important; }
-        .bg-antika-gold { background: var(--antika-gold) !important; color: #111; }
-        .bg-antika-pink { background: var(--antika-pink) !important; color: #111; }
-        .bg-antika-teal { background: var(--antika-teal) !important; }
-        .border-antika-gold { border-color: var(--antika-gold) !important; }
-        .status-default { background: var(--antika-green); color: white; }
-        .muted { color: var(--antika-muted); }
-
-        /* Sidebar Menu Item */
+        /* Sidebar */
         .sidebar-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 14px 16px;
-            color: #4b5563;
-            transition: all 0.2s;
-            border-radius: 8px;
-            margin-bottom: 4px;
-            text-decoration: none;
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px; color: var(--muted);
+            transition: all 0.2s; border-radius: 10px;
+            margin-bottom: 4px; text-decoration: none; cursor: pointer;
+            border: none; background: none; width: 100%; text-align: right; font-family: 'Tajawal', sans-serif; font-size: 15px;
         }
-        .sidebar-item:hover {
-            background-color: #f9fafb;
-            color: #D6C1A6;
+        .sidebar-item:hover { background: var(--gold-light); color: var(--gold-dark); }
+        .sidebar-item.active { background: linear-gradient(135deg, rgba(214,193,166,0.2), rgba(232,183,183,0.15)); color: var(--gold-dark); font-weight: 700; border-right: 3px solid var(--gold); }
+        .sidebar-item i { width: 20px; text-align: center; }
+
+        /* Cards */
+        .card { background: var(--white); border-radius: 16px; border: 1px solid var(--border); transition: all 0.25s; }
+        .card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+
+        /* Address card */
+        .address-card {
+            background: var(--white); border: 1.5px solid var(--border);
+            border-radius: 14px; padding: 18px 20px;
+            transition: all 0.25s; cursor: pointer;
         }
-        .sidebar-item.active {
-            background: linear-gradient(135deg, rgba(214, 193, 166, 0.1) 0%, rgba(255, 182, 193, 0.1) 100%);
-            color: #D6C1A6;
-            font-weight: 600;
-            border-right: 3px solid #D6C1A6;
+        .address-card:hover { border-color: var(--gold); box-shadow: 0 4px 16px rgba(214,193,166,0.2); }
+        .address-card.is-default { border-color: var(--gold); background: linear-gradient(135deg, rgba(214,193,166,0.06), rgba(255,255,255,1)); }
+
+        /* Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+            color: white; border: none; border-radius: 12px;
+            padding: 14px 28px; font-family: 'Tajawal', sans-serif;
+            font-size: 15px; font-weight: 700; cursor: pointer;
+            transition: all 0.2s; width: 100%;
         }
-        .sidebar-item i {
-            width: 20px;
-            text-align: center;
+        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(214,193,166,0.4); }
+        .btn-secondary {
+            background: transparent; color: var(--gold-dark);
+            border: 2px solid var(--gold); border-radius: 12px;
+            padding: 12px 24px; font-family: 'Tajawal', sans-serif;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; width: 100%;
         }
+        .btn-secondary:hover { background: var(--gold-light); }
+        .btn-danger { background: #FEF2F2; color: var(--red); border: none; border-radius: 8px; padding: 8px 16px; font-family: 'Tajawal', sans-serif; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+        .btn-danger:hover { background: #FEE2E2; }
+
+        /* Input */
+        .input-field {
+            width: 100%; border: 2px solid var(--border); border-radius: 10px;
+            padding: 12px 16px; font-family: 'Tajawal', sans-serif;
+            font-size: 15px; color: var(--text); background: var(--white);
+            transition: border-color 0.2s; outline: none;
+        }
+        .input-field:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(214,193,166,0.15); }
+        .input-field::placeholder { color: #9ca3af; }
+
+        select.input-field { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: left 12px center; padding-left: 36px; }
+
+        /* Map container */
+        #map-container { width: 100%; height: 320px; border-radius: 14px; overflow: hidden; border: 2px solid var(--border); position: relative; }
+        #map { width: 100%; height: 100%; }
+
+        /* Modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .modal-box { background: var(--white); border-radius: 20px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+        .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .modal-body { padding: 24px; }
+        .modal-close { background: #f3f4f6; border: none; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 18px; color: var(--muted); transition: all 0.2s; }
+        .modal-close:hover { background: #e5e7eb; color: var(--text); }
+
+        /* Dropdown menu */
+        .dropdown-menu { position: absolute; left: 0; top: 38px; background: var(--white); border: 1.5px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); z-index: 50; min-width: 160px; overflow: hidden; }
+        .dropdown-item { display: flex; align-items: center; gap: 10px; padding: 11px 16px; font-size: 14px; cursor: pointer; transition: background 0.15s; border: none; background: none; width: 100%; text-align: right; font-family: 'Tajawal', sans-serif; color: var(--text); }
+        .dropdown-item:hover { background: #f9fafb; }
+        .dropdown-item.danger { color: var(--red); }
+        .dropdown-item.danger:hover { background: #FEF2F2; }
+        .dropdown-item:not(:last-child) { border-bottom: 1px solid #f3f4f6; }
+
+        /* Map search */
+        #map-search-box { position: absolute; top: 12px; right: 12px; left: 12px; z-index: 10; }
+        #map-search-input { width: 100%; background: white; border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 16px 10px 40px; font-family: 'Tajawal', sans-serif; font-size: 14px; outline: none; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        #map-search-input:focus { border-color: var(--gold); }
+        .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; }
+
+        /* Location badge */
+        .location-icon-wrap { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+        /* Badge */
+        .badge-default { background: linear-gradient(135deg, #D1FAE5, #A7F3D0); color: #065F46; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px; }
+
+        /* Notify */
+        .toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: var(--text); color: white; padding: 12px 24px; border-radius: 50px; font-size: 14px; font-weight: 600; z-index: 999; box-shadow: 0 4px 20px rgba(0,0,0,0.2); transition: all 0.3s; white-space: nowrap; }
+
+        /* Fade animation */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.3s ease forwards; }
+
+        /* Breadcrumb */
+        .breadcrumb a { color: var(--gold-dark); font-weight: 600; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
     </style>
 </head>
-<body class="bg-white text-gray-900 min-h-screen flex flex-col">
+<body>
     <antika-announcement-bar></antika-announcement-bar>
     <antika-header></antika-header>
 
-    <!-- Main Content -->
-    <main class="flex-1">
-        <!-- Breadcrumb -->
-        <nav class="bg-white border-b py-3">
-            <div class="container mx-auto px-4">
-                <div class="flex items-center text-sm">
-                    <a href="index.html" class="text-antika-gold font-semibold">الرئيسية</a>
-                    <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
-                    <a href="account.html" class="text-antika-gold font-semibold">حسابي</a>
-                    <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
-                    <span class="text-gray-600">عناويني</span>
-                </div>
+    <!-- Breadcrumb -->
+    <nav class="bg-white border-b py-3">
+        <div class="container mx-auto px-4">
+            <div class="breadcrumb flex items-center text-sm gap-2">
+                <a href="index.html">الرئيسية</a>
+                <i class="fas fa-chevron-left text-gray-400 text-xs"></i>
+                <a href="account.html">حسابي</a>
+                <i class="fas fa-chevron-left text-gray-400 text-xs"></i>
+                <span class="text-gray-500">عناويني</span>
             </div>
-        </nav>
+        </div>
+    </nav>
 
-        <!-- Page Content -->
-        <div class="container mx-auto px-4 py-8">
+    <main class="flex-1 py-8">
+        <div class="container mx-auto px-4">
             <div class="flex flex-col lg:flex-row gap-6">
-        <!-- Sidebar -->
-        <aside class="w-full lg:w-64 flex-shrink-0">
-            <div class="bg-white rounded-xl shadow-sm border p-4">
-                <a href="notifications.html" class="sidebar-item">
-                    <i class="fas fa-bell"></i>
-                    <span>الإشعارات</span>
-                </a>
-                <a href="orders.html" class="sidebar-item">
-                    <i class="fas fa-shopping-bag"></i>
-                    <span>الطلبات</span>
-                </a>
-                <a href="wishlist.html" class="sidebar-item">
-                    <i class="fas fa-heart"></i>
-                    <span>المفضلة</span>
-                </a>
-                <a href="account.html" class="sidebar-item">
-                    <i class="fas fa-user-circle"></i>
-                    <span>حسابي</span>
-                </a>
-                <a href="addresses.html" class="sidebar-item active">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span>عناويني</span>
-                </a>
-                <a href="settings.html" class="sidebar-item">
-                    <i class="fas fa-cog"></i>
-                    <span>الإعدادات</span>
-                </a>
-                <div class="border-t my-3"></div>
-                <button onclick="logout()" class="sidebar-item w-full text-right text-red-500 hover:bg-red-50 hover:text-red-600">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>تسجيل الخروج</span>
-                </button>
-            </div>
-        </aside>
 
-        <!-- Main Content -->
-        <div class="flex-1">
-            <!-- Header -->
-            <div class="flex items-center justify-between mb-10">
-                <div class="flex items-center gap-3">
-                    <h1 class="text-4xl font-bold text-antika-gold">إدارة العناوين</h1>
-                    <i class="fas fa-map-pin text-antika-gold text-2xl"></i>
-                </div>
-            </div>
+                <!-- Sidebar -->
+                <aside class="w-full lg:w-64 flex-shrink-0">
+                    <div class="card p-4">
+                        <a href="notifications.html" class="sidebar-item"><i class="fas fa-bell"></i><span>الإشعارات</span></a>
+                        <a href="orders.html" class="sidebar-item"><i class="fas fa-shopping-bag"></i><span>الطلبات</span></a>
+                        <a href="wishlist.html" class="sidebar-item"><i class="fas fa-heart"></i><span>المفضلة</span></a>
+                        <a href="account.html" class="sidebar-item"><i class="fas fa-user-circle"></i><span>حسابي</span></a>
+                        <a href="addresses.html" class="sidebar-item active"><i class="fas fa-map-marker-alt"></i><span>عناويني</span></a>
+                        <a href="settings.html" class="sidebar-item"><i class="fas fa-cog"></i><span>الإعدادات</span></a>
+                        <div class="border-t my-3"></div>
+                        <button onclick="logout()" class="sidebar-item text-red-500 hover:bg-red-50 hover:text-red-600">
+                            <i class="fas fa-sign-out-alt"></i><span>تسجيل الخروج</span>
+                        </button>
+                    </div>
+                </aside>
 
-            <div class="space-y-4">
-                <!-- Unified Saved Addresses Card -->
-                <div class="card-hover bg-white rounded-xl p-6 border border-gray-200 text-gray-800">
+                <!-- Main -->
+                <div class="flex-1">
+                    <!-- Header -->
                     <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-2xl font-bold text-antika-gold flex items-center gap-3">
-                            <i class="fas fa-map-marker-alt text-antika-pink"></i> العناوين المحفوظة
-                        </h2>
+                        <div>
+                            <h1 class="text-3xl font-bold" style="color:var(--gold-dark)">إدارة العناوين</h1>
+                            <p class="text-sm mt-1" style="color:var(--muted)">أضف وأدر عناوين التوصيل الخاصة بك</p>
+                        </div>
+                        <button onclick="openAddressModal()" class="hidden md:flex items-center gap-2 px-5 py-3 rounded-full font-bold text-white text-sm transition hover:opacity-90" style="background: linear-gradient(135deg, var(--gold), var(--gold-dark))">
+                            <i class="fas fa-plus"></i> عنوان جديد
+                        </button>
                     </div>
 
-                    <div id="saved-list" class="space-y-3">
-                        <!-- Combined locations + addresses loaded by JS -->
+                    <!-- Addresses list -->
+                    <div id="addresses-container" class="space-y-3 mb-4"></div>
+
+                    <!-- Empty state -->
+                    <div id="empty-state" class="hidden card p-12 text-center">
+                        <div class="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:var(--gold-light)">
+                            <i class="fas fa-map-marker-alt text-3xl" style="color:var(--gold-dark)"></i>
+                        </div>
+                        <h3 class="text-lg font-bold mb-2" style="color:var(--text)">لا توجد عناوين محفوظة</h3>
+                        <p class="text-sm mb-6" style="color:var(--muted)">أضف عنوانك الأول لتسهيل عملية الطلب</p>
+                        <button onclick="openAddressModal()" class="btn-primary" style="max-width:200px;margin:0 auto">
+                            <i class="fas fa-plus ml-2"></i> أضف عنواناً
+                        </button>
                     </div>
 
-                    <div id="empty-saved" class="text-center text-gray-400 py-12">
-                        <i class="fas fa-map text-5xl mb-4 text-gray-600"></i>
-                        <p class="text-lg">لا توجد عناوين محفوظة</p>
-                        <p class="text-sm mt-2">اضغط "اضافة عنوان جديد" لإضافة عنوانك أو موقعك</p>
-                    </div>
-                </div>
-
-                <!-- Add new button (full-width under card) -->
-                <div>
-                    <button id="add-address-btn" class="w-full px-6 py-3 bg-antika-teal text-white rounded-full text-lg font-semibold hover:opacity-90 transition">
-                        <i class="fas fa-plus ml-2"></i>اضافة عنوان جديد
+                    <!-- Add button mobile -->
+                    <button onclick="openAddressModal()" class="md:hidden btn-primary mt-4">
+                        <i class="fas fa-plus ml-2"></i> إضافة عنوان جديد
                     </button>
                 </div>
             </div>
         </div>
+    </main>
+
+    <!-- ===== ADDRESS MODAL ===== -->
+    <div id="address-modal" class="modal-overlay hidden">
+        <div class="modal-box fade-in">
+            <div class="modal-header">
+                <h3 class="text-lg font-bold" id="modal-title" style="color:var(--gold-dark)">
+                    <i class="fas fa-map-marker-alt ml-2" style="color:var(--pink)"></i>
+                    إضافة عنوان جديد
+                </h3>
+                <button class="modal-close" onclick="closeAddressModal()">×</button>
+            </div>
+
+            <!-- Step 1: Map -->
+            <div class="modal-body" id="step-map">
+                <p class="text-sm mb-4 font-semibold" style="color:var(--muted)">
+                    <i class="fas fa-info-circle ml-1" style="color:var(--gold)"></i>
+                    حدد موقعك على الخريطة أو ابحث بالعنوان
+                </p>
+
+                <!-- Map -->
+                <div id="map-container" class="mb-4">
+                    <div id="map-search-box">
+                        <input id="map-search-input" type="text" placeholder="ابحث بالعنوان الوطني أو اسم المكان..." />
+                        <i class="fas fa-search search-icon"></i>
+                    </div>
+                    <div id="map"></div>
+                </div>
+
+                <!-- Selected address display -->
+                <div id="selected-address-box" class="hidden mb-4 p-4 rounded-12 border-2" style="border-color:var(--gold);background:var(--gold-light);border-radius:12px">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-check-circle mt-1" style="color:var(--green)"></i>
+                        <div>
+                            <p class="text-xs font-bold mb-1" style="color:var(--muted)">الموقع المحدد</p>
+                            <p id="selected-address-text" class="text-sm font-semibold" style="color:var(--text)"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <button onclick="useCurrentLocation()" class="btn-secondary flex items-center justify-center gap-2">
+                        <i class="fas fa-location-crosshairs"></i> موقعي الحالي
+                    </button>
+                    <button onclick="goToStep2()" id="next-btn" class="btn-primary flex items-center justify-center gap-2" disabled style="opacity:0.5">
+                        متابعة <i class="fas fa-arrow-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Details -->
+            <div class="modal-body hidden" id="step-details">
+                <button onclick="goToStep1()" class="flex items-center gap-2 text-sm mb-5 font-semibold" style="color:var(--gold-dark);background:none;border:none;cursor:pointer">
+                    <i class="fas fa-arrow-right"></i> العودة للخريطة
+                </button>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-bold mb-2" style="color:var(--text)">المنطقة <span class="text-red-500">*</span></label>
+                        <select id="addr-region" class="input-field" onchange="loadCities(this.value)">
+                            <option value="">اختر المنطقة</option>
+                            <option value="makkah">منطقة مكة المكرمة</option>
+                            <option value="riyadh">منطقة الرياض</option>
+                            <option value="eastern">المنطقة الشرقية</option>
+                            <option value="madinah">منطقة المدينة المنورة</option>
+                            <option value="asir">منطقة عسير</option>
+                            <option value="tabuk">منطقة تبوك</option>
+                            <option value="hail">منطقة حائل</option>
+                            <option value="northern">منطقة الحدود الشمالية</option>
+                            <option value="jazan">منطقة جازان</option>
+                            <option value="najran">منطقة نجران</option>
+                            <option value="baha">منطقة الباحة</option>
+                            <option value="jouf">منطقة الجوف</option>
+                            <option value="qassim">منطقة القصيم</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-2" style="color:var(--text)">المدينة <span class="text-red-500">*</span></label>
+                        <select id="addr-city" class="input-field">
+                            <option value="">اختر المدينة</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-bold mb-2" style="color:var(--text)">الحي <span class="text-red-500">*</span></label>
+                        <input id="addr-district" type="text" class="input-field" placeholder="مثال: حي النزهة">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-2" style="color:var(--text)">الشارع <span class="text-red-500">*</span></label>
+                        <input id="addr-street" type="text" class="input-field" placeholder="مثال: شارع الملك فهد">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-bold mb-2" style="color:var(--text)">رقم المبنى</label>
+                        <input id="addr-building" type="text" class="input-field" placeholder="مثال: 123">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-2" style="color:var(--text)">الرمز البريدي</label>
+                        <input id="addr-postal" type="text" class="input-field" placeholder="مثال: 12345">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-bold mb-2" style="color:var(--text)">اسم العنوان <span class="text-red-500">*</span></label>
+                    <input id="addr-label" type="text" class="input-field" placeholder="مثال: المنزل، العمل">
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="setLabel('المنزل')" class="px-3 py-1 rounded-full text-xs font-bold border transition" style="border-color:var(--gold);color:var(--gold-dark)">🏠 المنزل</button>
+                        <button onclick="setLabel('العمل')" class="px-3 py-1 rounded-full text-xs font-bold border transition" style="border-color:var(--gold);color:var(--gold-dark)">🏢 العمل</button>
+                        <button onclick="setLabel('العائلة')" class="px-3 py-1 rounded-full text-xs font-bold border transition" style="border-color:var(--gold);color:var(--gold-dark)">👨‍👩‍👧 العائلة</button>
+                    </div>
+                </div>
+
+                <div class="mb-6 flex items-center gap-3 p-4 rounded-12 border" style="border-color:var(--border);border-radius:12px">
+                    <input type="checkbox" id="addr-default" class="w-4 h-4 accent-yellow-600">
+                    <label for="addr-default" class="text-sm font-semibold cursor-pointer" style="color:var(--text)">
+                        تعيين كعنوان افتراضي
+                    </label>
+                </div>
+
+                <button onclick="saveAddress()" class="btn-primary">
+                    <i class="fas fa-save ml-2"></i> حفظ العنوان
+                </button>
             </div>
         </div>
-    </main>>
+    </div>
 
     <antika-footer></antika-footer>
 
     <script src="js/api.js"></script>
     <script src="js/firebase-config.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/addresses.js"></script>
     <script src="js/header.js"></script>
     <script src="js/footer.js"></script>
+    <script src="js/addresses.js"></script>
 </body>
 </html>
