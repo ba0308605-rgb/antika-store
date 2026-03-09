@@ -459,18 +459,15 @@
                             <i class="fas fa-chevron-down checkout-chevron"></i>
                         </button>
                         <div id="checkout-section-shipping" class="checkout-section-body hidden">
-                            <label class="block text-sm font-bold text-gray-700 mb-2">المدينة</label>
-                            <select id="shipping-city" class="w-full mb-3 border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
-                                <option value="">اختر المدينة</option>
-                            </select>
-                            <p id="shipping-city-note" class="text-xs text-gray-500 mb-3">اختر المدينة لحساب رسوم التوصيل.</p>
+                            <input type="hidden" id="shipping-city">
+                            <p id="shipping-city-note" class="text-xs text-gray-500 mb-3 hidden"></p>
 
                             <label class="block text-sm font-bold text-gray-700 mb-2">نوع الشحن</label>
                             <select id="shipping-method" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
                                 <option value="redbox_locker">ريد بوكس (خزانة) - 20 ر.س</option>
                                 <option value="aramex_home">أرامكس (توصيل منزلي) - 30 ر.س</option>
                             </select>
-                            <p id="shipping-method-note" class="text-xs text-gray-500 mt-2">سنعرض المدة المتوقعة بعد اختيار المدينة ونوع الشحن.</p>
+                            <p id="shipping-method-note" class="text-xs text-gray-500 mt-2">سنعرض المدة المتوقعة بعد اختيار نوع الشحن.</p>
                         </div>
                     </div>
 
@@ -615,11 +612,7 @@
         }
 
         function populateShippingCities() {
-            const citySelect = document.getElementById('shipping-city');
-            if (!citySelect) return;
-            citySelect.innerHTML = '<option value="">اختر المدينة</option>' + DELIVERY_ZONES.map(zone =>
-                `<option value="${zone.id}">${zone.name}</option>`
-            ).join('');
+            // المدينة تُملأ تلقائياً من العنوان المحفوظ
         }
 
         function getSelectedShippingZone() {
@@ -1067,10 +1060,7 @@
                                     <span>المجموع:</span>
                                     <span>${cartTotal} ر.س</span>
                                 </div>
-                                <div class="flex justify-between text-gray-600">
-                                    <span>الشحن:</span>
-                                    <span>مجاني 🚚</span>
-                                </div>
+
                             </div>
                             <div class="border-t pt-4 mb-6">
                                 <div class="flex justify-between text-xl font-bold text-antika-gold">
@@ -1246,10 +1236,6 @@
 
                 if (!customerName || !customerPhone || !customerAddress) {
                     alert('يرجى تعبئة الاسم ورقم الجوال والعنوان قبل إتمام الطلب.');
-                    return;
-                }
-                if (!shippingInfo.cityId) {
-                    alert('يرجى اختيار مدينة التوصيل قبل إتمام الطلب.');
                     return;
                 }
 
@@ -1618,17 +1604,11 @@
                     }
                 }
 
-                const locations = user.locations || [];
                 const addresses = user.addresses || [];
-                const combined = [];
-                
-                locations.forEach((l, i) => combined.push(Object.assign({ _type: 'location', _idx: i }, l)));
-                addresses.forEach((a, i) => combined.push(Object.assign({ _type: 'address', _idx: i }, a)));
-
                 const container = document.getElementById('saved-addresses-list');
                 const empty = document.getElementById('no-saved-addresses');
 
-                if (!combined || combined.length === 0) {
+                if (!addresses || addresses.length === 0) {
                     if (empty) empty.classList.remove('hidden');
                     if (container) container.classList.add('hidden');
                     return;
@@ -1637,39 +1617,86 @@
                 if (empty) empty.classList.add('hidden');
                 if (container) {
                     container.classList.remove('hidden');
-                    container.innerHTML = combined.map(item => {
-                        const label = item.label || (item._type === 'location' ? `الموقع ${item._idx+1}` : `العنوان ${item._idx+1}`);
-                        const details = item.address || (item.lat && item.lng ? `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}` : 'لا توجد تفاصيل');
-                        const isDefault = item.isDefault ? '✓ افتراضي' : '';
-                        const icon = item._type === 'location' ? '<i class="fas fa-location-dot text-antika-pink"></i>' : '<i class="fas fa-map text-antika-gold"></i>';
-                        
+                    container.innerHTML = addresses.map((item, i) => {
+                        const label = item.label || `العنوان ${i+1}`;
+                        const details = item.address || 'لا توجد تفاصيل';
+                        const isDefault = item.isDefault === true;
+                        const defaultBadge = isDefault
+                            ? `<span class="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-600 border border-amber-300 rounded-full px-2 py-0.5 font-bold">⭐ افتراضي</span>`
+                            : '';
+
                         return `
-                            <div class="p-3 bg-white border border-gray-200 rounded-lg flex items-start justify-between gap-2 hover:border-antika-gold transition">
+                            <div id="addr-card-${i}" class="p-3 bg-white border-2 ${isDefault ? 'border-antika-gold' : 'border-gray-200'} rounded-lg flex items-start justify-between gap-2 hover:border-antika-gold transition">
                                 <div class="flex-1">
-                                    <div class="font-bold text-sm text-gray-900 flex items-center gap-2">${icon} ${label}</div>
+                                    <div class="font-bold text-sm text-gray-900 flex items-center gap-2 flex-wrap">
+                                        <i class="fas fa-map text-antika-gold"></i> ${label} ${defaultBadge}
+                                    </div>
                                     <div class="text-xs text-gray-600 mt-1">${details}</div>
-                                    ${isDefault ? `<div class="text-xs text-green-600 mt-1 font-bold">${isDefault}</div>` : ''}
                                 </div>
-                                <button type="button" class="text-antika-teal hover:text-antika-teal-dark font-bold text-sm px-3 py-1 border border-antika-teal rounded hover:bg-antika-teal hover:text-white transition" onclick="selectAddressInCheckout('${label}', '${details}')">
-                                    اختر
+                                <button type="button" class="font-bold text-sm px-3 py-1 rounded border transition
+                                    ${isDefault ? 'bg-antika-gold text-white border-antika-gold' : 'border-gray-300 text-gray-600 hover:border-antika-gold hover:text-antika-gold'}"
+                                    onclick="selectAddressInCheckout('${label}', '${details}', '${item.city || ''}', ${i})">
+                                    ${isDefault ? '✓ محدد' : 'اختر'}
                                 </button>
                             </div>
                         `;
                     }).join('');
                 }
+
+                // Auto-select default address
+                const defaultIdx = addresses.findIndex(a => a.isDefault === true);
+                const autoIdx = defaultIdx !== -1 ? defaultIdx : 0;
+                const autoAddr = addresses[autoIdx];
+                if (autoAddr) {
+                    selectAddressInCheckout(
+                        autoAddr.label || `العنوان ${autoIdx+1}`,
+                        autoAddr.address || '',
+                        autoAddr.city || '',
+                        autoIdx,
+                        true // silent — no highlight flash
+                    );
+                }
+
             } catch (error) {
                 console.error('Error loading saved addresses:', error);
             }
         }
 
         // Select Address in Checkout
-        function selectAddressInCheckout(label, details) {
+        function selectAddressInCheckout(label, details, city = '', idx = -1, silent = false) {
+            // Fill address field
             const customInput = document.getElementById('customer-address');
-            if (customInput) {
-                customInput.value = label + '\n' + details;
-            }
-            document.getElementById('selected-address-text').textContent = label + '\n' + details;
+            if (customInput) customInput.value = details || label;
+
+            // Show selected display
+            document.getElementById('selected-address-text').textContent = `${label} — ${details}`;
             document.getElementById('address-selected-display').classList.remove('hidden');
+
+            // Set city on hidden input for shipping calculation
+            if (city) {
+                const cityInput = document.getElementById('shipping-city');
+                if (cityInput) {
+                    cityInput.value = city;
+                    recalculateCheckoutTotals();
+                }
+            }
+
+            // Highlight selected card
+            if (!silent && idx !== -1) {
+                document.querySelectorAll('[id^="addr-card-"]').forEach(el => {
+                    el.classList.remove('border-antika-gold');
+                    el.classList.add('border-gray-200');
+                    const btn = el.querySelector('button');
+                    if (btn) { btn.className = btn.className.replace('bg-antika-gold text-white border-antika-gold', 'border-gray-300 text-gray-600 hover:border-antika-gold hover:text-antika-gold'); btn.textContent = 'اختر'; }
+                });
+                const card = document.getElementById(`addr-card-${idx}`);
+                if (card) {
+                    card.classList.remove('border-gray-200');
+                    card.classList.add('border-antika-gold');
+                    const btn = card.querySelector('button');
+                    if (btn) { btn.className = btn.className.replace('border-gray-300 text-gray-600 hover:border-antika-gold hover:text-antika-gold', 'bg-antika-gold text-white border-antika-gold'); btn.textContent = '✓ محدد'; }
+                }
+            }
         }
 
         // Location Selection Handler
