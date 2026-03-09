@@ -36,6 +36,8 @@ const OTO_DEFAULT_DELIVERY_OPTION_ID = (process.env.OTO_DEFAULT_DELIVERY_OPTION_
 const OTO_ORDER_PREFIX = (process.env.OTO_ORDER_PREFIX || 'ANTIKA').trim();
 const OTO_WEBHOOK_AUTH_KEY = (process.env.OTO_WEBHOOK_AUTH_KEY || '').trim();
 const COD_SURCHARGE_SAR = Number(process.env.COD_SURCHARGE_SAR || 17);
+const MOYASAR_SECRET_KEY = (process.env.MOYASAR_SECRET_KEY || '').trim();
+const MOYASAR_PUBLISHABLE_KEY = (process.env.MOYASAR_PUBLISHABLE_KEY || '').trim();
 
 if (!process.env.JWT_SECRET) {
   console.warn('⚠️ JWT_SECRET is missing; using insecure fallback secret. Set JWT_SECRET in production.');
@@ -486,6 +488,7 @@ const orderSchema = new mongoose.Schema({
     default: 'processing'
   },
   paymentMethod: { type: String, default: 'cash' },
+  paymentId: { type: String, default: '' },
   statusTimeline: [{
     status: { type: String, default: '' },
     title: { type: String, default: '' },
@@ -1927,6 +1930,68 @@ app.get('/api/maps/config', (req, res) => {
 });
 
 // ============================================
+// MOYASAR PAYMENT
+// ============================================
+
+// Return publishable key to frontend (safe to expose)
+app.get('/api/payment/config', (req, res) => {
+  res.json({
+    publishableKey: MOYASAR_PUBLISHABLE_KEY || '',
+    enabled: Boolean(MOYASAR_PUBLISHABLE_KEY)
+  });
+});
+
+// Verify payment after Moyasar callback
+app.post('/api/payment/verify', async (req, res) => {
+  try {
+    const { paymentId, orderId } = req.body || {};
+
+    if (!paymentId) {
+      return res.status(400).json({ error: 'paymentId مطلوب' });
+    }
+
+    if (!MOYASAR_SECRET_KEY) {
+      return res.status(500).json({ error: 'Moyasar غير مُعد على السيرفر' });
+    }
+
+    // Verify payment with Moyasar API
+    const moyasarRes = await fetch(`https://api.moyasar.com/v1/payments/${paymentId}`, {
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(MOYASAR_SECRET_KEY + ':').toString('base64')
+      }
+    });
+
+    if (!moyasarRes.ok) {
+      return res.status(400).json({ error: 'فشل التحقق من الدفعة مع Moyasar' });
+    }
+
+    const payment = await moyasarRes.json();
+
+    if (payment.status !== 'paid') {
+      return res.status(400).json({ error: 'الدفعة لم تكتمل', status: payment.status });
+    }
+
+    // If orderId provided, update order paymentMethod and status
+    if (orderId && isMongoConnected()) {
+      try {
+        await Order.findByIdAndUpdate(orderId, {
+          paymentMethod: 'online',
+          paymentId: paymentId,
+          status: 'processing'
+        });
+      } catch (e) {
+        console.warn('Could not update order payment status:', e.message);
+      }
+    }
+
+    return res.json({ success: true, payment });
+  } catch (err) {
+    console.error('Moyasar verify error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
 // INITIAL DATA
 // ============================================
 
@@ -2060,8 +2125,3 @@ server.on('error', async (err) => {
     console.error('Server error:', err);
   }
 });
-
-
-
-
-
