@@ -405,51 +405,94 @@
                             <i class="fas fa-chevron-down checkout-chevron"></i>
                         </button>
                         <div id="checkout-section-address" class="checkout-section-body">
-                            <div class="flex gap-2 mb-3">
-                                <button type="button" class="address-tab flex-1 py-2 px-3 rounded-lg border-2 border-gray-200 font-bold text-sm transition active" data-tab="saved">
-                                    <i class="fas fa-bookmark ml-1"></i> العناوين المحفوظة
-                                </button>
-                                <button type="button" class="address-tab flex-1 py-2 px-3 rounded-lg border-2 border-gray-200 font-bold text-sm transition" data-tab="custom">
-                                    <i class="fas fa-map ml-1"></i> عنوان مخصص
-                                </button>
-                            </div>
 
-                            <div id="address-saved-tab" class="address-tab-content space-y-2">
-                                <div id="saved-addresses-row" class="hidden">
-                                    <label class="block text-xs text-gray-500 mb-2">العناوين المتاحة:</label>
-                                    <select id="saved-addresses-select" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-antika-gold focus:outline-none"></select>
-                                </div>
-                                <div id="no-saved-addresses" class="text-center py-4 text-gray-500">
-                                    <p class="text-sm">لا توجد عناوين محفوظة</p>
-                                    <a href="addresses.html" target="_blank" class="text-antika-gold text-xs hover:underline">أضف عنوانك</a>
-                                </div>
-                                <div id="saved-addresses-list" class="hidden space-y-2">
+                            <!-- قائمة العناوين -->
+                            <div id="addr-list-view">
+                                <div id="saved-addresses-list" class="space-y-2 mb-3">
                                     <!-- Populated by JS -->
                                 </div>
-                            </div>
-
-                            <div id="address-custom-tab" class="address-tab-content hidden space-y-3">
-                                <button type="button" id="open-checkout-map-btn" class="w-full py-3 px-4 text-white rounded-lg font-bold hover:opacity-90 transition text-lg" style="background-color: #D6C1A6;">
-                                    <i class="fas fa-map ml-1"></i> فتح الخريطة لاختيار الموقع
+                                <div id="no-saved-addresses" class="text-center py-4 text-gray-400 hidden">
+                                    <i class="fas fa-map-location-dot text-3xl mb-2 text-antika-gold opacity-50"></i>
+                                    <p class="text-sm">لا توجد عناوين محفوظة</p>
+                                </div>
+                                <button type="button" onclick="openAddressEditor(null)"
+                                    class="w-full mt-1 py-2 px-4 border-2 border-dashed border-antika-gold text-antika-gold rounded-xl font-bold text-sm hover:bg-antika-beige transition flex items-center justify-center gap-2">
+                                    <i class="fas fa-plus"></i> إضافة عنوان جديد
                                 </button>
-                                <div id="checkout-map-container" style="display: none; border: 2px solid #E8B7B7; border-radius: 12px; padding: 12px;">
-                                    <div class="mb-3">
-                                        <input type="text" id="checkout-map-search" placeholder="ابحث عن موقع..." class="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-antika-gold focus:outline-none text-sm" style="direction: rtl;">
-                                        <div id="checkout-search-results" class="mt-2 space-y-1 max-h-40 overflow-y-auto hidden"></div>
-                                    </div>
-                                    <div id="checkout-map" style="width: 100%; height: 250px; border-radius: 12px; border: 2px solid #E8B7B7;"></div>
-                                </div>
-                                <div id="checkout-location-info" class="hidden p-3 bg-gray-50 rounded-lg">
-                                    <p class="text-xs font-bold text-gray-700">الإحداثيات المختارة:</p>
-                                    <p class="text-xs text-gray-600 mt-1"><span id="checkout-coords"></span></p>
-                                </div>
-                                <textarea id="customer-address" rows="2" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="سيتم ملؤها تلقائياً من الخريطة أو أدخل يدوياً"></textarea>
                             </div>
 
-                            <div id="address-selected-display" class="hidden mt-3 p-3 bg-green-50 border-2 border-green-500 rounded-lg">
+                            <!-- محرر العنوان (مخفي افتراضياً) -->
+                            <div id="addr-editor-view" class="hidden">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 id="addr-editor-title" class="font-bold text-gray-800 text-sm">إضافة عنوان جديد</h4>
+                                    <button type="button" onclick="closeAddressEditor()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+                                </div>
+
+                                <!-- بحث -->
+                                <div class="mb-2 relative">
+                                    <input type="text" id="addr-map-search"
+                                        placeholder="ابحث عن موقع أو حي..."
+                                        class="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm focus:border-antika-gold focus:outline-none pr-10">
+                                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                                    <div id="addr-search-results" class="absolute top-full right-0 left-0 bg-white border border-gray-200 rounded-xl mt-1 shadow-lg z-50 max-h-40 overflow-y-auto hidden"></div>
+                                </div>
+
+                                <!-- الخريطة -->
+                                <div id="addr-map" style="width:100%; height:220px; border-radius:12px; border:2px solid #E8D9C5;" class="mb-3"></div>
+
+                                <!-- زر موقعي الحالي -->
+                                <button type="button" onclick="useCurrentLocationInEditor()"
+                                    class="w-full mb-3 py-2 px-3 border border-gray-200 rounded-lg text-xs text-gray-600 hover:border-antika-gold hover:text-antika-gold transition flex items-center justify-center gap-2">
+                                    <i class="fas fa-crosshairs text-antika-gold"></i> استخدم موقعي الحالي
+                                </button>
+
+                                <!-- حقل الاسم -->
+                                <div class="mb-2">
+                                    <label class="block text-xs font-bold text-gray-600 mb-1">اسم العنوان</label>
+                                    <div class="flex gap-2 mb-2">
+                                        <button type="button" onclick="setAddrLabel('🏠 المنزل')" class="addr-label-btn px-3 py-1 rounded-lg border border-gray-200 text-xs hover:border-antika-gold transition">🏠 المنزل</button>
+                                        <button type="button" onclick="setAddrLabel('🏢 العمل')" class="addr-label-btn px-3 py-1 rounded-lg border border-gray-200 text-xs hover:border-antika-gold transition">🏢 العمل</button>
+                                        <button type="button" onclick="setAddrLabel('👨‍👩‍👧 العائلة')" class="addr-label-btn px-3 py-1 rounded-lg border border-gray-200 text-xs hover:border-antika-gold transition">👨‍👩‍👧 العائلة</button>
+                                    </div>
+                                    <input type="text" id="addr-label-input" placeholder="أو اكتب اسماً مخصصاً"
+                                        class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-antika-gold focus:outline-none">
+                                </div>
+
+                                <!-- حقل العنوان -->
+                                <div class="mb-3">
+                                    <label class="block text-xs font-bold text-gray-600 mb-1">تفاصيل العنوان</label>
+                                    <textarea id="addr-details-input" rows="2"
+                                        class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-antika-gold focus:outline-none"
+                                        placeholder="سيُملأ تلقائياً من الخريطة أو اكتب يدوياً"></textarea>
+                                </div>
+
+                                <!-- تعيين افتراضي -->
+                                <label class="flex items-center gap-2 mb-3 cursor-pointer">
+                                    <input type="checkbox" id="addr-is-default" class="w-4 h-4 accent-antika-gold">
+                                    <span class="text-sm text-gray-700">تعيين كعنوان افتراضي</span>
+                                </label>
+
+                                <!-- أزرار الحفظ -->
+                                <div class="flex gap-2">
+                                    <button type="button" onclick="saveAddressFromEditor()"
+                                        class="flex-1 py-2 px-4 bg-antika-gold text-white rounded-xl font-bold text-sm hover:bg-antika-gold-dark transition">
+                                        <i class="fas fa-check ml-1"></i> حفظ العنوان
+                                    </button>
+                                    <button type="button" onclick="closeAddressEditor()"
+                                        class="py-2 px-4 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50 transition">
+                                        إلغاء
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- العنوان المختار -->
+                            <div id="address-selected-display" class="hidden mt-3 p-3 bg-green-50 border-2 border-green-500 rounded-xl">
                                 <p class="text-xs font-bold text-green-700">✓ تم تحديد العنوان</p>
                                 <p class="text-xs text-gray-600 mt-1"><span id="selected-address-text"></span></p>
                             </div>
+
+                            <!-- hidden field للعنوان النصي -->
+                            <textarea id="customer-address" class="hidden"></textarea>
                         </div>
                     </div>
 
@@ -1327,44 +1370,6 @@
         });
 
         // Address Tab Selection Handler
-        function setupAddressSelector() {
-            const tabs = document.querySelectorAll('.address-tab');
-            const savedTab = document.getElementById('address-saved-tab');
-            const customTab = document.getElementById('address-custom-tab');
-            
-            tabs.forEach(tab => {
-                tab.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    tabs.forEach(t => t.classList.remove('active', 'border-antika-pink', 'text-antika-pink'));
-                    tab.classList.add('active', 'border-antika-pink', 'text-antika-pink');
-                    
-                    if (tab.dataset.tab === 'saved') {
-                        savedTab.classList.remove('hidden');
-                        customTab.classList.add('hidden');
-                    } else {
-                        savedTab.classList.add('hidden');
-                        customTab.classList.remove('hidden');
-                        // Initialize map when custom tab is opened
-                        setTimeout(() => initCheckoutMap(), 100);
-                    }
-                });
-            });
-            
-            // Open map button
-            const openMapBtn = document.getElementById('open-checkout-map-btn');
-            if (openMapBtn) {
-                openMapBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const mapContainer = document.getElementById('checkout-map');
-                    if (mapContainer.style.display === 'none') {
-                        mapContainer.style.display = 'block';
-                        initCheckoutMap();
-                    } else {
-                        mapContainer.style.display = 'none';
-                    }
-                });
-            }
-        }
 
         // Initialize Map in Checkout
         let checkoutMap = null;
@@ -1543,410 +1548,368 @@
             }
         }
 
-        // Address Tab Selection Handler
-        function setupAddressSelector() {
-            const tabs = document.querySelectorAll('.address-tab');
-            const savedTab = document.getElementById('address-saved-tab');
-            const customTab = document.getElementById('address-custom-tab');
-            
-            tabs.forEach(tab => {
-                tab.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    tabs.forEach(t => t.classList.remove('active', 'border-antika-pink', 'text-antika-pink'));
-                    tab.classList.add('active', 'border-antika-pink', 'text-antika-pink');
-                    
-                    if (tab.dataset.tab === 'saved') {
-                        savedTab.classList.remove('hidden');
-                        customTab.classList.add('hidden');
-                    } else {
-                        savedTab.classList.add('hidden');
-                        customTab.classList.remove('hidden');
-                    }
-                });
-            });
-            
-            // Open map button
-            const openMapBtn = document.getElementById('open-checkout-map-btn');
-            if (openMapBtn) {
-                openMapBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const mapContainer = document.getElementById('checkout-map-container');
-                    if (mapContainer.style.display === 'none' || mapContainer.style.display === '') {
-                        mapContainer.style.display = 'block';
-                        setTimeout(() => {
-                            checkoutMap = null; // Reset map
-                            initCheckoutMap();
-                            setupCheckoutMapSearch();
-                            if (checkoutMap && typeof checkoutMap.invalidateSize === 'function') checkoutMap.invalidateSize();
-                        }, 100);
-                    } else {
-                        mapContainer.style.display = 'none';
-                    }
-                });
-            }
-        }
 
-        // Load Saved Addresses for Address Selection
+        // ============================================
+        // ADDRESS EDITOR — NEW INLINE DESIGN
+        // ============================================
+        let addrEditorMap = null;
+        let addrEditorMarker = null;
+        let addrEditorGeocoder = null;
+        let addrEditorAutoService = null;
+        let addrEditorPredictions = [];
+        let addrEditorEditIdx = null; // null = new, number = edit
+        let addrEditorLocation = null;
+        let addrEditorSearchBound = false;
+
+        function setupAddressSelector() { /* no-op — replaced by new system */ }
+
         async function loadSavedAddressesForAddressSelection() {
             try {
                 let user = {};
                 try { user = JSON.parse(localStorage.getItem('antika_user') || '{}'); } catch(e){ user = {}; }
-
                 if (user.email) {
                     try {
                         const serverUser = await API.getUser(user.email);
-                        if (serverUser && Object.keys(serverUser).length > 0) {
-                            user = mergeAndPersistUserProfile(serverUser, user);
-                        }
-                    } catch (e) {
-                        console.warn('Could not sync addresses from server', e);
-                    }
+                        if (serverUser && Object.keys(serverUser).length > 0) user = mergeAndPersistUserProfile(serverUser, user);
+                    } catch(e) {}
                 }
-
-                const addresses = user.addresses || [];
-                const container = document.getElementById('saved-addresses-list');
-                const empty = document.getElementById('no-saved-addresses');
-
-                if (!addresses || addresses.length === 0) {
-                    if (empty) empty.classList.remove('hidden');
-                    if (container) container.classList.add('hidden');
-                    return;
-                }
-
-                if (empty) empty.classList.add('hidden');
-                if (container) {
-                    container.classList.remove('hidden');
-                    container.innerHTML = addresses.map((item, i) => {
-                        const label = item.label || `العنوان ${i+1}`;
-                        const details = item.address || 'لا توجد تفاصيل';
-                        const isDefault = item.isDefault === true;
-                        const defaultBadge = isDefault
-                            ? `<span class="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-600 border border-amber-300 rounded-full px-2 py-0.5 font-bold">⭐ افتراضي</span>`
-                            : '';
-
-                        return `
-                            <div id="addr-card-${i}" class="p-3 bg-white border-2 ${isDefault ? 'border-antika-gold' : 'border-gray-200'} rounded-lg flex items-start justify-between gap-2 hover:border-antika-gold transition">
-                                <div class="flex-1">
-                                    <div class="font-bold text-sm text-gray-900 flex items-center gap-2 flex-wrap">
-                                        <i class="fas fa-map text-antika-gold"></i> ${label} ${defaultBadge}
-                                    </div>
-                                    <div class="text-xs text-gray-600 mt-1">${details}</div>
-                                </div>
-                                <button type="button" class="font-bold text-sm px-3 py-1 rounded border transition
-                                    ${isDefault ? 'bg-antika-gold text-white border-antika-gold' : 'border-gray-300 text-gray-600 hover:border-antika-gold hover:text-antika-gold'}"
-                                    onclick="selectAddressInCheckout('${label}', '${details}', '${item.city || ''}', ${i})">
-                                    ${isDefault ? '✓ محدد' : 'اختر'}
-                                </button>
-                            </div>
-                        `;
-                    }).join('');
-                }
-
-                // Auto-select default address
-                const defaultIdx = addresses.findIndex(a => a.isDefault === true);
-                const autoIdx = defaultIdx !== -1 ? defaultIdx : 0;
-                const autoAddr = addresses[autoIdx];
-                if (autoAddr) {
-                    selectAddressInCheckout(
-                        autoAddr.label || `العنوان ${autoIdx+1}`,
-                        autoAddr.address || '',
-                        autoAddr.city || '',
-                        autoIdx,
-                        true // silent — no highlight flash
-                    );
-                }
-
-            } catch (error) {
-                console.error('Error loading saved addresses:', error);
-            }
+                renderAddressList(user.addresses || []);
+            } catch(e) { console.error('Error loading addresses:', e); }
         }
 
-        // Select Address in Checkout
-        function selectAddressInCheckout(label, details, city = '', idx = -1, silent = false) {
-            // Fill address field
-            const customInput = document.getElementById('customer-address');
-            if (customInput) customInput.value = details || label;
+        function renderAddressList(addresses) {
+            const container = document.getElementById('saved-addresses-list');
+            const empty = document.getElementById('no-saved-addresses');
+            if (!container) return;
 
-            // Show selected display
+            if (!addresses || addresses.length === 0) {
+                container.innerHTML = '';
+                if (empty) empty.classList.remove('hidden');
+                return;
+            }
+            if (empty) empty.classList.add('hidden');
+
+            // Auto-select default or first
+            const defaultIdx = addresses.findIndex(a => a.isDefault === true);
+            const selectedIdx = defaultIdx !== -1 ? defaultIdx : 0;
+
+            container.innerHTML = addresses.map((addr, i) => {
+                const label = addr.label || `العنوان ${i+1}`;
+                const details = addr.address || '';
+                const isDefault = addr.isDefault === true;
+                const isSelected = i === selectedIdx;
+
+                return `
+                <label class="flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition
+                    ${isSelected ? 'border-antika-gold bg-amber-50' : 'border-gray-200 hover:border-antika-gold bg-white'}"
+                    id="addr-row-${i}" onclick="selectAddressRow(${i})">
+                    <input type="radio" name="checkout-address" value="${i}"
+                        ${isSelected ? 'checked' : ''}
+                        class="mt-1 accent-antika-gold shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-bold text-sm text-gray-900">${label}</span>
+                            ${isDefault ? `<span class="text-xs bg-amber-100 text-amber-600 border border-amber-300 rounded-full px-2 py-0.5 font-bold">⭐ افتراضي</span>` : ''}
+                        </div>
+                        <div class="text-xs text-gray-500 mt-0.5 truncate">${details}</div>
+                    </div>
+                    <div class="flex gap-1 shrink-0" onclick="event.stopPropagation()">
+                        <button type="button" title="تعديل"
+                            onclick="openAddressEditor(${i})"
+                            class="w-8 h-8 rounded-lg border border-gray-200 text-gray-500 hover:border-antika-gold hover:text-antika-gold transition flex items-center justify-center text-xs">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button type="button" title="حذف"
+                            onclick="deleteAddressInCheckout(${i})"
+                            class="w-8 h-8 rounded-lg border border-gray-200 text-red-400 hover:border-red-400 hover:bg-red-50 transition flex items-center justify-center text-xs">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </label>`;
+            }).join('');
+
+            // Auto-apply selected address
+            const selAddr = addresses[selectedIdx];
+            if (selAddr) applySelectedAddress(selAddr, selectedIdx);
+        }
+
+        function selectAddressRow(idx) {
+            let user = {};
+            try { user = JSON.parse(localStorage.getItem('antika_user') || '{}'); } catch(e){}
+            const addresses = user.addresses || [];
+            const addr = addresses[idx];
+            if (!addr) return;
+
+            // Update radio + border styles
+            document.querySelectorAll('[id^="addr-row-"]').forEach((el, i) => {
+                el.classList.toggle('border-antika-gold', false);
+                el.classList.toggle('bg-amber-50', false);
+                el.classList.toggle('border-gray-200', true);
+                el.classList.toggle('bg-white', true);
+            });
+            const row = document.getElementById(`addr-row-${idx}`);
+            if (row) {
+                row.classList.remove('border-gray-200', 'bg-white');
+                row.classList.add('border-antika-gold', 'bg-amber-50');
+                const radio = row.querySelector('input[type="radio"]');
+                if (radio) radio.checked = true;
+            }
+            applySelectedAddress(addr, idx);
+        }
+
+        function applySelectedAddress(addr, idx) {
+            const details = addr.address || '';
+            const label = addr.label || `العنوان ${idx+1}`;
+
+            document.getElementById('customer-address').value = details;
             document.getElementById('selected-address-text').textContent = `${label} — ${details}`;
             document.getElementById('address-selected-display').classList.remove('hidden');
 
-            // Set city on hidden input for shipping calculation
-            if (city) {
+            // Store location for order
+            if (addr.location && addr.location.lat && addr.location.lng) {
+                localStorage.setItem('selectedLocation', JSON.stringify(addr.location));
+            }
+
+            // Set city for shipping calc
+            if (addr.city) {
                 const cityInput = document.getElementById('shipping-city');
-                if (cityInput) {
-                    cityInput.value = city;
-                    recalculateCheckoutTotals();
-                }
-            }
-
-            // Highlight selected card
-            if (!silent && idx !== -1) {
-                document.querySelectorAll('[id^="addr-card-"]').forEach(el => {
-                    el.classList.remove('border-antika-gold');
-                    el.classList.add('border-gray-200');
-                    const btn = el.querySelector('button');
-                    if (btn) { btn.className = btn.className.replace('bg-antika-gold text-white border-antika-gold', 'border-gray-300 text-gray-600 hover:border-antika-gold hover:text-antika-gold'); btn.textContent = 'اختر'; }
-                });
-                const card = document.getElementById(`addr-card-${idx}`);
-                if (card) {
-                    card.classList.remove('border-gray-200');
-                    card.classList.add('border-antika-gold');
-                    const btn = card.querySelector('button');
-                    if (btn) { btn.className = btn.className.replace('border-gray-300 text-gray-600 hover:border-antika-gold hover:text-antika-gold', 'bg-antika-gold text-white border-antika-gold'); btn.textContent = '✓ محدد'; }
-                }
+                if (cityInput) { cityInput.value = addr.city; recalculateCheckoutTotals(); }
             }
         }
 
-        // Location Selection Handler
-        function setupLocationSelector() {
-            const selectBtn = document.getElementById('select-location-btn');
-            if (!selectBtn) return;
-            
-            selectBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                // Open map in a new window or modal
-                window.open('map.html', 'Map', 'width=800,height=600');
-                
-                // Listen for location updates every 500ms
-                const locationCheckInterval = setInterval(() => {
-                    const storedLocation = localStorage.getItem('selectedLocation');
-                    if (storedLocation) {
-                        try {
-                            const location = JSON.parse(storedLocation);
-                            updateLocationDisplay(location);
-                            clearInterval(locationCheckInterval);
-                        } catch (e) {
-                            console.error('Error parsing location:', e);
-                        }
-                    }
-                }, 500);
-                
-                // Stop checking after 2 minutes
-                setTimeout(() => clearInterval(locationCheckInterval), 120000);
-            });
-            
-            // Check if location is already selected on modal open
-            const checkoutBtn = document.querySelector('button[onclick="openCheckoutModal()"]');
-            if (checkoutBtn) {
-                const originalClick = checkoutBtn.onclick;
-                checkoutBtn.onclick = function() {
-                    originalClick?.call(this);
-                    const storedLocation = localStorage.getItem('selectedLocation');
-                    if (storedLocation) {
-                        try {
-                            const location = JSON.parse(storedLocation);
-                            updateLocationDisplay(location);
-                        } catch (e) {
-                            console.error('Error parsing location:', e);
-                        }
-                    }
-                };
-            }
-        }
-        
-        function updateLocationDisplay(location) {
-            const display = document.getElementById('location-display');
-            if (display && location) {
-                display.innerHTML = `✅ تم تحديد الموقع: (${location.lat.toFixed(4)}, ${location.lng.toFixed(4)})`;
-                display.style.color = '#22c55e';
-            }
-        }
-
-        // Saved addresses management
-        document.addEventListener('DOMContentLoaded', () => {
-            const select = document.getElementById('saved-addresses-select');
-            const editBtn = document.getElementById('edit-saved-address-btn');
-            const addBtn = document.getElementById('add-address-btn');
-
-            select?.addEventListener('change', () => {
-                try {
-                    const userRaw = localStorage.getItem('antika_user');
-                    if (!userRaw) return;
-                    const user = JSON.parse(userRaw);
-                    const idx = parseInt(select.value);
-                    const addr = user.addresses && user.addresses[idx];
-                    if (addr) {
-                        document.getElementById('customer-address').value = addr.address || '';
-                        if (addr.location) {
-                            localStorage.setItem('selectedLocation', JSON.stringify(addr.location));
-                            updateLocationDisplay(addr.location);
-                        }
-                    }
-                } catch (e) { console.error(e); }
-            });
-
-            editBtn?.addEventListener('click', () => {
-                openAddressesModal(true, parseInt(select.value));
-            });
-
-            addBtn?.addEventListener('click', () => {
-                openAddressesModal(false, null);
-            });
-        });
-
-        function openAddressesModal(edit = false, index = null) {
-            // Create modal to manage addresses stored in antika_user.addresses
-            const existing = document.getElementById('addresses-modal');
-            if (existing) existing.remove();
-
-            const modal = document.createElement('div');
-            modal.id = 'addresses-modal';
-            modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
-
-            // Load user addresses
+        async function deleteAddressInCheckout(idx) {
+            if (!confirm('حذف هذا العنوان؟')) return;
             let user = {};
-            try { user = JSON.parse(localStorage.getItem('antika_user') || '{}'); } catch(e){ user = {}; }
+            try { user = JSON.parse(localStorage.getItem('antika_user') || '{}'); } catch(e){}
+            try {
+                if (user.email) {
+                    const updated = await API.deleteUserAddress(user.email, idx);
+                    user = mergeAndPersistUserProfile(updated, getStoredUserSafe());
+                } else {
+                    user.addresses = user.addresses || [];
+                    user.addresses.splice(idx, 1);
+                    localStorage.setItem('antika_user', JSON.stringify(user));
+                }
+                renderAddressList(user.addresses || []);
+            } catch(e) {
+                alert('حدث خطأ أثناء الحذف.');
+                console.error(e);
+            }
+        }
+
+        function openAddressEditor(idx) {
+            addrEditorEditIdx = idx;
+            addrEditorLocation = null;
+            addrEditorMap = null;
+            addrEditorSearchBound = false;
+
+            const title = document.getElementById('addr-editor-title');
+            const labelInput = document.getElementById('addr-label-input');
+            const detailsInput = document.getElementById('addr-details-input');
+            const isDefaultChk = document.getElementById('addr-is-default');
+
+            if (idx !== null) {
+                // Edit mode
+                let user = {};
+                try { user = JSON.parse(localStorage.getItem('antika_user') || '{}'); } catch(e){}
+                const addr = (user.addresses || [])[idx] || {};
+                title.textContent = 'تعديل العنوان';
+                labelInput.value = addr.label || '';
+                detailsInput.value = addr.address || '';
+                isDefaultChk.checked = addr.isDefault === true;
+                if (addr.location) addrEditorLocation = addr.location;
+            } else {
+                // Add mode
+                title.textContent = 'إضافة عنوان جديد';
+                labelInput.value = '';
+                detailsInput.value = '';
+                isDefaultChk.checked = false;
+            }
+
+            document.getElementById('addr-list-view').classList.add('hidden');
+            document.getElementById('addr-editor-view').classList.remove('hidden');
+
+            // Init map after render
+            setTimeout(() => initAddrEditorMap(), 150);
+        }
+
+        function closeAddressEditor() {
+            document.getElementById('addr-editor-view').classList.add('hidden');
+            document.getElementById('addr-list-view').classList.remove('hidden');
+            addrEditorMap = null;
+            addrEditorMarker = null;
+        }
+
+        function setAddrLabel(val) {
+            document.getElementById('addr-label-input').value = val;
+        }
+
+        async function initAddrEditorMap() {
+            const mapEl = document.getElementById('addr-map');
+            if (!mapEl || addrEditorMap) return;
+
+            const defaultLat = addrEditorLocation ? addrEditorLocation.lat : 24.7136;
+            const defaultLng = addrEditorLocation ? addrEditorLocation.lng : 46.6753;
+
+            try {
+                await ensureGoogleMapsReady();
+                addrEditorMap = new google.maps.Map(mapEl, {
+                    center: { lat: defaultLat, lng: defaultLng },
+                    zoom: addrEditorLocation ? 15 : 12,
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                    fullscreenControl: false,
+                    gestureHandling: 'greedy'
+                });
+
+                addrEditorMarker = new google.maps.Marker({
+                    map: addrEditorMap,
+                    position: { lat: defaultLat, lng: defaultLng },
+                    draggable: true
+                });
+
+                addrEditorMarker.addListener('dragend', () => {
+                    const pos = addrEditorMarker.getPosition();
+                    onAddrMapLocationPicked(pos.lat(), pos.lng());
+                });
+
+                addrEditorMap.addListener('click', (e) => {
+                    addrEditorMarker.setPosition(e.latLng);
+                    onAddrMapLocationPicked(e.latLng.lat(), e.latLng.lng());
+                });
+
+                addrEditorAutoService = new google.maps.places.AutocompleteService();
+                addrEditorGeocoder = new google.maps.Geocoder();
+                bindAddrEditorSearch();
+
+            } catch(e) {
+                mapEl.innerHTML = '<div class="h-full flex items-center justify-center text-sm text-red-500 p-3">تعذر تحميل الخريطة</div>';
+            }
+        }
+
+        function onAddrMapLocationPicked(lat, lng) {
+            addrEditorLocation = { lat, lng };
+            // Reverse geocode to fill address
+            if (addrEditorGeocoder) {
+                addrEditorGeocoder.geocode({ location: { lat, lng }, language: 'ar' }, (results, status) => {
+                    if (status === 'OK' && results[0]) {
+                        document.getElementById('addr-details-input').value = results[0].formatted_address;
+                    }
+                });
+            }
+        }
+
+        function useCurrentLocationInEditor() {
+            if (!navigator.geolocation) { alert('المتصفح لا يدعم تحديد الموقع'); return; }
+            navigator.geolocation.getCurrentPosition((pos) => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                addrEditorLocation = { lat, lng };
+                if (addrEditorMap && addrEditorMarker) {
+                    addrEditorMap.setCenter({ lat, lng });
+                    addrEditorMap.setZoom(16);
+                    addrEditorMarker.setPosition({ lat, lng });
+                }
+                onAddrMapLocationPicked(lat, lng);
+            }, () => alert('تعذر تحديد موقعك الحالي'));
+        }
+
+        function bindAddrEditorSearch() {
+            if (addrEditorSearchBound) return;
+            addrEditorSearchBound = true;
+            const input = document.getElementById('addr-map-search');
+            const results = document.getElementById('addr-search-results');
+            if (!input || !results) return;
+
+            input.addEventListener('input', async () => {
+                const q = input.value.trim();
+                if (q.length < 3) { results.classList.add('hidden'); return; }
+                if (!addrEditorAutoService) return;
+
+                addrEditorPredictions = await new Promise(resolve => {
+                    addrEditorAutoService.getPlacePredictions(
+                        { input: q, language: 'ar', componentRestrictions: { country: 'sa' } },
+                        (preds, status) => resolve(status === google.maps.places.PlacesServiceStatus.OK ? preds : [])
+                    );
+                });
+
+                if (!addrEditorPredictions.length) {
+                    results.innerHTML = '<p class="text-xs text-gray-400 p-2">لا توجد نتائج</p>';
+                } else {
+                    results.innerHTML = addrEditorPredictions.map((p, i) => `
+                        <button type="button" onclick="selectAddrEditorResult(${i})"
+                            class="w-full text-right px-3 py-2 text-xs hover:bg-gray-50 border-b border-gray-100 transition">
+                            <div class="font-bold text-gray-800">${p.structured_formatting?.main_text || p.description}</div>
+                            <div class="text-gray-400">${p.structured_formatting?.secondary_text || ''}</div>
+                        </button>`).join('');
+                }
+                results.classList.remove('hidden');
+            });
+        }
+
+        async function selectAddrEditorResult(i) {
+            const p = addrEditorPredictions[i];
+            if (!p || !addrEditorGeocoder) return;
+            const geoResults = await new Promise(resolve => {
+                addrEditorGeocoder.geocode({ placeId: p.place_id }, (r, s) => resolve(s === 'OK' ? r : []));
+            });
+            if (!geoResults.length) return;
+            const loc = geoResults[0].geometry.location;
+            const lat = loc.lat(), lng = loc.lng();
+            addrEditorLocation = { lat, lng };
+            addrEditorMap.setCenter({ lat, lng });
+            addrEditorMap.setZoom(16);
+            addrEditorMarker.setPosition({ lat, lng });
+            document.getElementById('addr-details-input').value = geoResults[0].formatted_address;
+            document.getElementById('addr-map-search').value = p.description;
+            document.getElementById('addr-search-results').classList.add('hidden');
+        }
+
+        async function saveAddressFromEditor() {
+            const label = (document.getElementById('addr-label-input').value || '').trim();
+            const details = (document.getElementById('addr-details-input').value || '').trim();
+            const isDefault = document.getElementById('addr-is-default').checked;
+
+            if (!label) { alert('أدخل اسم العنوان'); return; }
+            if (!details) { alert('أدخل تفاصيل العنوان أو حدد موقعاً على الخريطة'); return; }
+
+            let user = {};
+            try { user = JSON.parse(localStorage.getItem('antika_user') || '{}'); } catch(e){}
             user.addresses = user.addresses || [];
 
-            let bodyHtml = `
-                <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold">عناويني المحفوظة</h3>
-                        <button onclick="document.getElementById('addresses-modal').remove()" class="text-gray-400">أ—</button>
-                    </div>
-                    <div id="addresses-list" class="space-y-3 mb-4">
-                    </div>
-                    <div class="border-t pt-4">
-                        <h4 class="font-bold mb-2">أضف / عدل عنوان</h4>
-                        <input id="addr-label" placeholder="اسم العنوان (مثلاً: المنزل)" class="w-full border-2 border-gray-200 rounded-lg px-4 py-2 mb-2">
-                        <textarea id="addr-text" rows="2" placeholder="المدينة، الحي، الشارع" class="w-full border-2 border-gray-200 rounded-lg px-4 py-2 mb-2"></textarea>
-                        <div class="flex gap-2 mb-2">
-                            <button id="addr-pick-map" class="flex-1 border-2 border-antika-gold text-antika-gold rounded-lg px-4 py-2">اختر من الخريطة</button>
-                            <button id="addr-save" class="flex-1 bg-antika-pink text-white rounded-lg px-4 py-2">حفظ العنوان</button>
-                        </div>
-                    </div>
-                </div>
-            `;
+            const entry = { label, address: details, location: addrEditorLocation, isDefault };
 
-            modal.innerHTML = bodyHtml;
-            document.body.appendChild(modal);
+            // If isDefault, clear others
+            if (isDefault) user.addresses.forEach(a => a.isDefault = false);
 
-            const listEl = document.getElementById('addresses-list');
-            function renderList() {
-                listEl.innerHTML = '';
-                user.addresses.forEach((a, i) => {
-                    const row = document.createElement('div');
-                    row.className = 'p-3 border rounded-lg flex items-center justify-between';
-
-                    const left = document.createElement('div');
-                    const title = document.createElement('div');
-                    title.className = 'font-bold';
-                    title.textContent = a.label || ('العنوان ' + (i+1));
-                    const addrTxt = document.createElement('div');
-                    addrTxt.className = 'text-xs text-gray-600';
-                    addrTxt.textContent = a.address || '';
-                    left.appendChild(title);
-                    left.appendChild(addrTxt);
-
-                    const right = document.createElement('div');
-                    right.className = 'flex gap-2';
-
-                    const editBtn = document.createElement('button');
-                    editBtn.className = 'px-3 py-1 border rounded';
-                    editBtn.textContent = '✏️';
-                    editBtn.addEventListener('click', () => {
-                        window.__editAddressIndex = i;
-                        document.getElementById('addr-label').value = user.addresses[i].label || '';
-                        document.getElementById('addr-text').value = user.addresses[i].address || '';
-                    });
-
-                    const delBtn = document.createElement('button');
-                    delBtn.className = 'px-3 py-1 border rounded';
-                    delBtn.textContent = '🗑️';
-                    delBtn.addEventListener('click', async () => {
-                        if (!confirm('حذف هذا العنوان؟')) return;
-                        // If user has email, try deleting on server
-                        if (user.email) {
-                            try {
-                                const updated = await API.deleteUserAddress(user.email, i);
-                                // updated is full user object
-                                user = updated || user;
-                                user = mergeAndPersistUserProfile(user, getStoredUserSafe());
-                                renderList();
-                                const sel = document.getElementById('saved-addresses-select');
-                                if (sel) sel.innerHTML = (user.addresses||[]).map((aa, idx) => `<option value="${idx}">${aa.label || aa.address || ('العنوان ' + (idx+1))}</option>`).join('');
-                                return;
-                            } catch (err) {
-                                console.error('Error deleting address on server:', err);
-                                alert('حدث خطأ أثناء حذف العنوان من الخادم. سيتم الحذف محلياً بدلًا من ذلك.');
-                            }
-                        }
-
-                        // Fallback: delete locally
-                        user.addresses.splice(i,1);
-                        user = mergeAndPersistUserProfile(user, getStoredUserSafe());
-                        renderList();
-                        const sel = document.getElementById('saved-addresses-select');
-                        if (sel) sel.innerHTML = user.addresses.map((aa, idx) => `<option value="${idx}">${aa.label || aa.address || ('العنوان ' + (idx+1))}</option>`).join('');
-                    });
-
-                    right.appendChild(editBtn);
-                    right.appendChild(delBtn);
-
-                    row.appendChild(left);
-                    row.appendChild(right);
-                    listEl.appendChild(row);
-                });
-            }
-
-            renderList();
-
-            // Pick map button
-            document.getElementById('addr-pick-map').addEventListener('click', () => {
-                window.open('map.html','Map','width=900,height=700');
-                const intv = setInterval(()=>{
-                    const s = localStorage.getItem('selectedLocation');
-                    if (s) {
-                        try {
-                            const loc = JSON.parse(s);
-                            document.getElementById('addr-text').value = `${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}`;
-                            clearInterval(intv);
-                        } catch(e){}
-                    }
-                },500);
-            });
-
-            // Save address
-            document.getElementById('addr-save').addEventListener('click', async () => {
-                const label = document.getElementById('addr-label').value.trim();
-                const address = document.getElementById('addr-text').value.trim();
-                const locRaw = localStorage.getItem('selectedLocation');
-                const location = locRaw ? JSON.parse(locRaw) : null;
-                const editIdx = window.__editAddressIndex;
-                const entry = { label, address, location };
-
-                try {
-                    if (typeof editIdx === 'number') {
-                        // Update existing
-                        if (user.email) {
-                            const updated = await API.updateUserAddress(user.email, editIdx, entry);
-                            user = updated || user;
-                        } else {
-                            user.addresses[editIdx] = entry;
-                        }
-                        window.__editAddressIndex = undefined;
+            try {
+                if (user.email) {
+                    let updated;
+                    if (addrEditorEditIdx !== null) {
+                        updated = await API.updateUserAddress(user.email, addrEditorEditIdx, entry);
                     } else {
-                        // Add new
-                        if (user.email) {
-                            const updated = await API.addUserAddress(user.email, entry);
-                            user = updated || user;
-                        } else {
-                            user.addresses.push(entry);
-                        }
+                        updated = await API.addUserAddress(user.email, entry);
                     }
-
-                    user = mergeAndPersistUserProfile(user, getStoredUserSafe());
-                    renderList();
-                    // refresh checkout saved addresses
-                    try { const sel = document.getElementById('saved-addresses-select'); sel.innerHTML = (user.addresses||[]).map((a, idx) => `<option value="${idx}">${a.label || a.address || ('العنوان ' + (idx+1))}</option>`).join(''); document.getElementById('saved-addresses-row').classList.remove('hidden'); } catch(e){}
-                } catch (err) {
-                    console.error('Error saving address to server:', err);
-                    alert('حدث خطأ أثناء حفظ العنوان على الخادم. حاول مرة أخرى.');
+                    user = mergeAndPersistUserProfile(updated, getStoredUserSafe());
+                } else {
+                    if (addrEditorEditIdx !== null) {
+                        user.addresses[addrEditorEditIdx] = entry;
+                    } else {
+                        user.addresses.push(entry);
+                    }
+                    localStorage.setItem('antika_user', JSON.stringify(user));
                 }
-            });
+
+                closeAddressEditor();
+                renderAddressList(user.addresses || []);
+            } catch(e) {
+                alert('حدث خطأ أثناء الحفظ.');
+                console.error(e);
+            }
         }
+
+        function selectAddressInCheckout() { /* legacy stub */ }
+
 
         // Check login status
         function checkLoginStatus() {
