@@ -353,21 +353,57 @@ class AntikaHeader extends HTMLElement {
 
     async loadCategories() {
         try {
-            // Use centralized API client which has local fallback
             const categories = await API.getCategories();
             const container = document.getElementById('mobile-categories');
-            if (container) {
-                if (!categories || categories.length === 0) {
-                    container.innerHTML = '<p class="text-gray-400 text-sm">لا توجد تصنيفات</p>';
-                    return;
-                }
+            if (!container) return;
+
+            if (!categories || categories.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-sm">لا توجد تصنيفات</p>';
+                return;
+            }
+
+            const mainCats = categories.filter(c => !c.parentId);
+            const subCats  = categories.filter(c =>  c.parentId);
+
+            // Fallback: flat list if no hierarchy
+            if (mainCats.length === 0) {
                 container.innerHTML = categories.map(cat => `
                     <a href="products.html?category=${cat.id}" class="flex items-center gap-3 py-2 text-gray-700 hover:text-antika-pink transition" onclick="toggleMenu()">
                         <span class="text-xl">${cat.icon || '📦'}</span>
                         <span>${cat.name}</span>
                     </a>
                 `).join('');
+                return;
             }
+
+            container.innerHTML = mainCats.map(cat => {
+                const children = subCats.filter(s => s.parentId === cat.id);
+                const hasChildren = children.length > 0;
+                return '<div class="mobile-cat-group border-b border-gray-100">'
+                    + '<div class="flex items-center justify-between py-3 cursor-pointer select-none"'
+                    + ' onclick="toggleMobileCatSubs(\'subs-' + cat.id + '\', this)">'
+                    + '<div class="flex items-center gap-3 text-gray-700">'
+                    + '<span class="text-xl">' + (cat.icon || '📦') + '</span>'
+                    + '<span class="font-semibold">' + cat.name + '</span>'
+                    + '</div>'
+                    + (hasChildren
+                        ? '<i class="fas fa-chevron-left text-gray-400 text-xs transition-transform duration-200" id="chevron-' + cat.id + '"></i>'
+                        : '<a href="products.html?category=' + cat.id + '" onclick="event.stopPropagation();toggleMenu()" class="text-xs text-antika-gold">عرض</a>')
+                    + '</div>'
+                    + (hasChildren
+                        ? '<div id="subs-' + cat.id + '" class="hidden pb-2 space-y-1 pr-6 border-r-2 border-antika-gold mr-4">'
+                          + '<a href="products.html?category=' + cat.id + '" class="flex items-center gap-2 py-1.5 text-sm text-antika-gold font-bold hover:text-antika-pink transition" onclick="toggleMenu()">'
+                          + '<i class="fas fa-th text-xs"></i> عرض الكل</a>'
+                          + children.map(sub =>
+                              '<a href="products.html?category=' + sub.id + '" class="flex items-center gap-2 py-1.5 text-sm text-gray-600 hover:text-antika-pink transition" onclick="toggleMenu()">'
+                              + '<span>' + (sub.icon || '•') + '</span>'
+                              + '<span>' + sub.name + '</span></a>'
+                            ).join('')
+                          + '</div>'
+                        : '')
+                    + '</div>';
+            }).join('');
+
         } catch (error) {
             console.error('Error loading categories:', error);
             const container = document.getElementById('mobile-categories');
@@ -438,6 +474,24 @@ class AntikaHeader extends HTMLElement {
 customElements.define('antika-header', AntikaHeader);
 
 // ==================== Global Functions ====================
+
+// Toggle subcategories in mobile menu
+function toggleMobileCatSubs(subsId, headerEl) {
+    const subs = document.getElementById(subsId);
+    if (!subs) return;
+    const isHidden = subs.classList.contains('hidden');
+    // Close all other open subs
+    document.querySelectorAll('[id^="subs-"]').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('[id^="chevron-"]').forEach(el => {
+        el.style.transform = '';
+    });
+    if (isHidden) {
+        subs.classList.remove('hidden');
+        const catId = subsId.replace('subs-', '');
+        const chevron = document.getElementById('chevron-' + catId);
+        if (chevron) chevron.style.transform = 'rotate(-90deg)';
+    }
+}
 
 // Toggle Mobile Menu
 function toggleMenu() {

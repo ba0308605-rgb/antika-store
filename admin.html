@@ -53,7 +53,7 @@
         /* Category Tree */
         .cat-main-card { border: 2px solid #E8D9C5; border-radius: 12px; background: #fff; overflow: hidden; }
         .cat-main-header { background: linear-gradient(90deg, #FAF0E6, #fff); padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
-        .cat-sub-row { padding: 8px 16px 8px 40px; border-top: 1px solid #f5f5f5; display: flex; align-items: center; gap-8px; }
+        .cat-sub-row { padding: 8px 16px 8px 40px; border-top: 1px solid #f5f5f5; display: flex; align-items: center; gap: 8px; }
         .cat-sub-row:hover { background: #FAF0E6; }
     </style>
 </head>
@@ -1067,5 +1067,73 @@
     });
     </script>
     <script src="js/admin.js?v=20260228-5"></script>
+    <script>
+    // ============================================
+    // PATCH: تصنيفات المنتج — عرض هرمي (رئيسي + فرعي)
+    // يعمل بعد تحميل admin.js ويستبدل renderProductCategories
+    // ============================================
+    document.addEventListener('DOMContentLoaded', function() {
+        // انتظر حتى يتحمل admin.js ويعرّف الدوال
+        setTimeout(patchProductCategoriesRender, 300);
+    });
+
+    function patchProductCategoriesRender() {
+        // نراقب فتح modal المنتج لإعادة رسم التصنيفات
+        const productModal = document.getElementById('product-modal');
+        if (!productModal) return;
+
+        const observer = new MutationObserver(() => {
+            if (!productModal.classList.contains('hidden')) {
+                setTimeout(renderHierarchicalCategories, 50);
+            }
+        });
+        observer.observe(productModal, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    function renderHierarchicalCategories() {
+        const container = document.getElementById('product-categories');
+        if (!container) return;
+        const cats = window.adminAllCategories || [];
+        if (cats.length === 0) return;
+
+        const mainCats = cats.filter(c => !c.parentId);
+        const subCats  = cats.filter(c =>  c.parentId);
+
+        // جمع القيم المحددة حالياً
+        const checked = new Set(
+            [...container.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value)
+        );
+
+        // إذا ما في هيكل رئيسي/فرعي — اتركها كما هي
+        if (mainCats.length === 0) return;
+
+        container.innerHTML = mainCats.map(main => {
+            const children = subCats.filter(s => s.parentId === main.id);
+            return '<div class="mb-2">'
+                // عنوان القسم الرئيسي (غير قابل للاختيار)
+                + '<div class="flex items-center gap-2 py-1 font-bold text-gray-600 text-xs uppercase tracking-wide select-none">'
+                + '<span>' + (main.icon || '📦') + '</span>'
+                + '<span>' + main.name + '</span>'
+                + '</div>'
+                // الأقسام الفرعية
+                + (children.length > 0
+                    ? children.map(sub =>
+                        '<label class="flex items-center gap-2 py-1 pr-4 cursor-pointer hover:bg-gray-50 rounded">'
+                        + '<input type="checkbox" value="' + sub.id + '" class="accent-pink-400"'
+                        + (checked.has(sub.id) ? ' checked' : '') + '>'
+                        + '<span class="text-sm text-gray-700">' + (sub.icon || '') + ' ' + sub.name + '</span>'
+                        + '</label>'
+                      ).join('')
+                    // إذا ما في أقسام فرعية — اعرض القسم الرئيسي نفسه كخيار
+                    : '<label class="flex items-center gap-2 py-1 pr-4 cursor-pointer hover:bg-gray-50 rounded">'
+                      + '<input type="checkbox" value="' + main.id + '" class="accent-pink-400"'
+                      + (checked.has(main.id) ? ' checked' : '') + '>'
+                      + '<span class="text-sm text-gray-700">' + main.name + '</span>'
+                      + '</label>'
+                  )
+                + '</div>';
+        }).join('');
+    }
+    </script>
 </body>
 </html>
