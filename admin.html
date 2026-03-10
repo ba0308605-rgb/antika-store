@@ -50,6 +50,11 @@
         .sidebar-item:hover { background: linear-gradient(90deg, rgba(255,182,193,0.2) 0%, transparent 100%); }
         .stat-card { transition: all 0.3s ease; }
         .stat-card:hover { transform: translateY(-5px); }
+        /* Category Tree */
+        .cat-main-card { border: 2px solid #E8D9C5; border-radius: 12px; background: #fff; overflow: hidden; }
+        .cat-main-header { background: linear-gradient(90deg, #FAF0E6, #fff); padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
+        .cat-sub-row { padding: 8px 16px 8px 40px; border-top: 1px solid #f5f5f5; display: flex; align-items: center; gap-8px; }
+        .cat-sub-row:hover { background: #FAF0E6; }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -110,7 +115,7 @@
                         <i class="fas fa-box w-6"></i>
                         <span>المنتجات</span>
                     </button>
-                    <button onclick="showSection('categories')" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
+                    <button onclick="showSection('categories'); loadAndRenderCategoriesTree();" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
                         <i class="fas fa-tags w-6"></i>
                         <span>التصنيفات</span>
                     </button>
@@ -231,28 +236,20 @@
 
                 <!-- Categories Section -->
                 <section id="categories-section" class="hidden space-y-6">
-                    <div class="flex justify-between items-center">
+                    <div class="flex justify-between items-center flex-wrap gap-3">
                         <h2 class="text-2xl font-bold text-antika-gold">🏷️ إدارة التصنيفات</h2>
-                        <button onclick="openCategoryModal()" class="bg-antika-pink text-white px-6 py-3 rounded-full font-bold hover:bg-antika-pink-dark transition flex items-center gap-2">
-                            <i class="fas fa-plus"></i> تصنيف جديد
-                        </button>
+                        <div class="flex gap-2">
+                            <button onclick="deleteAllCategoriesConfirm()" class="bg-red-100 text-red-500 px-4 py-2 rounded-full font-bold hover:bg-red-200 transition text-sm flex items-center gap-2">
+                                <i class="fas fa-trash-alt"></i> حذف الكل
+                            </button>
+                            <button onclick="openCategoryModal()" class="bg-antika-pink text-white px-6 py-3 rounded-full font-bold hover:bg-antika-pink-dark transition flex items-center gap-2">
+                                <i class="fas fa-plus"></i> تصنيف جديد
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead class="bg-antika-lavender">
-                                    <tr>
-                                        <th class="px-4 md:px-6 py-4 text-right text-antika-gold font-bold">الأيقونة</th>
-                                        <th class="px-4 md:px-6 py-4 text-right text-antika-gold font-bold">الاسم</th>
-                                        <th class="px-4 md:px-6 py-4 text-right text-antika-gold font-bold hidden md:table-cell">الفرعية</th>
-                                        <th class="px-4 md:px-6 py-4 text-right text-antika-gold font-bold">الإجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="categories-table-body">
-                                </tbody>
-                            </table>
-                        </div>
+                    <div id="categories-tree" class="space-y-3">
+                        <!-- populated by JS as tree -->
                     </div>
                 </section>
 
@@ -802,23 +799,47 @@
     <!-- Category Modal -->
     <div id="category-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl w-full max-w-md p-6">
-            <h3 class="text-2xl font-bold text-antika-gold mb-6">إضافة تصنيف</h3>
+            <h3 id="category-modal-title" class="text-2xl font-bold text-antika-gold mb-6">إضافة تصنيف</h3>
             <form id="category-form" class="space-y-4">
-                <div>
-                    <label class="block text-gray-700 font-bold mb-2">الأيقونة:</label>
-                    <input type="text" id="category-icon" placeholder="🕯️" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none text-2xl">
+                <input type="hidden" id="category-edit-id">
+
+                <!-- نوع التصنيف -->
+                <div class="bg-antika-lavender rounded-xl p-4">
+                    <label class="block text-gray-700 font-bold mb-3">نوع التصنيف:</label>
+                    <div class="flex gap-3">
+                        <label class="flex items-center gap-2 cursor-pointer flex-1 bg-white rounded-lg p-3 border-2 border-antika-gold">
+                            <input type="radio" name="cat-type" value="main" id="cat-type-main" checked onchange="toggleCatType()" class="accent-antika-gold">
+                            <span class="font-bold text-sm">🗂️ قسم رئيسي</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer flex-1 bg-white rounded-lg p-3 border-2 border-gray-200">
+                            <input type="radio" name="cat-type" value="sub" id="cat-type-sub" onchange="toggleCatType()" class="accent-antika-gold">
+                            <span class="font-bold text-sm">📁 قسم فرعي</span>
+                        </label>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-gray-700 font-bold mb-2">الاسم:</label>
-                    <input type="text" id="category-name" required class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+
+                <!-- القسم الرئيسي (يظهر فقط عند اختيار فرعي) -->
+                <div id="parent-cat-row" class="hidden">
+                    <label class="block text-gray-700 font-bold mb-2">القسم الرئيسي:</label>
+                    <select id="category-parent" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+                        <option value="">اختر القسم الرئيسي...</option>
+                    </select>
                 </div>
-                <div>
-                    <label class="block text-gray-700 font-bold mb-2">فرعية (بفاصلة):</label>
-                    <input type="text" id="category-subcategories" placeholder="فرع1, فرع2, فرع3" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+
+                <div class="flex gap-3">
+                    <div class="w-24">
+                        <label class="block text-gray-700 font-bold mb-2">أيقونة:</label>
+                        <input type="text" id="category-icon" placeholder="🕯️" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none text-2xl text-center">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-gray-700 font-bold mb-2">الاسم:</label>
+                        <input type="text" id="category-name" required class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
+                    </div>
                 </div>
+
                 <div class="flex gap-4 pt-4">
                     <button type="submit" class="flex-1 bg-antika-pink text-white py-3 rounded-lg font-bold hover:bg-antika-pink-dark transition">
-                        إضافة
+                        💾 حفظ
                     </button>
                     <button type="button" onclick="closeCategoryModal()" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300 transition">
                         إلغاء
@@ -830,6 +851,221 @@
 
     <!-- Scripts -->
     <script src="js/api.js?v=20260228-3"></script>
+    <script>
+    // ============================================
+    // CATEGORIES — TREE SYSTEM (NEW)
+    // ============================================
+    let adminAllCategories = [];
+
+    async function loadAndRenderCategoriesTree() {
+        try {
+            adminAllCategories = await API.getCategories();
+            renderCategoriesTree(adminAllCategories);
+            // Populate parent dropdown in modal
+            populateParentDropdown(adminAllCategories);
+        } catch(e) {
+            console.error('Error loading categories:', e);
+        }
+    }
+
+    function renderCategoriesTree(cats) {
+        const container = document.getElementById('categories-tree');
+        if (!container) return;
+        const mainCats = cats.filter(c => !c.parentId);
+        const subCats = cats.filter(c => c.parentId);
+
+        if (mainCats.length === 0) {
+            container.innerHTML = '<p class="text-gray-400 text-center py-8">لا توجد تصنيفات — أضف تصنيفاً رئيسياً</p>';
+            return;
+        }
+
+        container.innerHTML = mainCats.map(main => {
+            const children = subCats.filter(s => s.parentId === main.id);
+            return `
+            <div class="cat-main-card">
+                <div class="cat-main-header justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">${main.icon || '📦'}</span>
+                        <div>
+                            <span class="font-bold text-gray-800">${main.name}</span>
+                            <span class="text-xs text-gray-400 mr-2">${children.length} قسم فرعي</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="openAddSubModal('${main.id}')"
+                            class="text-xs bg-antika-gold text-white px-3 py-1 rounded-full hover:bg-antika-gold-dark transition">
+                            <i class="fas fa-plus"></i> فرعي
+                        </button>
+                        <button onclick="editCategory('${main._id}')"
+                            class="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full hover:bg-blue-200 transition">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button onclick="deleteCategoryById('${main._id}', '${main.name}', true)"
+                            class="text-xs bg-red-100 text-red-500 px-3 py-1 rounded-full hover:bg-red-200 transition">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                ${children.length > 0 ? children.map(sub => `
+                <div class="cat-sub-row flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-corner-down-right text-gray-300 text-xs mr-2"></i>
+                        <span class="text-lg">${sub.icon || '📁'}</span>
+                        <span class="text-gray-700 text-sm font-medium">${sub.name}</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="editCategory('${sub._id}')"
+                            class="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full hover:bg-blue-200 transition">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button onclick="deleteCategoryById('${sub._id}', '${sub.name}', false)"
+                            class="text-xs bg-red-100 text-red-500 px-3 py-1 rounded-full hover:bg-red-200 transition">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>`).join('') : `
+                <div class="px-6 py-3 text-xs text-gray-400 italic">لا توجد أقسام فرعية — اضغط "+ فرعي" لإضافة</div>`}
+            </div>`;
+        }).join('');
+    }
+
+    function populateParentDropdown(cats) {
+        const sel = document.getElementById('category-parent');
+        if (!sel) return;
+        const mainCats = cats.filter(c => !c.parentId);
+        sel.innerHTML = '<option value="">اختر القسم الرئيسي...</option>' +
+            mainCats.map(c => `<option value="${c.id}">${c.icon || ''} ${c.name}</option>`).join('');
+    }
+
+    function toggleCatType() {
+        const isSub = document.getElementById('cat-type-sub').checked;
+        const parentRow = document.getElementById('parent-cat-row');
+        parentRow.classList.toggle('hidden', !isSub);
+        // Update radio label styles
+        document.querySelector('label[for="cat-type-main"]')?.classList.toggle('border-antika-gold', !isSub);
+        document.querySelector('label[for="cat-type-sub"]')?.classList.toggle('border-antika-gold', isSub);
+    }
+
+    function openCategoryModal() {
+        document.getElementById('category-edit-id').value = '';
+        document.getElementById('category-modal-title').textContent = 'إضافة تصنيف';
+        document.getElementById('category-icon').value = '';
+        document.getElementById('category-name').value = '';
+        document.getElementById('cat-type-main').checked = true;
+        document.getElementById('cat-type-sub').checked = false;
+        document.getElementById('parent-cat-row').classList.add('hidden');
+        populateParentDropdown(adminAllCategories);
+        document.getElementById('category-modal').classList.remove('hidden');
+    }
+
+    function openAddSubModal(parentId) {
+        openCategoryModal();
+        document.getElementById('category-modal-title').textContent = 'إضافة قسم فرعي';
+        document.getElementById('cat-type-sub').checked = true;
+        document.getElementById('cat-type-main').checked = false;
+        document.getElementById('parent-cat-row').classList.remove('hidden');
+        const sel = document.getElementById('category-parent');
+        if (sel) sel.value = parentId;
+    }
+
+    function editCategory(mongoId) {
+        const cat = adminAllCategories.find(c => c._id === mongoId);
+        if (!cat) return;
+        document.getElementById('category-edit-id').value = mongoId;
+        document.getElementById('category-modal-title').textContent = 'تعديل التصنيف';
+        document.getElementById('category-icon').value = cat.icon || '';
+        document.getElementById('category-name').value = cat.name || '';
+        if (cat.parentId) {
+            document.getElementById('cat-type-sub').checked = true;
+            document.getElementById('cat-type-main').checked = false;
+            document.getElementById('parent-cat-row').classList.remove('hidden');
+            populateParentDropdown(adminAllCategories);
+            document.getElementById('category-parent').value = cat.parentId;
+        } else {
+            document.getElementById('cat-type-main').checked = true;
+            document.getElementById('cat-type-sub').checked = false;
+            document.getElementById('parent-cat-row').classList.add('hidden');
+        }
+        document.getElementById('category-modal').classList.remove('hidden');
+    }
+
+    function closeCategoryModal() {
+        document.getElementById('category-modal').classList.add('hidden');
+    }
+
+    async function deleteCategoryById(mongoId, name, isMain) {
+        const msg = isMain
+            ? `حذف القسم الرئيسي "${name}" وجميع أقسامه الفرعية؟`
+            : `حذف القسم الفرعي "${name}"؟`;
+        if (!confirm(msg)) return;
+        try {
+            await API.deleteCategory(mongoId);
+            await loadAndRenderCategoriesTree();
+            showAdminNotif('تم الحذف بنجاح', 'success');
+        } catch(e) {
+            showAdminNotif('حدث خطأ أثناء الحذف', 'error');
+        }
+    }
+
+    async function deleteAllCategoriesConfirm() {
+        if (!confirm('⚠️ حذف جميع التصنيفات؟ هذا الإجراء لا يمكن التراجع عنه!')) return;
+        try {
+            await fetch('/api/categories', {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('antika_admin_token')}` }
+            });
+            await loadAndRenderCategoriesTree();
+            showAdminNotif('تم حذف جميع التصنيفات', 'success');
+        } catch(e) {
+            showAdminNotif('حدث خطأ أثناء الحذف', 'error');
+        }
+    }
+
+    function showAdminNotif(msg, type = 'success') {
+        const n = document.createElement('div');
+        n.className = `fixed top-6 left-1/2 -translate-x-1/2 z-[9999] px-6 py-3 rounded-full font-bold shadow-2xl ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`;
+        n.textContent = msg;
+        document.body.appendChild(n);
+        setTimeout(() => n.remove(), 3000);
+    }
+
+    // Hook into category form submission
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('category-form');
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const editId = document.getElementById('category-edit-id').value;
+                const isSub = document.getElementById('cat-type-sub').checked;
+                const name = document.getElementById('category-name').value.trim();
+                const icon = document.getElementById('category-icon').value.trim() || '📦';
+                const parentId = isSub ? (document.getElementById('category-parent').value || null) : null;
+
+                if (isSub && !parentId) {
+                    alert('اختر القسم الرئيسي للقسم الفرعي');
+                    return;
+                }
+
+                const catId = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-\u0600-\u06FF]/g, '') + '-' + Date.now();
+                const payload = { id: editId ? undefined : catId, name, icon, parentId };
+                if (editId) delete payload.id;
+
+                try {
+                    if (editId) {
+                        await API.updateCategory(editId, { name, icon, parentId });
+                    } else {
+                        await API.addCategory({ id: catId, name, icon, parentId });
+                    }
+                    closeCategoryModal();
+                    await loadAndRenderCategoriesTree();
+                    showAdminNotif(editId ? 'تم التعديل' : 'تمت الإضافة', 'success');
+                } catch(err) {
+                    showAdminNotif('حدث خطأ: ' + (err.message || ''), 'error');
+                }
+            });
+        }
+    });
+    </script>
     <script src="js/admin.js?v=20260228-5"></script>
 </body>
 </html>

@@ -128,7 +128,47 @@
             background: #e891b2;
         }
 
-        /* Search Modal */
+        /* Category Browser */
+        .cat-parent-btn {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 14px 18px;
+            border-radius: 16px;
+            border: 2px solid #E8D9C5;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 90px;
+            font-family: 'Tajawal', sans-serif;
+        }
+        .cat-parent-btn:hover { border-color: #D6C1A6; background: #FAF0E6; }
+        .cat-parent-btn.active { border-color: #D6C1A6; background: linear-gradient(135deg, #FAF0E6, #FFF0F5); box-shadow: 0 4px 12px rgba(214,193,166,0.3); }
+        .cat-parent-btn .icon { font-size: 28px; }
+        .cat-parent-btn .name { font-size: 12px; font-weight: 700; color: #555; white-space: nowrap; }
+        .cat-parent-btn.active .name { color: #C4AC8E; }
+
+        .cat-sub-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 30px;
+            border: 2px solid #E8D9C5;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 13px;
+            font-weight: 700;
+            color: #666;
+            font-family: 'Tajawal', sans-serif;
+            white-space: nowrap;
+        }
+        .cat-sub-btn:hover { border-color: #FFB6C1; color: #FF69B4; background: #FFF0F5; }
+        .cat-sub-btn.active { border-color: #FFB6C1; background: #FFF0F5; color: #FF69B4; }
+        .subcats-row { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 4px 4px; animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
         .search-modal-overlay {
             position: fixed;
             inset: 0;
@@ -228,11 +268,11 @@
     <div class="container mx-auto px-4 py-8">
         <h2 id="page-heading-label" class="text-3xl font-bold text-antika-gold mb-8">المنتجات</h2>
 
+        <!-- Category Browser (Two levels) -->
+        <div id="category-browser" class="mb-6"></div>
+
         <!-- Filters -->
         <div class="bg-white rounded-xl shadow p-4 mb-8 flex flex-col md:flex-row gap-4">
-            <select id="category-filter" onchange="filterProducts()" class="border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-antika-pink focus:outline-none">
-                <option value="">جميع التصنيفات</option>
-            </select>
             <select id="sort-filter" onchange="sortProducts()" class="border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-antika-pink focus:outline-none">
                 <option value="newest">الأحدث</option>
                 <option value="price-low">السعر: من الأقل للأعلى</option>
@@ -256,7 +296,9 @@
     
     <script>
         let allProducts = [];
-        let currentCategory = '';
+        let allCategories = [];
+        let selectedMainCat = null;
+        let selectedSubCat = null;
 
         // Toggle Mobile Menu
         function toggleMenu() {
@@ -322,35 +364,114 @@
         async function loadCategories() {
             try {
                 const categories = await API.getCategories();
-                
-                // Load into dropdown filter
-                const filter = document.getElementById('category-filter');
-                if (filter) {
-                    categories.forEach(cat => {
-                        const option = document.createElement('option');
-                        option.value = cat.id;
-                        option.textContent = cat.name;
-                        filter.appendChild(option);
-                    });
-                }
-                
-                // ✅ Load into mobile menu (same as index.html)
+                allCategories = categories;
+
+                const mainCats = categories.filter(c => !c.parentId);
+
+                // Mobile menu
                 const mobileCategories = document.getElementById('mobile-categories');
                 if (mobileCategories) {
-                    if (categories.length === 0) {
-                        mobileCategories.innerHTML = '<p class="text-gray-400 text-sm">لا توجد تصنيفات</p>';
-                    } else {
-                        mobileCategories.innerHTML = categories.map(cat => `
+                    mobileCategories.innerHTML = mainCats.length === 0
+                        ? '<p class="text-gray-400 text-sm">لا توجد تصنيفات</p>'
+                        : mainCats.map(cat => `
                             <a href="products.html?category=${cat.id}" class="flex items-center gap-3 py-2 text-gray-700 hover:text-antika-pink transition" onclick="toggleMenu()">
                                 <span class="text-xl">${cat.icon || '📦'}</span>
                                 <span>${cat.name}</span>
-                            </a>
-                        `).join('');
+                            </a>`).join('');
+                }
+
+                renderCategoryBrowser();
+
+                // If URL has category param
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlCat = urlParams.get('category') || urlParams.get('parent');
+                if (urlCat) {
+                    const cat = categories.find(c => c.id === urlCat);
+                    if (cat) {
+                        if (!cat.parentId) {
+                            selectMainCategory(cat.id, false);
+                        } else {
+                            selectMainCategory(cat.parentId, false);
+                            selectSubCategory(cat.id);
+                        }
                     }
                 }
             } catch (error) {
                 console.error('Error loading categories:', error);
             }
+        }
+
+        function renderCategoryBrowser() {
+            const browser = document.getElementById('category-browser');
+            if (!browser) return;
+            const mainCats = allCategories.filter(c => !c.parentId);
+            if (mainCats.length === 0) { browser.innerHTML = ''; return; }
+
+            browser.innerHTML = `
+                <div class="bg-white rounded-xl shadow p-4">
+                    <div id="main-categories-row" class="flex flex-wrap gap-3">
+                        <button id="cat-btn-all" onclick="selectMainCategory(null)"
+                            class="cat-main-btn px-4 py-2 rounded-full border-2 font-bold text-sm transition
+                            ${!selectedMainCat ? 'bg-antika-gold border-antika-gold text-white' : 'border-antika-gold text-antika-gold hover:bg-antika-gold hover:text-white'}">
+                            🛍️ الكل
+                        </button>
+                        ${mainCats.map(cat => `
+                            <button id="cat-btn-${cat.id}" onclick="selectMainCategory('${cat.id}')"
+                                class="cat-main-btn px-4 py-2 rounded-full border-2 font-bold text-sm transition
+                                ${selectedMainCat === cat.id ? 'bg-antika-gold border-antika-gold text-white' : 'border-antika-gold text-antika-gold hover:bg-antika-gold hover:text-white'}">
+                                ${cat.icon || '📦'} ${cat.name}
+                            </button>`).join('')}
+                    </div>
+                    <div id="sub-categories-row" class="${selectedMainCat ? 'flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100' : 'hidden'}">
+                        ${renderSubButtons()}
+                    </div>
+                </div>`;
+        }
+
+        function renderSubButtons() {
+            if (!selectedMainCat) return '';
+            const subs = allCategories.filter(c => c.parentId === selectedMainCat);
+            if (subs.length === 0) return '';
+            return `
+                <button id="sub-btn-all" onclick="selectSubCategory(null)"
+                    class="sub-cat-btn px-3 py-1 rounded-full border text-xs font-bold transition
+                    ${!selectedSubCat ? 'bg-antika-gold border-antika-gold text-white' : 'border-antika-gold text-antika-gold hover:bg-antika-gold hover:text-white'}">
+                    الكل
+                </button>` +
+                subs.map(s => `
+                <button id="sub-btn-${s.id}" onclick="selectSubCategory('${s.id}')"
+                    class="sub-cat-btn px-3 py-1 rounded-full border text-xs font-bold transition
+                    ${selectedSubCat === s.id ? 'bg-antika-pink border-antika-pink text-white' : 'border-antika-pink text-antika-pink hover:bg-antika-pink hover:text-white'}">
+                    ${s.icon || ''} ${s.name}
+                </button>`).join('');
+        }
+
+        function selectMainCategory(catId, resetSub = true) {
+            selectedMainCat = catId;
+            if (resetSub) selectedSubCat = null;
+            renderCategoryBrowser();
+            filterAndRender();
+        }
+
+        function selectSubCategory(subId) {
+            selectedSubCat = subId;
+            renderCategoryBrowser();
+            filterAndRender();
+        }
+
+        function filterAndRender() {
+            let filtered = [...allProducts];
+            const activeCat = selectedSubCat || selectedMainCat;
+            if (activeCat) {
+                // Get this cat + all its children ids
+                const childIds = allCategories.filter(c => c.parentId === activeCat).map(c => c.id);
+                const matchIds = [activeCat, ...childIds];
+                filtered = filtered.filter(p => {
+                    const pCats = p.categories || (p.category ? [p.category] : []);
+                    return pCats.some(c => matchIds.includes(c));
+                });
+            }
+            renderProducts(filtered);
         }
 
         function applyPageMode(isOffersView) {
@@ -372,24 +493,19 @@
         async function loadProducts() {
             try {
                 const urlParams = new URLSearchParams(window.location.search);
-                const category = urlParams.get('category');
                 const search = urlParams.get('search');
                 const isOffersView = urlParams.get('discount') === 'true';
 
                 applyPageMode(isOffersView);
 
                 const products = await API.getProducts(
-                    category || null,
+                    null,
                     search || null,
                     isOffersView ? true : null
                 );
 
-                if (category) {
-                    document.getElementById('category-filter').value = category;
-                }
-
                 allProducts = products;
-                renderProducts(products);
+                filterAndRender();
             } catch (error) {
                 console.error('Error loading products:', error);
             }
@@ -400,14 +516,17 @@
             const container = document.getElementById('products-grid');
             if (!container) return;
 
+            const label = document.getElementById('products-count-label');
+            if (label) label.textContent = products.length > 0 ? `${products.length} منتج` : '';
+
             if (products.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 col-span-full text-center">لا توجد منتجات</p>';
+                container.innerHTML = '<p class="text-gray-500 col-span-full text-center py-12">لا توجد منتجات في هذا التصنيف</p>';
                 return;
             }
 
             container.innerHTML = products.map(product => `
                 <antika-product-card 
-                    data-product='${JSON.stringify(product)}'
+                    data-product='${JSON.stringify(product).replace(/'/g, "&#39;")}'
                     data-variant="compact">
                 </antika-product-card>
             `).join('');
@@ -487,20 +606,8 @@
             `;
         }
 
-        // Filter products
-        function filterProducts() {
-            const category = document.getElementById('category-filter').value;
-            if (category) {
-                const filtered = allProducts.filter(p => {
-                    // Support both 'categories' (array) and 'category' (string) fields
-                    const productCategories = p.categories || (p.category ? [p.category] : []);
-                    return productCategories.includes(category);
-                });
-                renderProducts(filtered);
-            } else {
-                renderProducts(allProducts);
-            }
-        }
+        // Filter products (legacy stub - replaced by filterAndRender)
+        function filterProducts() { filterAndRender(); }
 
         // Sort products
         function sortProducts() {
@@ -667,4 +774,3 @@
     <script src="js/footer.js"></script>
 </body>
 </html>
-

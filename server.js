@@ -432,7 +432,8 @@ const categorySchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
   icon: { type: String, default: '📦' },
-  subcategories: [{ type: String }]
+  parentId: { type: String, default: null }, // null = قسم رئيسي، string = قسم فرعي
+  subcategories: [{ type: String }] // legacy — kept for compatibility
 });
 
 // Cart Schema (Session-based)
@@ -919,9 +920,22 @@ app.delete('/api/categories/:id', requireAdmin, async (req, res) => {
   try {
     const category = await Category.findByIdAndDelete(req.params.id);
     if (!category) return res.status(404).json({ error: 'Category not found' });
+    // Also delete all children
+    await Category.deleteMany({ parentId: category.id });
     res.json({ message: 'Category deleted' });
   } catch (err) {
     console.error('Error deleting category:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete ALL categories (admin only)
+app.delete('/api/categories', requireAdmin, async (req, res) => {
+  try {
+    const result = await Category.deleteMany({});
+    res.json({ message: 'All categories deleted', count: result.deletedCount });
+  } catch (err) {
+    console.error('Error deleting all categories:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2001,10 +2015,22 @@ async function initData() {
     const catCount = await Category.countDocuments();
     if (catCount === 0) {
       const defaultCategories = [
-        { id: 'candles', name: 'شموع منزلية', icon: '🕯️', subcategories: ['شموع عطرية', 'شموع زينة', 'فواحات'] },
-        { id: 'furniture', name: 'أثاث', icon: '🪑', subcategories: ['كراسي', 'طاولات', 'خزائن'] },
-        { id: 'decor', name: 'ديكور جداري', icon: '🖼️', subcategories: ['لوحات', 'مرايا', 'رفوف'] },
-        { id: 'tools', name: 'أدوات منزلية', icon: '🏺', subcategories: ['مطبخ', 'حمام', 'غرفة المعيشة'] }
+        { id: 'candles', name: 'شموع منزلية', icon: '🕯️', parentId: null },
+        { id: 'candles-aromatic', name: 'شموع عطرية', icon: '🌸', parentId: 'candles' },
+        { id: 'candles-decor', name: 'شموع زينة', icon: '✨', parentId: 'candles' },
+        { id: 'candles-diffuser', name: 'فواحات', icon: '💨', parentId: 'candles' },
+        { id: 'furniture', name: 'أثاث', icon: '🪑', parentId: null },
+        { id: 'furniture-chairs', name: 'كراسي', icon: '🪑', parentId: 'furniture' },
+        { id: 'furniture-tables', name: 'طاولات', icon: '🪵', parentId: 'furniture' },
+        { id: 'furniture-cabinets', name: 'خزائن', icon: '🗄️', parentId: 'furniture' },
+        { id: 'decor', name: 'ديكور جداري', icon: '🖼️', parentId: null },
+        { id: 'decor-paintings', name: 'لوحات', icon: '🖼️', parentId: 'decor' },
+        { id: 'decor-mirrors', name: 'مرايا', icon: '🪞', parentId: 'decor' },
+        { id: 'decor-shelves', name: 'رفوف', icon: '📚', parentId: 'decor' },
+        { id: 'tools', name: 'أدوات منزلية', icon: '🏺', parentId: null },
+        { id: 'tools-kitchen', name: 'مطبخ', icon: '🍳', parentId: 'tools' },
+        { id: 'tools-bathroom', name: 'حمام', icon: '🛁', parentId: 'tools' },
+        { id: 'tools-living', name: 'غرفة المعيشة', icon: '🛋️', parentId: 'tools' },
       ];
       await Category.insertMany(defaultCategories);
       console.log('✅ Default categories created');
