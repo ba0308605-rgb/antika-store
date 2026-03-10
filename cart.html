@@ -610,12 +610,7 @@
             aramex_home: { label: 'أرامكس (توصيل منزلي)', extraFee: 30 }
         };
         const COD_FEE = 17;
-        const CHECKOUT_COUPONS = {
-            ANTIKA10: { type: 'percent', value: 10, label: 'خصم 10%' },
-            NEW15: { type: 'percent', value: 15, label: 'خصم 15%' },
-            SAVE20: { type: 'fixed', value: 20, label: 'خصم 20 ر.س' },
-            FREESHIP: { type: 'freeShipping', value: 0, label: 'شحن مجاني' }
-        };
+        // Coupons now come from server — no hard-coded list
 
         function formatSAR(value) {
             const safe = Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -767,9 +762,10 @@
             }
         }
 
-        function applyCheckoutCoupon() {
+        async function applyCheckoutCoupon() {
             const input = document.getElementById('checkout-coupon');
             const status = document.getElementById('coupon-status');
+            const btn = document.getElementById('apply-coupon-btn');
             if (!input || !status) return;
 
             const raw = (input.value || '').trim().toUpperCase();
@@ -781,19 +777,41 @@
                 return;
             }
 
-            const coupon = CHECKOUT_COUPONS[raw];
-            if (!coupon) {
-                checkoutAppliedCoupon = null;
-                status.textContent = 'هذا الكوبون غير صالح';
-                status.className = 'checkout-coupon-status text-red-500';
-                recalculateCheckoutTotals();
-                return;
-            }
+            // Get current subtotal for min-order validation
+            const subtotal = checkoutItems.reduce((s, item) => {
+                const price = Number(item.discountPrice || item.price || 0);
+                return s + price * (item.quantity || 1);
+            }, 0);
 
-            checkoutAppliedCoupon = { code: raw, ...coupon };
-            status.textContent = `تم تطبيق الكوبون: ${coupon.label}`;
-            status.className = 'checkout-coupon-status text-green-600 font-bold';
-            recalculateCheckoutTotals();
+            if (btn) { btn.disabled = true; btn.textContent = '...'; }
+            status.textContent = 'جاري التحقق...';
+            status.className = 'checkout-coupon-status text-gray-400';
+
+            try {
+                const res = await fetch('/api/coupons/validate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: raw, orderTotal: subtotal })
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    checkoutAppliedCoupon = null;
+                    status.textContent = data.error || 'الكوبون غير صالح';
+                    status.className = 'checkout-coupon-status text-red-500';
+                    recalculateCheckoutTotals();
+                } else {
+                    checkoutAppliedCoupon = data;
+                    status.textContent = '✅ تم تطبيق الكوبون: ' + data.label;
+                    status.className = 'checkout-coupon-status text-green-600 font-bold';
+                    recalculateCheckoutTotals();
+                }
+            } catch(e) {
+                status.textContent = 'تعذر الاتصال بالسيرفر';
+                status.className = 'checkout-coupon-status text-red-500';
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'تطبيق'; }
+            }
         }
 
         function setupCheckoutHybridUX() {
@@ -1337,6 +1355,10 @@
 
                 // ---- COD: create order directly ----
                 await API.createOrder(orderData);
+                // سجّل استخدام الكوبون إن وُجد
+                if (checkoutAppliedCoupon && checkoutAppliedCoupon.code) {
+                    try { await fetch('/api/coupons/use', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: checkoutAppliedCoupon.code }) }); } catch(e) {}
+                }
                 try {
                     const localOrders = JSON.parse(localStorage.getItem('antika_orders') || '[]');
                     localOrders.unshift({ id: 'local_' + Date.now(), date: new Date().toISOString(), ...orderData });
@@ -2301,6 +2323,10 @@
                 };
 
                 const createdOrder = await API.createOrder(orderWithPayment);
+                // سجّل استخدام الكوبون إن وُجد
+                if (checkoutAppliedCoupon && checkoutAppliedCoupon.code) {
+                    try { await fetch('/api/coupons/use', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: checkoutAppliedCoupon.code }) }); } catch(e) {}
+                }
 
                 // 3. Update verify with orderId
                 if (createdOrder && createdOrder._id) {

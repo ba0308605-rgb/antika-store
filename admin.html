@@ -139,6 +139,10 @@
                         <i class="fas fa-bullhorn w-6"></i>
                         <span>الشريط المتحرك</span>
                     </button>
+                    <button onclick="showSection('coupons'); loadCoupons();" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
+                        <i class="fas fa-ticket-alt w-5 text-center"></i>
+                        <span>الكوبونات</span>
+                    </button>
                     <button onclick="showSection('customer-stats')" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
                         <i class="fas fa-chart-pie w-6"></i>
                         <span>إحصائيات العملاء</span>
@@ -624,6 +628,42 @@
                             <i class="fas fa-sync-alt"></i>
                             تحديث الإحصائيات
                         </button>
+                    </div>
+                </section>
+
+                <!-- COUPONS SECTION -->
+                <section id="coupons-section" class="hidden space-y-6">
+                    <div class="flex items-center justify-between flex-wrap gap-3">
+                        <h2 class="text-2xl font-bold text-antika-gold">🎟️ الكوبونات</h2>
+                        <button onclick="openCouponModal()" class="bg-antika-pink text-white px-5 py-2.5 rounded-full font-bold hover:opacity-90 transition flex items-center gap-2">
+                            <i class="fas fa-plus"></i> إضافة كوبون
+                        </button>
+                    </div>
+
+                    <!-- Stats -->
+                    <div id="coupons-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+
+                    <!-- Table -->
+                    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-right">
+                                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                                    <tr>
+                                        <th class="px-4 py-3">الكود</th>
+                                        <th class="px-4 py-3">النوع</th>
+                                        <th class="px-4 py-3">القيمة</th>
+                                        <th class="px-4 py-3">الحد الأدنى</th>
+                                        <th class="px-4 py-3">الاستخدام</th>
+                                        <th class="px-4 py-3">الانتهاء</th>
+                                        <th class="px-4 py-3">الحالة</th>
+                                        <th class="px-4 py-3">إجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="coupons-table-body">
+                                    <tr><td colspan="8" class="text-center py-8 text-gray-400">جاري التحميل...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </section>
 
@@ -1133,6 +1173,249 @@
                   )
                 + '</div>';
         }).join('');
+    }
+    </script>
+
+    <!-- Coupon Modal -->
+    <div id="coupon-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl">
+            <div class="flex justify-between items-center p-6 border-b">
+                <h3 class="text-xl font-bold text-antika-gold" id="coupon-modal-title">إضافة كوبون</h3>
+                <button onclick="closeCouponModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">كود الكوبون *</label>
+                        <input id="cp-code" type="text" placeholder="مثال: ANTIKA20" class="w-full border rounded-lg px-3 py-2 text-sm uppercase font-bold tracking-wider focus:outline-none focus:border-antika-gold">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">نوع الخصم *</label>
+                        <select id="cp-type" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-antika-gold" onchange="updateCouponValueLabel()">
+                            <option value="percent">نسبة مئوية (%)</option>
+                            <option value="fixed">مبلغ ثابت (ر.س)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" id="cp-value-label">قيمة الخصم (%) *</label>
+                        <input id="cp-value" type="number" min="0" placeholder="15" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-antika-gold">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">حد أدنى للطلب (ر.س)</label>
+                        <input id="cp-minorder" type="number" min="0" placeholder="0 = بدون حد" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-antika-gold">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">أقصى عدد استخدامات</label>
+                        <input id="cp-maxuses" type="number" min="0" placeholder="0 = غير محدود" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-antika-gold">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">تاريخ الانتهاء</label>
+                        <input id="cp-expires" type="date" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-antika-gold">
+                    </div>
+                </div>
+                <div class="flex items-center gap-6">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input id="cp-active" type="checkbox" checked class="w-4 h-4 accent-pink-400">
+                        <span class="text-sm font-bold text-gray-700">مفعّل</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input id="cp-peruser" type="checkbox" class="w-4 h-4 accent-pink-400">
+                        <span class="text-sm font-bold text-gray-700">مرة واحدة لكل عميل</span>
+                    </label>
+                </div>
+                <p id="cp-error" class="text-red-500 text-sm hidden"></p>
+            </div>
+            <div class="flex gap-3 p-6 border-t">
+                <button onclick="saveCoupon()" class="flex-1 bg-antika-pink text-white py-2.5 rounded-xl font-bold hover:opacity-90 transition">حفظ</button>
+                <button onclick="closeCouponModal()" class="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl font-bold hover:bg-gray-50 transition">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ============================================
+    // COUPONS MANAGEMENT
+    // ============================================
+    let couponsData = [];
+    let editingCouponId = null;
+
+    async function loadCoupons() {
+        try {
+            const token = localStorage.getItem('admin_token') || localStorage.getItem('antika_token');
+            const res = await fetch('/api/coupons', { headers: { 'Authorization': 'Bearer ' + token } });
+            couponsData = await res.json();
+            renderCouponsTable(couponsData);
+            renderCouponsStats(couponsData);
+        } catch(e) {
+            console.error('Error loading coupons:', e);
+        }
+    }
+
+    function renderCouponsStats(coupons) {
+        const container = document.getElementById('coupons-stats');
+        if (!container) return;
+        const total   = coupons.length;
+        const active  = coupons.filter(c => c.active).length;
+        const used    = coupons.reduce((s, c) => s + (c.usedCount || 0), 0);
+        const expired = coupons.filter(c => c.expiresAt && new Date(c.expiresAt) < new Date()).length;
+        const stats = [
+            { label: 'إجمالي الكوبونات', value: total,   icon: '🎟️', color: 'bg-purple-50 text-purple-600' },
+            { label: 'مفعّلة',            value: active,  icon: '✅', color: 'bg-green-50 text-green-600'  },
+            { label: 'مرات الاستخدام',    value: used,    icon: '📊', color: 'bg-blue-50 text-blue-600'   },
+            { label: 'منتهية الصلاحية',   value: expired, icon: '⏰', color: 'bg-red-50 text-red-500'     },
+        ];
+        container.innerHTML = stats.map(s =>
+            '<div class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-3">'
+            + '<div class="w-12 h-12 rounded-full flex items-center justify-center text-xl ' + s.color + '">' + s.icon + '</div>'
+            + '<div><p class="text-2xl font-bold text-gray-800">' + s.value + '</p>'
+            + '<p class="text-xs text-gray-500">' + s.label + '</p></div></div>'
+        ).join('');
+    }
+
+    function renderCouponsTable(coupons) {
+        const tbody = document.getElementById('coupons-table-body');
+        if (!tbody) return;
+        if (!coupons.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-10 text-gray-400">لا توجد كوبونات بعد</td></tr>';
+            return;
+        }
+        tbody.innerHTML = coupons.map(c => {
+            const typeLabel = c.type === 'percent' ? c.value + '%' : c.value + ' ر.س';
+            const typeIcon  = c.type === 'percent' ? '📊' : '💰';
+            const expiry    = c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('ar-SA') : '—';
+            const isExpired = c.expiresAt && new Date(c.expiresAt) < new Date();
+            const statusBadge = isExpired
+                ? '<span class="px-2 py-1 rounded-full text-xs bg-red-100 text-red-500">منتهية</span>'
+                : c.active
+                    ? '<span class="px-2 py-1 rounded-full text-xs bg-green-100 text-green-600">مفعّل</span>'
+                    : '<span class="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-500">موقوف</span>';
+            const usageText = c.maxUses > 0
+                ? c.usedCount + ' / ' + c.maxUses
+                : c.usedCount + ' / ∞';
+            return '<tr class="border-b hover:bg-gray-50">'
+                + '<td class="px-4 py-3"><span class="font-bold text-antika-gold tracking-wider bg-antika-beige px-2 py-1 rounded-lg text-sm">' + c.code + '</span></td>'
+                + '<td class="px-4 py-3">' + typeIcon + ' ' + (c.type === 'percent' ? 'نسبة' : 'مبلغ') + '</td>'
+                + '<td class="px-4 py-3 font-bold text-antika-pink">' + typeLabel + '</td>'
+                + '<td class="px-4 py-3">' + (c.minOrder > 0 ? c.minOrder + ' ر.س' : '—') + '</td>'
+                + '<td class="px-4 py-3 text-sm text-gray-600">' + usageText + '</td>'
+                + '<td class="px-4 py-3 text-sm ' + (isExpired ? 'text-red-400' : 'text-gray-600') + '">' + expiry + '</td>'
+                + '<td class="px-4 py-3">' + statusBadge + '</td>'
+                + '<td class="px-4 py-3">'
+                + '<div class="flex gap-2">'
+                + '<button onclick="editCoupon(\'' + c._id + '\')" class="text-blue-500 hover:text-blue-700 text-sm font-bold"><i class="fas fa-edit"></i></button>'
+                + '<button onclick="toggleCouponActive(\'' + c._id + '\',' + !c.active + ')" class="text-yellow-500 hover:text-yellow-700 text-sm font-bold" title="' + (c.active ? 'إيقاف' : 'تفعيل') + '"><i class="fas fa-' + (c.active ? 'pause' : 'play') + '"></i></button>'
+                + '<button onclick="deleteCoupon(\'' + c._id + '\')" class="text-red-400 hover:text-red-600 text-sm font-bold"><i class="fas fa-trash"></i></button>'
+                + '</div></td></tr>';
+        }).join('');
+    }
+
+    function openCouponModal(id = null) {
+        editingCouponId = id;
+        const modal = document.getElementById('coupon-modal');
+        const title = document.getElementById('coupon-modal-title');
+        // Reset
+        document.getElementById('cp-code').value = '';
+        document.getElementById('cp-type').value = 'percent';
+        document.getElementById('cp-value').value = '';
+        document.getElementById('cp-minorder').value = '';
+        document.getElementById('cp-maxuses').value = '';
+        document.getElementById('cp-expires').value = '';
+        document.getElementById('cp-active').checked = true;
+        document.getElementById('cp-peruser').checked = false;
+        document.getElementById('cp-error').classList.add('hidden');
+        updateCouponValueLabel();
+
+        if (id) {
+            title.textContent = 'تعديل كوبون';
+            const c = couponsData.find(x => x._id === id);
+            if (c) {
+                document.getElementById('cp-code').value = c.code;
+                document.getElementById('cp-type').value = c.type;
+                document.getElementById('cp-value').value = c.value;
+                document.getElementById('cp-minorder').value = c.minOrder || '';
+                document.getElementById('cp-maxuses').value = c.maxUses || '';
+                document.getElementById('cp-expires').value = c.expiresAt ? c.expiresAt.slice(0,10) : '';
+                document.getElementById('cp-active').checked = c.active;
+                document.getElementById('cp-peruser').checked = c.perUser;
+                updateCouponValueLabel();
+            }
+        } else {
+            title.textContent = 'إضافة كوبون جديد';
+        }
+        modal.classList.remove('hidden');
+    }
+
+    function closeCouponModal() {
+        document.getElementById('coupon-modal').classList.add('hidden');
+        editingCouponId = null;
+    }
+
+    function updateCouponValueLabel() {
+        const type = document.getElementById('cp-type').value;
+        const label = document.getElementById('cp-value-label');
+        if (label) label.textContent = type === 'percent' ? 'قيمة الخصم (%) *' : 'قيمة الخصم (ر.س) *';
+    }
+
+    async function saveCoupon() {
+        const errEl = document.getElementById('cp-error');
+        errEl.classList.add('hidden');
+        const code  = document.getElementById('cp-code').value.trim().toUpperCase();
+        const type  = document.getElementById('cp-type').value;
+        const value = Number(document.getElementById('cp-value').value);
+        if (!code) { errEl.textContent = 'أدخل كود الكوبون'; errEl.classList.remove('hidden'); return; }
+        if (!value || value <= 0) { errEl.textContent = 'أدخل قيمة الخصم'; errEl.classList.remove('hidden'); return; }
+        if (type === 'percent' && value > 100) { errEl.textContent = 'النسبة لا يمكن أن تتجاوز 100%'; errEl.classList.remove('hidden'); return; }
+
+        const body = {
+            code, type, value,
+            minOrder:  Number(document.getElementById('cp-minorder').value) || 0,
+            maxUses:   Number(document.getElementById('cp-maxuses').value)  || 0,
+            active:    document.getElementById('cp-active').checked,
+            perUser:   document.getElementById('cp-peruser').checked,
+            expiresAt: document.getElementById('cp-expires').value || null
+        };
+
+        try {
+            const token = localStorage.getItem('admin_token') || localStorage.getItem('antika_token');
+            const url    = editingCouponId ? '/api/coupons/' + editingCouponId : '/api/coupons';
+            const method = editingCouponId ? 'PUT' : 'POST';
+            const res = await fetch(url, {
+                method, headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (!res.ok) { errEl.textContent = data.error || 'حدث خطأ'; errEl.classList.remove('hidden'); return; }
+            closeCouponModal();
+            loadCoupons();
+            if (typeof showAdminNotif === 'function') showAdminNotif(editingCouponId ? 'تم التعديل' : 'تمت الإضافة', 'success');
+        } catch(e) {
+            errEl.textContent = 'حدث خطأ في الاتصال'; errEl.classList.remove('hidden');
+        }
+    }
+
+    async function deleteCoupon(id) {
+        if (!confirm('هل أنت متأكد من حذف هذا الكوبون؟')) return;
+        try {
+            const token = localStorage.getItem('admin_token') || localStorage.getItem('antika_token');
+            await fetch('/api/coupons/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+            loadCoupons();
+            if (typeof showAdminNotif === 'function') showAdminNotif('تم الحذف', 'success');
+        } catch(e) { console.error(e); }
+    }
+
+    async function toggleCouponActive(id, newState) {
+        try {
+            const token = localStorage.getItem('admin_token') || localStorage.getItem('antika_token');
+            await fetch('/api/coupons/' + id, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ active: newState })
+            });
+            loadCoupons();
+        } catch(e) { console.error(e); }
     }
     </script>
 </body>

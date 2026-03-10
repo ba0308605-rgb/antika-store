@@ -549,6 +549,23 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 
 // ============================================
+// COUPON SCHEMA
+// ============================================
+const couponSchema = new mongoose.Schema({
+  code:        { type: String, required: true, unique: true, uppercase: true, trim: true },
+  type:        { type: String, enum: ['percent', 'fixed'], required: true },
+  value:       { type: Number, required: true },
+  minOrder:    { type: Number, default: 0 },
+  maxUses:     { type: Number, default: 0 },     // 0 = unlimited
+  usedCount:   { type: Number, default: 0 },
+  perUser:     { type: Boolean, default: false }, // once per user
+  active:      { type: Boolean, default: true },
+  expiresAt:   { type: Date, default: null },
+  createdAt:   { type: Date, default: Date.now }
+});
+const Coupon = mongoose.model('Coupon', couponSchema);
+
+// ============================================
 // HELPER FUNCTIONS
 // ============================================
 
@@ -938,6 +955,99 @@ app.delete('/api/categories', requireAdmin, async (req, res) => {
     console.error('Error deleting all categories:', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ============================================
+// COUPON ROUTES
+// ============================================
+
+// GET all coupons (admin)
+app.get('/api/coupons', requireAdmin, async (req, res) => {
+  try {
+    const coupons = await Coupon.find().sort({ createdAt: -1 });
+    res.json(coupons);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST create coupon (admin)
+app.post('/api/coupons', requireAdmin, async (req, res) => {
+  try {
+    const { code, type, value, minOrder, maxUses, perUser, active, expiresAt } = req.body;
+    if (!code || !type || value == null) return res.status(400).json({ error: 'بيانات ناقصة' });
+    const existing = await Coupon.findOne({ code: code.toUpperCase().trim() });
+    if (existing) return res.status(400).json({ error: 'هذا الكود موجود مسبقاً' });
+    const coupon = new Coupon({ code, type, value, minOrder: minOrder || 0, maxUses: maxUses || 0, perUser: !!perUser, active: active !== false, expiresAt: expiresAt || null });
+    await coupon.save();
+    res.json(coupon);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// PUT update coupon (admin)
+app.put('/api/coupons/:id', requireAdmin, async (req, res) => {
+  try {
+    const coupon = await Coupon.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!coupon) return res.status(404).json({ error: 'الكوبون غير موجود' });
+    res.json(coupon);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE coupon (admin)
+app.delete('/api/coupons/:id', requireAdmin, async (req, res) => {
+  try {
+    await Coupon.findByIdAndDelete(req.params.id);
+    res.json({ message: 'تم الحذف' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST validate coupon (public)
+app.post('/api/coupons/validate', async (req, res) => {
+  try {
+    const { code, orderTotal, userId } = req.body;
+    if (!code) return res.status(400).json({ error: 'أدخل رمز الكوبون' });
+
+    const coupon = await Coupon.findOne({ code: code.toUpperCase().trim(), active: true });
+    if (!coupon) return res.status(404).json({ error: 'الكوبون غير صالح أو غير موجود' });
+
+    // Check expiry
+    if (coupon.expiresAt && new Date() > new Date(coupon.expiresAt))
+      return res.status(400).json({ error: 'انتهت صلاحية هذا الكوبون' });
+
+    // Check min order
+    if (coupon.minOrder > 0 && Number(orderTotal) < coupon.minOrder)
+      return res.status(400).json({ error: `هذا الكوبون يشترط طلب لا يقل عن ${coupon.minOrder} ر.س` });
+
+    // Check max uses
+    if (coupon.maxUses > 0 && coupon.usedCount >= coupon.maxUses)
+      return res.status(400).json({ error: 'تم استنفاذ عدد مرات استخدام هذا الكوبون' });
+
+    // Calculate discount
+    let discount = 0;
+    if (coupon.type === 'percent') {
+      discount = Math.round(Number(orderTotal) * (coupon.value / 100) * 100) / 100;
+    } else {
+      discount = Math.min(coupon.value, Number(orderTotal));
+    }
+
+    res.json({
+      valid: true,
+      code: coupon.code,
+      type: coupon.type,
+      value: coupon.value,
+      discount,
+      label: coupon.type === 'percent' ? `خصم ${coupon.value}%` : `خصم ${coupon.value} ر.س`,
+      minOrder: coupon.minOrder
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST increment coupon usage (called after order placed)
+app.post('/api/coupons/use', async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: 'code required' });
+    await Coupon.findOneAndUpdate({ code: code.toUpperCase().trim() }, { $inc: { usedCount: 1 } });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ============================================
