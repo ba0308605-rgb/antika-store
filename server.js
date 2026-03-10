@@ -1158,6 +1158,27 @@ app.post('/api/orders', async (req, res) => {
     });
     await order.save();
 
+    // ✅ إنقاص المخزون لكل منتج في الطلب
+    try {
+      const stockUpdates = (order.items || []).map(async (item) => {
+        const qty = Number(item.quantity || 1);
+        const pid = item.productId;
+        if (!pid) return;
+        // نبحث بـ _id أو id
+        let prod = null;
+        if (String(pid).match(/^[0-9a-fA-F]{24}$/)) {
+          try { prod = await Product.findById(pid); } catch(e) {}
+        }
+        if (!prod) prod = await Product.findOne({ id: pid });
+        if (!prod) return;
+        prod.stock = Math.max(0, (prod.stock || 0) - qty);
+        await prod.save();
+      });
+      await Promise.all(stockUpdates);
+    } catch (stockErr) {
+      console.error('Stock update error:', stockErr.message);
+    }
+
     try {
       const notifyResult = await sendOrderCustomerNotification(order, {
         title: 'تم استلام طلبك',

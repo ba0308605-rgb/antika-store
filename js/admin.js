@@ -487,13 +487,15 @@ function openProductModal(productId = null) {
     currentEditingProduct = null;
 
     if (productId) {
-        loadProductForEdit(productId);
         if (title) title.textContent = 'تعديل منتج';
+        modal.classList.remove('hidden');
+        // انتظر تحميل التصنيفات أولاً ثم حمّل بيانات المنتج
+        populateCategorySelects().then(() => loadProductForEdit(productId));
     } else {
         if (title) title.textContent = 'إضافة منتج جديد';
+        modal.classList.remove('hidden');
+        populateCategorySelects();
     }
-
-    modal.classList.remove('hidden');
 }
 
 async function loadProductForEdit(productId) {
@@ -1029,23 +1031,67 @@ async function populateCategorySelects() {
     try {
         const categories = await API.getCategories();
         
-        // Product categories container
+        // Product categories container — hierarchical
         const container = document.getElementById('product-categories');
         if (container) {
-            container.innerHTML = categories.map(cat => `
-                <label class="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 px-2 rounded">
-                    <input type="checkbox" value="${cat.id}" class="category-checkbox w-4 h-4 text-antika-pink rounded accent-antika-pink">
-                    <span>${cat.icon || '📦'} ${safeText(cat.name)}</span>
-                </label>
-            `).join('');
+            const mainCats = categories.filter(c => !c.parentId);
+            const subCats  = categories.filter(c =>  c.parentId);
+
+            if (mainCats.length === 0) {
+                container.innerHTML = categories.map(cat => `
+                    <label class="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 px-2 rounded">
+                        <input type="checkbox" value="${cat.id}" class="category-checkbox w-4 h-4 accent-antika-pink rounded">
+                        <span>${cat.icon || '📦'} ${safeText(cat.name)}</span>
+                    </label>
+                `).join('');
+            } else {
+                container.innerHTML = mainCats.map(main => {
+                    const children = subCats.filter(s => s.parentId === main.id);
+                    return '<div class="mb-2">'
+                        + '<div class="flex items-center gap-1 text-xs font-bold text-gray-500 uppercase tracking-wide py-1 px-1 select-none">'
+                        + '<span>' + (main.icon || '📦') + '</span>'
+                        + '<span>' + safeText(main.name) + '</span>'
+                        + '</div>'
+                        + (children.length > 0
+                            ? children.map(sub =>
+                                '<label class="flex items-center gap-2 py-1 pr-4 cursor-pointer hover:bg-gray-50 rounded">'
+                                + '<input type="checkbox" value="' + sub.id + '" class="category-checkbox w-4 h-4 accent-pink-400 rounded">'
+                                + '<span class="text-sm">' + (sub.icon || '') + ' ' + safeText(sub.name) + '</span>'
+                                + '</label>'
+                              ).join('')
+                            : '<label class="flex items-center gap-2 py-1 pr-4 cursor-pointer hover:bg-gray-50 rounded">'
+                              + '<input type="checkbox" value="' + main.id + '" class="category-checkbox w-4 h-4 accent-pink-400 rounded">'
+                              + '<span class="text-sm">' + safeText(main.name) + '</span>'
+                              + '</label>'
+                          )
+                        + '</div>';
+                }).join('');
+            }
         }
         
-        // Category filter
+        // Category filter dropdown
         const filter = document.getElementById('product-category-filter');
         if (filter) {
             const currentValue = filter.value;
-            filter.innerHTML = '<option value="">جميع التصنيفات</option>' + 
-                categories.map(cat => `<option value="${cat.id}">${safeText(cat.name)}</option>`).join('');
+            const mainCats = categories.filter(c => !c.parentId);
+            const subCats  = categories.filter(c =>  c.parentId);
+            let options = '<option value="">جميع التصنيفات</option>';
+            if (mainCats.length > 0) {
+                mainCats.forEach(main => {
+                    const children = subCats.filter(s => s.parentId === main.id);
+                    options += '<option value="' + main.id + '" disabled style="font-weight:bold;color:#888;">— ' + safeText(main.name) + '</option>';
+                    if (children.length > 0) {
+                        children.forEach(sub => {
+                            options += '<option value="' + sub.id + '">　' + (sub.icon || '') + ' ' + safeText(sub.name) + '</option>';
+                        });
+                    } else {
+                        options += '<option value="' + main.id + '_sel">　' + (main.icon || '') + ' ' + safeText(main.name) + '</option>';
+                    }
+                });
+            } else {
+                options += categories.map(cat => '<option value="' + cat.id + '">' + safeText(cat.name) + '</option>').join('');
+            }
+            filter.innerHTML = options;
             filter.value = currentValue;
         }
     } catch (error) {
@@ -1861,6 +1907,3 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(statsSection, { attributes: true, attributeFilter: ['class'] });
     }
 });
-
-
-
