@@ -368,18 +368,34 @@
 
         async function loadContent() {
             try {
-                const res = await fetch('http://localhost:3000/api/pages');
+                const res = await fetch('/api/pages');
                 const pages = await res.json();
-                const data = pages[page] || defaultPages[page];
-                document.getElementById('pageTitle').textContent = data.title;
-                document.getElementById('pageContent').innerHTML = data.content;
-                document.title = data.title + ' - انتيكا استور';
+                const data = pages[page];
+
+                if (data && data.title && data.content) {
+                    // محتوى من قاعدة البيانات
+                    document.getElementById('pageTitle').textContent = data.title;
+                    // نحوّل السطور الجديدة لـ <br> إذا كان النص عادي (بدون HTML)
+                    const isHtml = /<[a-z][\s\S]*>/i.test(data.content);
+                    document.getElementById('pageContent').innerHTML = isHtml
+                        ? data.content
+                        : '<h2>' + data.title + '</h2><div style="white-space:pre-wrap;line-height:1.9;color:#4B5563;">' + data.content + '</div>';
+                    document.title = data.title + ' - انتيكا استور';
+                } else {
+                    // fallback للمحتوى الافتراضي
+                    showDefault();
+                }
             } catch {
-                const data = defaultPages[page];
-                document.getElementById('pageTitle').textContent = data.title;
-                document.getElementById('pageContent').innerHTML = data.content;
-                document.title = data.title + ' - انتيكا استور';
+                showDefault();
             }
+        }
+
+        function showDefault() {
+            const data = defaultPages[page];
+            if (!data) return;
+            document.getElementById('pageTitle').textContent = data.title;
+            document.getElementById('pageContent').innerHTML = data.content;
+            document.title = data.title + ' - انتيكا استور';
         }
 
         loadContent();
