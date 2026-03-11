@@ -474,11 +474,15 @@
             renderProducts(filtered);
         }
 
-        function applyPageMode(isOffersView) {
+        function applyPageMode(isOffersView, searchQuery) {
             const heading = document.getElementById('page-heading-label');
             const breadcrumb = document.getElementById('page-breadcrumb-label');
 
-            if (isOffersView) {
+            if (searchQuery) {
+                if (heading) heading.textContent = 'نتائج البحث عن: ' + searchQuery;
+                if (breadcrumb) breadcrumb.textContent = 'البحث';
+                document.title = 'البحث عن ' + searchQuery + ' | أنتيكا ستور';
+            } else if (isOffersView) {
                 if (heading) heading.textContent = 'العروض';
                 if (breadcrumb) breadcrumb.textContent = 'العروض';
                 document.title = 'العروض | أنتيكا ستور';
@@ -496,7 +500,7 @@
                 const search = urlParams.get('search');
                 const isOffersView = urlParams.get('discount') === 'true';
 
-                applyPageMode(isOffersView);
+                applyPageMode(isOffersView, search);
 
                 const products = await API.getProducts(
                     null,
@@ -517,10 +521,25 @@
             if (!container) return;
 
             const label = document.getElementById('products-count-label');
-            if (label) label.textContent = products.length > 0 ? `${products.length} منتج` : '';
+            if (label) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const searchQ = urlParams.get('search');
+                if (searchQ && products.length > 0) {
+                    label.textContent = `${products.length} نتيجة`;
+                } else if (products.length > 0) {
+                    label.textContent = `${products.length} منتج`;
+                } else {
+                    label.textContent = '';
+                }
+            }
 
             if (products.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 col-span-full text-center py-12">لا توجد منتجات في هذا التصنيف</p>';
+                const urlParams = new URLSearchParams(window.location.search);
+                const searchQ = urlParams.get('search');
+                const emptyMsg = searchQ
+                    ? `<div class="col-span-full text-center py-16"><div class="text-5xl mb-4">🔍</div><p class="text-gray-500 text-lg">لا توجد نتائج لـ "<strong>${searchQ}</strong>"</p><p class="text-gray-400 text-sm mt-2">جرّب كلمة مختلفة أو تصفّح <a href="products.html" class="text-antika-gold underline">جميع المنتجات</a></p></div>`
+                    : '<p class="text-gray-500 col-span-full text-center py-12">لا توجد منتجات في هذا التصنيف</p>';
+                container.innerHTML = emptyMsg;
                 return;
             }
 

@@ -567,32 +567,58 @@ function renderSearchResults(products){
     if (!container) return;
     container.innerHTML = '';
     if (!products || products.length === 0){
-        container.innerHTML = '<p class="text-gray-500 p-4">لا توجد نتائج</p>';
+        container.innerHTML = '<p class="text-gray-500 p-4 text-center text-sm">لا توجد نتائج</p>';
         return;
     }
+
+    // Header: عدد النتائج + رابط عرض الكل
+    const input = document.getElementById('search-modal-input');
+    const q = input ? encodeURIComponent(input.value.trim()) : '';
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #f0f0f0;background:#fafafa;border-radius:10px 10px 0 0;';
+    header.innerHTML = '<span style="font-size:12px;color:#999;">' + products.length + ' نتيجة</span>'
+        + '<a href="products.html?search=' + q + '" style="font-size:12px;color:#D6C1A6;font-weight:bold;text-decoration:none;">عرض الكل ←</a>';
+    container.appendChild(header);
+
     products.forEach(p=>{
         const id = p._id || p.id || p.guid || '';
         const item = document.createElement('div');
-        item.className = 'search-result-item flex items-center gap-4 p-3 border-b hover:bg-gray-50 cursor-pointer flex-row-reverse';
+        item.className = 'search-result-item';
+        item.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid #f5f5f5;cursor:pointer;transition:background 0.15s;flex-direction:row-reverse;';
+        item.onmouseenter = () => item.style.background = '#fdf8f4';
+        item.onmouseleave = () => item.style.background = '';
         item.onclick = () => { window.location.href = 'product.html?id=' + encodeURIComponent(id); };
 
+        // Image
+        const imgWrap = document.createElement('div');
+        imgWrap.style.cssText = 'width:64px;height:64px;border-radius:10px;overflow:hidden;flex-shrink:0;background:#f5f5f5;';
         const img = document.createElement('img');
         img.src = (p.image || (p.images && p.images[0]) || 'images/default-product.jpg');
-        img.className = 'object-cover rounded';
-        img.style.width = '72px'; img.style.height = '52px';
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+        img.onerror = () => { img.src = 'images/default-product.jpg'; };
+        imgWrap.appendChild(img);
 
+        // Info
         const info = document.createElement('div');
-        info.style.flex = '1';
-        // Price + discount handling
+        info.style.cssText = 'flex:1;min-width:0;text-align:right;';
+
+        const name = document.createElement('div');
+        name.style.cssText = 'font-weight:600;color:#333;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;';
+        name.textContent = p.name || p.title || '';
+
         let priceHtml = '';
         if (p.discountPrice && Number(p.discountPrice) < Number(p.price)){
-            priceHtml = `<div class="text-sm text-gray-500"><span class="text-antika-gold font-semibold ml-2">${p.discountPrice} ر.س</span><span class="line-through text-gray-300 mr-2">${p.price} ر.س</span></div>`;
+            priceHtml = '<span style="color:#D6C1A6;font-weight:bold;font-size:13px;margin-left:6px;">' + Number(p.discountPrice).toFixed(0) + ' ر.س</span>'
+                      + '<span style="color:#ccc;font-size:11px;text-decoration:line-through;">' + Number(p.price).toFixed(0) + ' ر.س</span>';
         } else if (p.price){
-            priceHtml = `<div class="text-sm text-gray-500">${p.price} ر.س</div>`;
+            priceHtml = '<span style="color:#D6C1A6;font-weight:bold;font-size:13px;">' + Number(p.price).toFixed(0) + ' ر.س</span>';
         }
-        info.innerHTML = `<div class="font-semibold text-gray-800">${p.name || p.title || ''}</div>${priceHtml}`;
+        const price = document.createElement('div');
+        price.innerHTML = priceHtml;
 
-        item.appendChild(img);
+        info.appendChild(name);
+        info.appendChild(price);
+        item.appendChild(imgWrap);
         item.appendChild(info);
         container.appendChild(item);
     });
