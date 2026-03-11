@@ -1245,7 +1245,7 @@
 
     async function loadCoupons() {
         try {
-            const token = localStorage.getItem('admin_token') || localStorage.getItem('antika_token');
+            const token = localStorage.getItem('antika_admin_token');
             const res = await fetch('/api/coupons', { headers: { 'Authorization': 'Bearer ' + token } });
             couponsData = await res.json();
             renderCouponsTable(couponsData);
@@ -1380,7 +1380,7 @@
         };
 
         try {
-            const token = localStorage.getItem('admin_token') || localStorage.getItem('antika_token');
+            const token = localStorage.getItem('antika_admin_token');
             const url    = editingCouponId ? '/api/coupons/' + editingCouponId : '/api/coupons';
             const method = editingCouponId ? 'PUT' : 'POST';
             const res = await fetch(url, {
@@ -1400,7 +1400,7 @@
     async function deleteCoupon(id) {
         if (!confirm('هل أنت متأكد من حذف هذا الكوبون؟')) return;
         try {
-            const token = localStorage.getItem('admin_token') || localStorage.getItem('antika_token');
+            const token = localStorage.getItem('antika_admin_token');
             await fetch('/api/coupons/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
             loadCoupons();
             if (typeof showAdminNotif === 'function') showAdminNotif('تم الحذف', 'success');
@@ -1409,7 +1409,7 @@
 
     async function toggleCouponActive(id, newState) {
         try {
-            const token = localStorage.getItem('admin_token') || localStorage.getItem('antika_token');
+            const token = localStorage.getItem('antika_admin_token');
             await fetch('/api/coupons/' + id, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                 body: JSON.stringify({ active: newState })
