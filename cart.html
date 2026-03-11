@@ -778,10 +778,7 @@
             }
 
             // Get current subtotal for min-order validation
-            const subtotal = checkoutItems.reduce((s, item) => {
-                const price = Number(item.discountPrice || item.price || 0);
-                return s + price * (item.quantity || 1);
-            }, 0);
+            const subtotal = Number(cartTotal || 0);
 
             if (btn) { btn.disabled = true; btn.textContent = '...'; }
             status.textContent = 'جاري التحقق...';
