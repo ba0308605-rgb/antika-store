@@ -8,11 +8,13 @@ class AntikaHeader extends HTMLElement {
     }
 
     connectedCallback() {
-        this.innerHTML = this.getTemplate();
-        this.initEventListeners();
-        this.loadCategories();
-        this.checkAuth();
-    }
+    if (this._initialized) return;
+    this._initialized = true;
+    this.innerHTML = this.getTemplate();
+    this.initEventListeners();
+    this.loadCategories();
+    this.checkAuth();
+}
 
     getTemplate() {
         return `
