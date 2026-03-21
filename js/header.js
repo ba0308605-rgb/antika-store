@@ -387,7 +387,7 @@ class AntikaHeader extends HTMLElement {
                     + '<span class="font-semibold">' + cat.name + '</span>'
                     + '</div>'
                     + (hasChildren
-                        ? '<i class="fas fa-chevron-left text-gray-400 text-xs transition-transform duration-200" id="chevron-' + cat.id + '"></i>'
+                        ? '<i class="fas fa-chevron-down text-gray-400 text-xs transition-transform duration-200" id="chevron-' + cat.id + '"></i>'
                         : '<a href="products.html?category=' + cat.id + '" onclick="event.stopPropagation();toggleMenu()" class="text-xs text-antika-gold">عرض</a>')
                     + '</div>'
                     + (hasChildren
@@ -489,8 +489,7 @@ function toggleMobileCatSubs(subsId, headerEl) {
         subs.classList.remove('hidden');
         const catId = subsId.replace('subs-', '');
         const chevron = document.getElementById('chevron-' + catId);
-        if (chevron) chevron.style.transform = 'rotate(-90deg)';
-    }
+if (chevron) chevron.style.transform = 'rotate(180deg)';    }
 }
 
 // Toggle Mobile Menu
