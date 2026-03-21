@@ -352,10 +352,11 @@ class AntikaHeader extends HTMLElement {
     }
 
     async loadCategories() {
-        try {
-            const categories = await API.getCategories();
-            const container = document.getElementById('mobile-categories');
-            if (!container) return;
+    try {
+        const container = document.getElementById('mobile-categories');
+        if (!container) return;
+        if (container.children.length > 0) return;
+        const categories = await API.getCategories();
 
             if (!categories || categories.length === 0) {
                 container.innerHTML = '<p class="text-gray-400 text-sm">لا توجد تصنيفات</p>';
