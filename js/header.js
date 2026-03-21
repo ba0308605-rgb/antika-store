@@ -347,10 +347,13 @@ class AntikaHeader extends HTMLElement {
             }
         });
         
-        // 🔄 Periodic check every 2 seconds
+        // 🔄 Periodic check every 5 seconds (only if menu is closed)
         setInterval(() => {
-            this.checkAuth();
-        }, 2000);
+            const menu = document.getElementById('mobile-menu');
+            if (!menu || !menu.classList.contains('open')) {
+                this.checkAuth();
+            }
+        }, 5000);
     }
 
     async loadCategories() {
