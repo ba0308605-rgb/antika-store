@@ -2033,7 +2033,7 @@ app.delete('/api/users/:email/location', async (req, res) => {
 app.get('/api/banners', async (req, res) => {
   try {
     if (!requireMongo(res, 'Banners fetch')) return;
-    const bannerKeys = ['banner_hero', 'banner_1', 'banner_2', 'banner_3'];
+    const bannerKeys = ['banner_hero', 'banner_2', 'banner_3', 'banner_4'];
     const records = await Settings.find({ key: { $in: bannerKeys } });
     const result = {};
     bannerKeys.forEach(k => { result[k] = { image: '', height: 400, active: true }; });
