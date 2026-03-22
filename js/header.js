@@ -360,8 +360,11 @@ class AntikaHeader extends HTMLElement {
     try {
         const container = document.getElementById('mobile-categories');
         if (!container) return;
-        if (container.dataset.loaded === '1') return;
-        container.dataset.loaded = '1';
+        // Use cached HTML if already built
+        if (window._antikaCatsHTML) {
+            container.innerHTML = window._antikaCatsHTML;
+            return;
+        }
         const categories = await API.getCategories();
 
             if (!categories || categories.length === 0) {
@@ -383,7 +386,7 @@ class AntikaHeader extends HTMLElement {
                 return;
             }
 
-            container.innerHTML = mainCats.map(cat => {
+            const built = mainCats.map(cat => {
                 const children = subCats.filter(s => s.parentId === cat.id);
                 const hasChildren = children.length > 0;
                 return '<div class="mobile-cat-group border-b border-gray-100">'
@@ -410,6 +413,8 @@ class AntikaHeader extends HTMLElement {
                         : '')
                     + '</div>';
             }).join('');
+            container.innerHTML = built;
+            window._antikaCatsHTML = built;
 
         } catch (error) {
             console.error('Error loading categories:', error);
