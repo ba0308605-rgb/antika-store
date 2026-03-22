@@ -925,23 +925,7 @@
             `;
         }
 
-        // Load categories for mobile menu
-        async function loadCategories() {
-            try {
-                const categories = await API.getCategories();
-                const container = document.getElementById('mobile-categories');
-                if (container && categories.length > 0) {
-                    container.innerHTML = categories.map(cat => `
-                        <a href="products.html?category=${cat.id}" class="flex items-center gap-3 py-2 text-gray-700 hover:text-antika-pink transition" onclick="toggleMenu()">
-                            <span class="text-xl">${cat.icon || '📦'}</span>
-                            <span>${cat.name}</span>
-                        </a>
-                    `).join('');
-                }
-            } catch (error) {
-                console.error('Error loading categories:', error);
-            }
-        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', async function() {
             // Check if user is logged in
@@ -953,7 +937,6 @@
             }
             
             await loadAnnouncingText();
-            await loadCategories();
             await loadCart();
             await updateCartCount();
             checkLoginStatus();
