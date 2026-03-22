@@ -2025,6 +2025,41 @@ app.delete('/api/users/:email/location', async (req, res) => {
   }
 });
 
+// ============================================
+// BANNERS API
+// ============================================
+
+// Get all banners
+app.get('/api/banners', async (req, res) => {
+  try {
+    if (!requireMongo(res, 'Banners fetch')) return;
+    const bannerKeys = ['banner_hero', 'banner_1', 'banner_2', 'banner_3'];
+    const records = await Settings.find({ key: { $in: bannerKeys } });
+    const result = {};
+    bannerKeys.forEach(k => { result[k] = { image: '', height: 400, active: true }; });
+    records.forEach(r => { result[r.key] = r.value; });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update a banner (admin only)
+app.put('/api/banners/:key', requireAdmin, async (req, res) => {
+  try {
+    if (!requireMongo(res, 'Banner update')) return;
+    const { key } = req.params;
+    const allowed = ['banner_hero', 'banner_1', 'banner_2', 'banner_3'];
+    if (!allowed.includes(key)) return res.status(400).json({ error: 'Invalid banner key' });
+    const { image, height, active } = req.body;
+    const value = { image: image || '', height: height || 400, active: active !== false };
+    await Settings.findOneAndUpdate({ key }, { key, value }, { upsert: true });
+    res.json({ success: true, banner: value });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get footer pages
 app.get('/api/pages', async (req, res) => {
   try {

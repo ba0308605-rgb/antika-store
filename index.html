@@ -360,62 +360,10 @@
     <!-- Unified Header Component -->
     <antika-header></antika-header>
 
-    <!-- Banner Slider -->
+    <!-- Banner الرئيسي -->
     <section class="container mx-auto px-4 py-8">
-        <div class="banner-slider relative h-[400px] md:h-[500px]">
-            <!-- Slide 1 -->
-            <div class="banner-slide active h-full">
-                <div class="relative h-full rounded-3xl overflow-hidden bg-gradient-to-br from-antika-gold/20 to-antika-pink/20">
-                    <div class="absolute inset-0 opacity-30">
-                        <div class="absolute top-10 left-10 w-32 h-32 bg-antika-pink rounded-full blur-3xl"></div>
-                        <div class="absolute bottom-10 right-10 w-40 h-40 bg-antika-gold rounded-full blur-3xl"></div>
-                    </div>
-                    <div class="relative h-full flex items-center">
-                        <div class="w-full md:w-1/2 h-full relative">
-                            <img src="https://images.pexels.com/photos/1090638/pexels-photo-1090638.jpeg?auto=compress&cs=tinysrgb&w=800" 
-                                 alt="Furniture" 
-                                 class="w-full h-full object-cover md:rounded-r-3xl">
-                        </div>
-                        <div class="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center text-right">
-                            <span class="inline-block bg-antika-pink text-white px-4 py-1 rounded-full text-sm font-semibold mb-4 w-fit">تشكيلة جديدة 2025</span>
-                            <h2 class="text-3xl md:text-5xl font-bold mb-4 leading-tight text-gray-800">أضف لمسة من الأناقة إلى منزلك</h2>
-                            <p class="text-lg mb-6 text-gray-600">مع تشكيلتنا الفريدة من الديكور والأثاث والشموع العطرية</p>
-                            <div class="flex gap-4 justify-end">
-                                <a href="products.html" class="bg-antika-gold text-white px-8 py-3 rounded-full font-bold hover:bg-antika-gold-dark transition">تسوق الآن</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Slide 2 -->
-            <div class="banner-slide h-full">
-                <div class="relative h-full rounded-3xl overflow-hidden bg-gradient-to-bl from-antika-pink/20 to-antika-gold/20">
-                    <div class="absolute inset-0 opacity-30">
-                        <div class="absolute top-20 right-20 w-32 h-32 bg-antika-gold rounded-full blur-3xl"></div>
-                        <div class="absolute bottom-20 left-20 w-40 h-40 bg-antika-pink rounded-full blur-3xl"></div>
-                    </div>
-                    <div class="relative h-full flex items-center">
-                        <div class="w-full md:w-1/2 h-full relative">
-                            <img src="https://images.pexels.com/photos/1571459/pexels-photo-1571459.jpeg?auto=compress&cs=tinysrgb&w=800" 
-                                 alt="Decor" 
-                                 class="w-full h-full object-cover md:rounded-r-3xl">
-                        </div>
-                        <div class="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center text-right">
-                            <span class="inline-block bg-antika-gold text-white px-4 py-1 rounded-full text-sm font-semibold mb-4 w-fit">خصم 30%</span>
-                            <h2 class="text-3xl md:text-5xl font-bold mb-4 leading-tight text-gray-800">تحف وانتيكات مختارة بعناية</h2>
-                            <p class="text-lg mb-6 text-gray-600">لأن التفاصيل تصنع روح المكان</p>
-                            <a href="products.html" class="bg-antika-gold text-white px-8 py-3 rounded-full font-bold hover:bg-antika-gold-dark transition w-fit">اكتشف المزيد</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Dots -->
-            <div class="banner-dots">
-                <div class="banner-dot active" onclick="goToSlide(0)"></div>
-                <div class="banner-dot" onclick="goToSlide(1)"></div>
-            </div>
+        <div id="banner-hero" class="w-full rounded-3xl overflow-hidden bg-gradient-to-br from-antika-gold/20 to-antika-pink/20 flex items-center justify-center" style="height:400px">
+            <span class="text-gray-400 text-lg">جاري تحميل البنر...</span>
         </div>
     </section>
 
@@ -435,9 +383,8 @@
     <section class="pb-8 bg-white">
         <div class="container mx-auto px-4">
             <a href="products.html" class="block w-full">
-                <div id="ad-banner-1" class="w-full h-[200px] md:h-[280px] rounded-2xl shadow-lg hover:shadow-xl transition overflow-hidden relative bg-gradient-to-r from-antika-gold to-antika-gold-dark flex items-center justify-center">
-                    <span class="text-white text-2xl md:text-4xl font-bold">📢 مساحة إعلانية 1</span>
-                    <p class="absolute bottom-4 text-white/80 text-sm">احمل صورة باسم ad-banner-1.jpg في مجلد images</p>
+                <div id="ad-banner-1" class="w-full rounded-2xl overflow-hidden bg-gradient-to-r from-antika-gold to-antika-gold-dark flex items-center justify-center" style="height:200px">
+                    <span class="text-white/50 text-lg">بنر 1</span>
                 </div>
             </a>
         </div>
@@ -464,9 +411,8 @@
     <section class="pb-8 bg-gray-50">
         <div class="container mx-auto px-4">
             <a href="products.html" class="block w-full">
-                <div id="ad-banner-2" class="w-full h-[200px] md:h-[280px] rounded-2xl shadow-lg hover:shadow-xl transition overflow-hidden relative bg-gradient-to-r from-antika-pink to-antika-pink-dark flex items-center justify-center">
-                    <span class="text-white text-2xl md:text-4xl font-bold">🔥 مساحة إعلانية 2</span>
-                    <p class="absolute bottom-4 text-white/80 text-sm">احمل صورة باسم ad-banner-2.jpg في مجلد images</p>
+                <div id="ad-banner-2" class="w-full rounded-2xl overflow-hidden bg-gradient-to-r from-antika-pink to-antika-pink-dark flex items-center justify-center" style="height:200px">
+                    <span class="text-white/50 text-lg">بنر 2</span>
                 </div>
             </a>
         </div>
@@ -488,9 +434,8 @@
     <section class="pb-16 bg-white">
         <div class="container mx-auto px-4">
             <a href="products.html" class="block w-full">
-                <div id="ad-banner-3" class="w-full h-[200px] md:h-[280px] rounded-2xl shadow-lg hover:shadow-xl transition overflow-hidden relative bg-gradient-to-r from-orange-400 to-orange-600 flex items-center justify-center">
-                    <span class="text-white text-2xl md:text-4xl font-bold">✨ مساحة إعلانية 3</span>
-                    <p class="absolute bottom-4 text-white/80 text-sm">احمل صورة باسم ad-banner-3.jpg في مجلد images</p>
+                <div id="ad-banner-3" class="w-full rounded-2xl overflow-hidden bg-gradient-to-r from-orange-400 to-orange-600 flex items-center justify-center" style="height:200px">
+                    <span class="text-white/50 text-lg">بنر 3</span>
                 </div>
             </a>
         </div>
@@ -602,7 +547,39 @@
         }
 
         // Load categories on page load
-        document.addEventListener('DOMContentLoaded', loadCategories);
+        document.addEventListener('DOMContentLoaded', async () => {
+            loadCategories();
+            loadBanners();
+        });
+
+        async function loadBanners() {
+            try {
+                const res = await fetch('/api/banners');
+                const banners = await res.json();
+
+                const map = {
+                    banner_hero: 'banner-hero',
+                    banner_1: 'ad-banner-1',
+                    banner_2: 'ad-banner-2',
+                    banner_3: 'ad-banner-3'
+                };
+
+                Object.entries(map).forEach(([key, elId]) => {
+                    const b = banners[key];
+                    const el = document.getElementById(elId);
+                    if (!el || !b) return;
+                    el.style.height = (b.height || 400) + 'px';
+                    if (b.image) {
+                        el.innerHTML = '';
+                        el.style.backgroundImage = `url('${b.image}')`;
+                        el.style.backgroundSize = 'cover';
+                        el.style.backgroundPosition = 'center';
+                    }
+                });
+            } catch(e) {
+                console.error('Error loading banners:', e);
+            }
+        }
     </script>
     <script src="js/header.js"></script>
     <script src="js/auth-sync.js"></script>
