@@ -347,24 +347,17 @@ class AntikaHeader extends HTMLElement {
             }
         });
         
-        // 🔄 Periodic check every 5 seconds (only if menu is closed)
+        // 🔄 Periodic check every 2 seconds
         setInterval(() => {
-            const menu = document.getElementById('mobile-menu');
-            if (!menu || !menu.classList.contains('open')) {
-                this.checkAuth();
-            }
-        }, 5000);
+            this.checkAuth();
+        }, 2000);
     }
 
     async loadCategories() {
     try {
         const container = document.getElementById('mobile-categories');
         if (!container) return;
-        // Use cached HTML if already built
-        if (window._antikaCatsHTML) {
-            container.innerHTML = window._antikaCatsHTML;
-            return;
-        }
+        if (container.children.length > 0) return;
         const categories = await API.getCategories();
 
             if (!categories || categories.length === 0) {
@@ -386,7 +379,7 @@ class AntikaHeader extends HTMLElement {
                 return;
             }
 
-            const built = mainCats.map(cat => {
+            container.innerHTML = mainCats.map(cat => {
                 const children = subCats.filter(s => s.parentId === cat.id);
                 const hasChildren = children.length > 0;
                 return '<div class="mobile-cat-group border-b border-gray-100">'
@@ -398,7 +391,7 @@ class AntikaHeader extends HTMLElement {
                     + '</div>'
                     + (hasChildren
                         ? '<i class="fas fa-chevron-down text-gray-400 text-xs transition-transform duration-200" id="chevron-' + cat.id + '"></i>'
-                        : '<a href="products.html?category=' + cat.id + '" onclick="event.stopPropagation();toggleMenu()" class="text-xs text-antika-gold">عرض</a>')
+                        : '<a href="products.html?category=' + cat.id + '" onclick="event.stopPropagation();toggleMenu()" class="text-xs text-gray-400 hover:text-antika-gold">عرض</a>')
                     + '</div>'
                     + (hasChildren
                         ? '<div id="subs-' + cat.id + '" class="hidden pb-2 space-y-1 pr-6 border-r-2 border-antika-gold mr-4">'
@@ -413,8 +406,6 @@ class AntikaHeader extends HTMLElement {
                         : '')
                     + '</div>';
             }).join('');
-            container.innerHTML = built;
-            window._antikaCatsHTML = built;
 
         } catch (error) {
             console.error('Error loading categories:', error);
