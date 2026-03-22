@@ -568,33 +568,16 @@
             document.getElementById('menu-overlay').classList.toggle('open');
         }
 
-        // Load categories for mobile menu (uses API client with fallback)
-        async function loadCategories() {
+        // Load categories grid (الصفحة الرئيسية)
+        async function loadCategoriesGrid() {
             try {
                 const categories = await API.getCategories();
-                
-                // Load mobile menu categories
-                const mobileContainer = document.getElementById('mobile-categories');
-                if (mobileContainer) {
-                    if (!categories || categories.length === 0) {
-                        mobileContainer.innerHTML = '<p class="text-gray-400 text-sm">لا توجد تصنيفات</p>';
-                    } else {
-                        mobileContainer.innerHTML = categories.map(cat => `
-                            <a href="products.html?category=${cat.id}" class="flex items-center gap-3 py-2 text-gray-700 hover:text-antika-pink transition" onclick="toggleMenu()">
-                                <span class="text-xl">${cat.icon || '📦'}</span>
-                                <span>${cat.name}</span>
-                            </a>
-                        `).join('');
-                    }
-                }
-
-                // Load categories grid (الصفحة الرئيسية)
                 const gridContainer = document.getElementById('categories-grid');
                 if (gridContainer) {
                     if (!categories || categories.length === 0) {
                         gridContainer.innerHTML = '<p class="text-gray-500 col-span-full text-center">لا توجد تصنيفات</p>';
                     } else {
-                        gridContainer.innerHTML = categories.map(cat => `
+                        gridContainer.innerHTML = categories.filter(c => !c.parentId).map(cat => `
                             <a href="products.html?category=${cat.id}" class="group">
                                 <div class="bg-antika-lavender rounded-2xl p-6 text-center hover:shadow-xl transition transform hover:-translate-y-2 border-2 border-transparent hover:border-antika-pink">
                                     <div class="text-5xl mb-4 group-hover:scale-110 transition">${cat.icon || '📦'}</div>
@@ -606,16 +589,12 @@
                     }
                 }
             } catch (error) {
-                console.error('Error loading categories:', error);
-                const mobileContainer = document.getElementById('mobile-categories');
-                if (mobileContainer) mobileContainer.innerHTML = '<p class="text-gray-400 text-sm">خطأ في تحميل التصنيفات</p>';
-                const gridContainer = document.getElementById('categories-grid');
-                if (gridContainer) gridContainer.innerHTML = '<p class="text-gray-500 col-span-full text-center">خطأ في تحميل التصنيفات</p>';
+                console.error('Error loading categories grid:', error);
             }
         }
 
-        // Load categories on page load
-        document.addEventListener('DOMContentLoaded', loadCategories);
+        // Load categories grid on page load
+        document.addEventListener('DOMContentLoaded', loadCategoriesGrid);
     </script>
     <script src="js/header.js"></script>
     <script src="js/auth-sync.js"></script>
