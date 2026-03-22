@@ -46,7 +46,7 @@
         body { font-family: 'Tajawal', sans-serif; }
 
         /* Force Ad Banners to always show - إجبار الإعلانات على الظهور دائماً */
-        #banner-hero, #ad-banner-1, #ad-banner-2, #ad-banner-3 {
+        #banner-hero, #ad-banner-2, #ad-banner-3, #ad-banner-4 {
             display: flex !important;
             visibility: visible !important;
             opacity: 1 !important;
@@ -379,11 +379,11 @@
         </div>
     </section>
 
-    <!-- Ad Banner 1 - Below Categories -->
-    <section class="pb-8 bg-white">
+    <!-- Ad Banner 2 - Between Categories and Featured -->
+    <section id="banner-2-section" class="pb-8 bg-white">
         <div class="container mx-auto px-4">
             <a href="products.html" class="block w-full">
-                <div id="ad-banner-1" class="w-full rounded-2xl overflow-hidden relative flex flex-col items-center justify-center gap-2" style="height:200px; background: linear-gradient(135deg, #D6C1A6 0%, #C4AC8E 100%);">
+                <div id="ad-banner-2" class="w-full rounded-2xl overflow-hidden relative flex flex-col items-center justify-center gap-2" style="height:200px; background: linear-gradient(135deg, #D6C1A6 0%, #C4AC8E 100%);">
                     <span class="banner-placeholder text-white/60 text-6xl">🖼️</span>
                     <span class="banner-placeholder text-white/60 text-sm font-semibold">بنر إعلاني</span>
                 </div>
@@ -408,11 +408,11 @@
         </div>
     </section>
 
-    <!-- Ad Banner 2 - Below Featured Products -->
-    <section class="pb-8 bg-gray-50">
+    <!-- Ad Banner 3 - Below Featured Products -->
+    <section id="banner-3-section" class="pb-8 bg-gray-50">
         <div class="container mx-auto px-4">
             <a href="products.html" class="block w-full">
-                <div id="ad-banner-2" class="w-full rounded-2xl overflow-hidden relative flex flex-col items-center justify-center gap-2" style="height:200px; background: linear-gradient(135deg, #FFB6C1 0%, #FF69B4 100%);">
+                <div id="ad-banner-3" class="w-full rounded-2xl overflow-hidden relative flex flex-col items-center justify-center gap-2" style="height:200px; background: linear-gradient(135deg, #FFB6C1 0%, #FF69B4 100%);">
                     <span class="banner-placeholder text-white/60 text-6xl">🖼️</span>
                     <span class="banner-placeholder text-white/60 text-sm font-semibold">بنر إعلاني</span>
                 </div>
@@ -432,11 +432,11 @@
         </div>
     </section>
 
-    <!-- Ad Banner 3 - Below New Arrivals -->
-    <section class="pb-16 bg-white">
+    <!-- Ad Banner 4 - Below New Arrivals -->
+    <section id="banner-4-section" class="pb-16 bg-white">
         <div class="container mx-auto px-4">
             <a href="products.html" class="block w-full">
-                <div id="ad-banner-3" class="w-full rounded-2xl overflow-hidden relative flex flex-col items-center justify-center gap-2" style="height:200px; background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);">
+                <div id="ad-banner-4" class="w-full rounded-2xl overflow-hidden relative flex flex-col items-center justify-center gap-2" style="height:200px; background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);">
                     <span class="banner-placeholder text-white/60 text-6xl">🖼️</span>
                     <span class="banner-placeholder text-white/60 text-sm font-semibold">بنر إعلاني</span>
                 </div>
@@ -561,16 +561,22 @@
 
             const map = {
                 banner_hero: 'banner-hero',
-                banner_1: 'ad-banner-1',
                 banner_2: 'ad-banner-2',
-                banner_3: 'ad-banner-3'
+                banner_3: 'ad-banner-3',
+                banner_4: 'ad-banner-4'
             };
 
             function applyBanners(banners) {
                 Object.entries(map).forEach(([key, elId]) => {
                     const b = banners[key];
                     const el = document.getElementById(elId);
-                    if (!el || !b || !b.image) return;
+                    if (!el) return;
+                    const section = el.closest('section');
+                    if (!b || !b.image) {
+                        if (section) section.style.display = 'none';
+                        return;
+                    }
+                    if (section) section.style.display = '';
                     el.style.height = (b.height || 400) + 'px';
                     el.querySelectorAll('.banner-placeholder').forEach(p => p.style.display = 'none');
                     el.style.backgroundImage = `url('${b.image}')`;

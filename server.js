@@ -2033,7 +2033,7 @@ app.delete('/api/users/:email/location', async (req, res) => {
 app.get('/api/banners', async (req, res) => {
   try {
     if (!requireMongo(res, 'Banners fetch')) return;
-    const bannerKeys = ['banner_hero', 'banner_1', 'banner_2', 'banner_3'];
+    const bannerKeys = ['banner_hero', 'banner_2', 'banner_3', 'banner_4'];
     const records = await Settings.find({ key: { $in: bannerKeys } });
     const result = {};
     bannerKeys.forEach(k => { result[k] = { image: '', height: 400, active: true }; });
@@ -2049,7 +2049,7 @@ app.put('/api/banners/:key', requireAdmin, async (req, res) => {
   try {
     if (!requireMongo(res, 'Banner update')) return;
     const { key } = req.params;
-    const allowed = ['banner_hero', 'banner_1', 'banner_2', 'banner_3'];
+    const allowed = ['banner_hero', 'banner_2', 'banner_3', 'banner_4'];
     if (!allowed.includes(key)) return res.status(400).json({ error: 'Invalid banner key' });
     const { image, height, active } = req.body;
     const value = { image: image || '', height: height || 400, active: active !== false };
