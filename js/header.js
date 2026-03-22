@@ -360,6 +360,8 @@ class AntikaHeader extends HTMLElement {
     try {
         const container = document.getElementById('mobile-categories');
         if (!container) return;
+        if (container.dataset.loaded === '1') return;
+        container.dataset.loaded = '1';
         const categories = await API.getCategories();
 
             if (!categories || categories.length === 0) {
@@ -367,7 +369,6 @@ class AntikaHeader extends HTMLElement {
                 return;
             }
 
-            console.log('📦 Categories from API:', JSON.stringify(categories.slice(0,3)));
             const mainCats = categories.filter(c => !c.parentId);
             const subCats  = categories.filter(c =>  c.parentId);
 
