@@ -1487,6 +1487,7 @@
                 body: JSON.stringify(body)
             });
             if (res.ok) {
+                localStorage.removeItem('antika_banners_cache');
                 if (typeof showAdminNotif === 'function') showAdminNotif('تم حفظ البنر ✅', 'success');
                 loadBanners();
             }

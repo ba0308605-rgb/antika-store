@@ -362,8 +362,8 @@
 
     <!-- Banner الرئيسي -->
     <section class="container mx-auto px-4 py-8">
-        <div id="banner-hero" class="w-full rounded-3xl overflow-hidden bg-gradient-to-br from-antika-gold/20 to-antika-pink/20 flex items-center justify-center" style="height:400px">
-            <span class="text-gray-400 text-lg">جاري تحميل البنر...</span>
+        <div id="banner-hero" class="w-full rounded-3xl overflow-hidden relative flex items-center justify-center" style="height:400px; background: linear-gradient(135deg, #f5ede3 0%, #fce4ec 100%);">
+            <span class="banner-placeholder text-gray-300 text-4xl">🖼️</span>
         </div>
     </section>
 
@@ -383,8 +383,8 @@
     <section class="pb-8 bg-white">
         <div class="container mx-auto px-4">
             <a href="products.html" class="block w-full">
-                <div id="ad-banner-1" class="w-full rounded-2xl overflow-hidden bg-gradient-to-r from-antika-gold to-antika-gold-dark flex items-center justify-center" style="height:200px">
-                    <span class="text-white/50 text-lg">بنر 1</span>
+                <div id="ad-banner-1" class="w-full rounded-2xl overflow-hidden relative flex items-center justify-center" style="height:200px; background: linear-gradient(135deg, #D6C1A6 0%, #C4AC8E 100%);">
+                    <span class="banner-placeholder text-white/40 text-3xl">🖼️</span>
                 </div>
             </a>
         </div>
@@ -411,8 +411,8 @@
     <section class="pb-8 bg-gray-50">
         <div class="container mx-auto px-4">
             <a href="products.html" class="block w-full">
-                <div id="ad-banner-2" class="w-full rounded-2xl overflow-hidden bg-gradient-to-r from-antika-pink to-antika-pink-dark flex items-center justify-center" style="height:200px">
-                    <span class="text-white/50 text-lg">بنر 2</span>
+                <div id="ad-banner-2" class="w-full rounded-2xl overflow-hidden relative flex items-center justify-center" style="height:200px; background: linear-gradient(135deg, #FFB6C1 0%, #FF69B4 100%);">
+                    <span class="banner-placeholder text-white/40 text-3xl">🖼️</span>
                 </div>
             </a>
         </div>
@@ -434,8 +434,8 @@
     <section class="pb-16 bg-white">
         <div class="container mx-auto px-4">
             <a href="products.html" class="block w-full">
-                <div id="ad-banner-3" class="w-full rounded-2xl overflow-hidden bg-gradient-to-r from-orange-400 to-orange-600 flex items-center justify-center" style="height:200px">
-                    <span class="text-white/50 text-lg">بنر 3</span>
+                <div id="ad-banner-3" class="w-full rounded-2xl overflow-hidden relative flex items-center justify-center" style="height:200px; background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);">
+                    <span class="banner-placeholder text-white/40 text-3xl">🖼️</span>
                 </div>
             </a>
         </div>
@@ -553,29 +553,46 @@
         });
 
         async function loadBanners() {
-            try {
-                const res = await fetch('/api/banners');
-                const banners = await res.json();
+            const CACHE_KEY = 'antika_banners_cache';
+            const CACHE_TTL = 5 * 60 * 1000; // 5 دقائق
 
-                const map = {
-                    banner_hero: 'banner-hero',
-                    banner_1: 'ad-banner-1',
-                    banner_2: 'ad-banner-2',
-                    banner_3: 'ad-banner-3'
-                };
+            const map = {
+                banner_hero: 'banner-hero',
+                banner_1: 'ad-banner-1',
+                banner_2: 'ad-banner-2',
+                banner_3: 'ad-banner-3'
+            };
 
+            function applyBanners(banners) {
                 Object.entries(map).forEach(([key, elId]) => {
                     const b = banners[key];
                     const el = document.getElementById(elId);
                     if (!el || !b) return;
                     el.style.height = (b.height || 400) + 'px';
                     if (b.image) {
-                        el.innerHTML = '';
+                        el.querySelector('.banner-placeholder') && (el.querySelector('.banner-placeholder').style.display = 'none');
                         el.style.backgroundImage = `url('${b.image}')`;
                         el.style.backgroundSize = 'cover';
                         el.style.backgroundPosition = 'center';
                     }
                 });
+            }
+
+            // اعرض من الـ Cache فوراً
+            try {
+                const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+                if (cached && Date.now() - cached.ts < CACHE_TTL) {
+                    applyBanners(cached.data);
+                    return;
+                }
+            } catch(e) {}
+
+            // جيب من السيرفر وحفظ في Cache
+            try {
+                const res = await fetch('/api/banners');
+                const banners = await res.json();
+                localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: banners }));
+                applyBanners(banners);
             } catch(e) {
                 console.error('Error loading banners:', e);
             }
