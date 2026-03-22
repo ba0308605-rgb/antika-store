@@ -2055,9 +2055,10 @@ app.put('/api/banners/:key', requireAdmin, async (req, res) => {
     // جيب الصورة القديمة إذا ما في صورة جديدة
     const existing = await Settings.findOne({ key });
     const oldImage = existing?.value?.image || '';
+    const newImage = image === '__DELETE__' ? '' : (image || oldImage);
     const value = {
-      image: image || oldImage,
-      height: height || 400,
+      image: newImage,
+      height: height !== undefined ? height : 400,
       active: active !== false
     };
     await Settings.findOneAndUpdate({ key }, { key, value }, { upsert: true });

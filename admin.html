@@ -1447,14 +1447,19 @@
                 return `
                 <div class="bg-white rounded-2xl shadow p-6 space-y-4">
                     <h3 class="font-bold text-gray-800">${label}</h3>
-                    ${b.image ? `<img src="${b.image}" class="w-full rounded-xl object-cover" style="height:120px">` : `<div class="w-full rounded-xl bg-gray-100 flex items-center justify-center text-gray-400" style="height:120px">لا توجد صورة</div>`}
+                    ${b.image 
+                        ? `<div class="relative">
+                            <img src="${b.image}" class="w-full rounded-xl object-cover" style="height:120px">
+                            <button onclick="deleteBannerImage('${key}')" class="absolute top-2 left-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs hover:bg-red-600">✕</button>
+                           </div>` 
+                        : `<div class="w-full rounded-xl bg-gray-100 flex items-center justify-center text-gray-400" style="height:120px">لا توجد صورة</div>`}
                     <div>
                         <label class="text-sm text-gray-600 mb-1 block">رفع صورة</label>
                         <input type="file" accept="image/*" onchange="previewBanner(this, '${key}')" class="w-full text-sm border rounded-lg p-2">
                     </div>
                     <div>
                         <label class="text-sm text-gray-600 mb-1 block">الارتفاع (px)</label>
-                        <input type="number" id="height-${key}" value="${b.height}" min="100" max="800" class="w-full border rounded-lg p-2 text-sm">
+                        <input type="number" id="height-${key}" value="${b.height}" min="0" max="800" class="w-full border rounded-lg p-2 text-sm">
                     </div>
                     <button onclick="saveBanner('${key}')" class="w-full bg-antika-gold text-white py-2 rounded-lg font-semibold hover:bg-antika-gold-dark transition">
                         حفظ
@@ -1474,10 +1479,25 @@
         reader.readAsDataURL(file);
     }
 
+    async function deleteBannerImage(key) {
+        if (!confirm('حذف الصورة؟')) return;
+        try {
+            const token = localStorage.getItem('antika_admin_token');
+            await fetch('/api/banners/' + key, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ image: '__DELETE__', height: parseInt(document.getElementById('height-' + key)?.value) || 400 })
+            });
+            localStorage.removeItem('antika_banners_cache');
+            if (typeof showAdminNotif === 'function') showAdminNotif('تم حذف الصورة ✅', 'success');
+            loadBanners();
+        } catch(e) { console.error(e); }
+    }
+
     async function saveBanner(key) {
         try {
             const token = localStorage.getItem('antika_admin_token');
-            const height = parseInt(document.getElementById('height-' + key).value) || 400;
+            const height = parseInt(document.getElementById('height-' + key).value) || 0;
             const image = bannerImages[key] || undefined;
             const body = { height };
             if (image) body.image = image;
