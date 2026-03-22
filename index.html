@@ -46,7 +46,7 @@
         body { font-family: 'Tajawal', sans-serif; }
 
         /* Force Ad Banners to always show - إجبار الإعلانات على الظهور دائماً */
-        #ad-banner-1, #ad-banner-2, #ad-banner-3 {
+        #banner-hero, #ad-banner-1, #ad-banner-2, #ad-banner-3 {
             display: flex !important;
             visibility: visible !important;
             opacity: 1 !important;
@@ -570,14 +570,12 @@
                 Object.entries(map).forEach(([key, elId]) => {
                     const b = banners[key];
                     const el = document.getElementById(elId);
-                    if (!el || !b) return;
+                    if (!el || !b || !b.image) return;
                     el.style.height = (b.height || 400) + 'px';
-                    if (b.image) {
-                        el.querySelector('.banner-placeholder') && (el.querySelector('.banner-placeholder').style.display = 'none');
-                        el.style.backgroundImage = `url('${b.image}')`;
-                        el.style.backgroundSize = 'cover';
-                        el.style.backgroundPosition = 'center';
-                    }
+                    el.querySelectorAll('.banner-placeholder').forEach(p => p.style.display = 'none');
+                    el.style.backgroundImage = `url('${b.image}')`;
+                    el.style.backgroundSize = 'cover';
+                    el.style.backgroundPosition = 'center';
                 });
             }
 
