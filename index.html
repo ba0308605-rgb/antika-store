@@ -579,15 +579,19 @@
                     if (!categories || categories.length === 0) {
                         gridContainer.innerHTML = '<p class="text-gray-500 col-span-full text-center">لا توجد تصنيفات</p>';
                     } else {
-                        gridContainer.innerHTML = categories.map(cat => `
+                        const mainCats = categories.filter(c => !c.parentId);
+                        const subCats = categories.filter(c => c.parentId);
+                        gridContainer.innerHTML = mainCats.map(cat => {
+                            const subCount = subCats.filter(s => s.parentId === cat.id).length;
+                            return `
                             <a href="products.html?category=${cat.id}" class="group">
                                 <div class="bg-antika-lavender rounded-2xl p-6 text-center hover:shadow-xl transition transform hover:-translate-y-2 border-2 border-transparent hover:border-antika-pink">
                                     <div class="text-5xl mb-4 group-hover:scale-110 transition">${cat.icon || '📦'}</div>
                                     <h3 class="font-bold text-antika-gold text-lg mb-2">${cat.name}</h3>
-                                    <p class="text-sm text-gray-500">${cat.subcategories ? cat.subcategories.length : 0} تصنيف فرعي</p>
+                                    <p class="text-sm text-gray-500">${subCount} تصنيف فرعي</p>
                                 </div>
-                            </a>
-                        `).join('');
+                            </a>`;
+                        }).join('');
                     }
                 }
             } catch (error) {
