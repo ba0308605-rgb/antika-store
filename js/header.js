@@ -108,6 +108,7 @@ class AntikaHeader extends HTMLElement {
                     z-index: 1000;
                     transition: right 0.3s ease;
                     box-shadow: -5px 0 30px rgba(0,0,0,0.2);
+                    overflow-y: auto;
                 }
                 .mobile-menu.open {
                     right: 0;
