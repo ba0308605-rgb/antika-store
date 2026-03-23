@@ -580,8 +580,9 @@
                     el.style.height = (b.height || 400) + 'px';
                     el.querySelectorAll('.banner-placeholder').forEach(p => p.style.display = 'none');
                     el.style.backgroundImage = `url('${b.image}')`;
-                    el.style.backgroundSize = 'cover';
+                    el.style.backgroundSize = 'contain';
                     el.style.backgroundPosition = 'center';
+                    el.style.backgroundRepeat = 'no-repeat';
                 });
             }
 
