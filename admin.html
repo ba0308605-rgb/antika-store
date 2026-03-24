@@ -1019,9 +1019,23 @@
         if (sel) sel.value = parentId;
     }
 
-    function editCategory(mongoId) {
+    async function editCategory(mongoId) {
+        // إذا لم تكن البيانات محملة بعد، احملها أولاً
+        if (!adminAllCategories || adminAllCategories.length === 0) {
+            try {
+                adminAllCategories = await API.getCategories();
+                populateParentDropdown(adminAllCategories);
+            } catch(e) {
+                console.error('Error loading categories:', e);
+                return;
+            }
+        }
         const cat = adminAllCategories.find(c => c._id === mongoId);
-        if (!cat) return;
+        if (!cat) {
+            console.error('Category not found with _id:', mongoId);
+            showAdminNotif('لم يتم العثور على التصنيف', 'error');
+            return;
+        }
         document.getElementById('category-edit-id').value = mongoId;
         document.getElementById('category-modal-title').textContent = 'تعديل التصنيف';
         document.getElementById('category-icon').value = cat.icon || '';
