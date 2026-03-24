@@ -8,6 +8,44 @@ const nodemailer = require('nodemailer');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+// ☁️ Cloudinary Setup
+const cloudinary = require('cloudinary').v2;
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Helper: رفع صورة Base64 إلى Cloudinary
+async function uploadToCloudinary(base64Image, folder = 'antika') {
+  try {
+    if (!base64Image || !base64Image.startsWith('data:')) return base64Image;
+    const result = await cloudinary.uploader.upload(base64Image, {
+      folder,
+      resource_type: 'image',
+      quality: 'auto',
+      fetch_format: 'auto',
+    });
+    return result.secure_url;
+  } catch (err) {
+    console.error('Cloudinary upload error:', err.message);
+    return base64Image; // fallback للصورة الأصلية
+  }
+}
+
+// Helper: حذف صورة من Cloudinary
+async function deleteFromCloudinary(imageUrl) {
+  try {
+    if (!imageUrl || !imageUrl.includes('cloudinary.com')) return;
+    const parts = imageUrl.split('/');
+    const filename = parts[parts.length - 1].split('.')[0];
+    const folder = parts[parts.length - 2];
+    await cloudinary.uploader.destroy(`${folder}/${filename}`);
+  } catch (err) {
+    console.error('Cloudinary delete error:', err.message);
+  }
+}
+
 const app = express();
 mongoose.set('bufferCommands', false);
 
@@ -722,7 +760,13 @@ app.post('/api/products', requireAdmin, async (req, res) => {
   try {
     if (!requireMongo(res, 'Product create')) return;
 
-    
+    // رفع الصور على Cloudinary
+    if (req.body.images && req.body.images.length > 0) {
+      req.body.images = await Promise.all(
+        req.body.images.map(img => uploadToCloudinary(img, 'antika/products'))
+      );
+    }
+
     const product = new Product(req.body);
     await product.save();
     res.json(repairArabicMojibakeDeep(product));
@@ -756,8 +800,14 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
 
     const { id } = req.params;
     console.log('📝 Updating product with ID:', id);
-    
-    
+
+    // رفع الصور الجديدة على Cloudinary
+    if (req.body.images && req.body.images.length > 0) {
+      req.body.images = await Promise.all(
+        req.body.images.map(img => uploadToCloudinary(img, 'antika/products'))
+      );
+    }
+
     req.body.updatedAt = new Date();
     
     // Try to find and update by _id first
@@ -2052,10 +2102,17 @@ app.put('/api/banners/:key', requireAdmin, async (req, res) => {
     const allowed = ['banner_hero', 'banner_2', 'banner_3', 'banner_4'];
     if (!allowed.includes(key)) return res.status(400).json({ error: 'Invalid banner key' });
     const { image, height, active } = req.body;
-    // جيب الصورة القديمة إذا ما في صورة جديدة
     const existing = await Settings.findOne({ key });
     const oldImage = existing?.value?.image || '';
-    const newImage = image === '__DELETE__' ? '' : (image || oldImage);
+    let newImage;
+    if (image === '__DELETE__') {
+      await deleteFromCloudinary(oldImage);
+      newImage = '';
+    } else if (image && image.startsWith('data:')) {
+      newImage = await uploadToCloudinary(image, 'antika/banners');
+    } else {
+      newImage = image || oldImage;
+    }
     const value = {
       image: newImage,
       height: height !== undefined ? height : 400,
