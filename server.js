@@ -2328,6 +2328,29 @@ app.get('/api/status', async (req, res) => {
 });
 
 // ============================================
+// AUTO CLEANUP - حذف السلال المهجورة كل 14 يوم
+// ============================================
+
+async function cleanupOldCarts() {
+  try {
+    if (!isMongoConnected()) return;
+    const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000); // 14 يوم
+    const result = await Cart.deleteMany({ updatedAt: { $lt: cutoff } });
+    if (result.deletedCount > 0) {
+      console.log(`🧹 Auto-cleanup: تم حذف ${result.deletedCount} سلة مهجورة`);
+    }
+  } catch (err) {
+    console.error('Cart cleanup error:', err.message);
+  }
+}
+
+// تشغيل كل 14 يوم (بالمللي ثانية)
+setInterval(cleanupOldCarts, 14 * 24 * 60 * 60 * 1000);
+
+// تشغيل أول مرة عند بدء السيرفر (بعد دقيقة)
+setTimeout(cleanupOldCarts, 60 * 1000);
+
+// ============================================
 // START SERVER
 // ============================================
 
