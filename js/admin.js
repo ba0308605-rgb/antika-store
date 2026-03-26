@@ -1008,9 +1008,7 @@ document.getElementById('category-form')?.addEventListener('submit', async funct
     }
 });
 
-async function editCategory(id) {
-    openCategoryModal(id);
-}
+// editCategory handled in admin.html
 
 async function deleteCategory(id) {
     if (!confirm('هل أنت متأكد؟ سيتم حذف جميع المنتجات المرتبطة بهذا التصنيف!')) return;
