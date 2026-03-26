@@ -50,17 +50,18 @@
         ::-webkit-scrollbar-thumb { background: #D6C1A6; border-radius: 4px; }
         
         /* Search Modal */
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
-            z-index: 2000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
-            padding-top: 15vh;
-        }
+.search-modal-overlay {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 15vh;
+}
         .search-modal-overlay.active {
             opacity: 1;
             visibility: visible;
@@ -197,6 +198,102 @@
             color: white;
         }
         .gallery-nav.prev { left: 15px; }
+
+        /* ===== REVIEWS SECTION ===== */
+        .reviews-section {
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            margin-top: 32px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        }
+        .reviews-section h2 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #333;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .rating-summary {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: #fdf8f4;
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 28px;
+        }
+        .rating-big-number {
+            font-size: 3.5rem;
+            font-weight: 900;
+            color: #D6C1A6;
+            line-height: 1;
+        }
+        .rating-stars-big { font-size: 1.4rem; color: #f59e0b; letter-spacing: 2px; }
+        .rating-count { color: #999; font-size: 0.9rem; margin-top: 4px; }
+        .stars-interactive { display: flex; gap: 6px; flex-direction: row-reverse; justify-content: flex-end; }
+        .stars-interactive input { display: none; }
+        .stars-interactive label {
+            font-size: 2rem;
+            color: #ddd;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .stars-interactive input:checked ~ label,
+        .stars-interactive label:hover,
+        .stars-interactive label:hover ~ label { color: #f59e0b; }
+        .review-form {
+            background: #fdf8f4;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 32px;
+        }
+        .review-form h3 { font-weight: 700; font-size: 1.1rem; margin-bottom: 16px; color: #333; }
+        .review-input {
+            width: 100%;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-family: Tajawal, sans-serif;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+            background: white;
+        }
+        .review-input:focus { border-color: #FF69B4; }
+        .review-submit-btn {
+            background: linear-gradient(135deg, #FF69B4, #D6C1A6);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 12px 32px;
+            font-family: Tajawal, sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            width: 100%;
+            margin-top: 12px;
+        }
+        .review-submit-btn:hover { opacity: 0.9; }
+        .review-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .review-card {
+            border: 1px solid #f0e8e0;
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 14px;
+            transition: box-shadow 0.2s;
+        }
+        .review-card:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.07); }
+        .review-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .reviewer-name { font-weight: 700; color: #333; font-size: 0.95rem; }
+        .review-date { font-size: 0.8rem; color: #aaa; }
+        .review-stars { color: #f59e0b; font-size: 1rem; letter-spacing: 1px; }
+        .review-comment { color: #555; font-size: 0.95rem; line-height: 1.7; }
+        .no-reviews { text-align: center; padding: 40px; color: #aaa; }
+        .no-reviews i { font-size: 3rem; margin-bottom: 12px; display: block; }
         .gallery-nav.next { right: 15px; }
         
         /* Thumbnails */
@@ -770,6 +867,66 @@
         </div>
     </main>
 
+    <!-- ===== REVIEWS SECTION ===== -->
+    <div class="max-w-7xl mx-auto px-4 pb-8">
+        <div class="reviews-section">
+            <h2>
+                <i class="fas fa-star" style="color:#f59e0b"></i>
+                التقييمات والتعليقات
+                <span id="reviews-count-badge" class="text-sm font-normal text-gray-400"></span>
+            </h2>
+
+            <!-- ملخص التقييم -->
+            <div class="rating-summary" id="rating-summary" style="display:none">
+                <div class="text-center">
+                    <div class="rating-big-number" id="avg-rating-number">0</div>
+                    <div class="rating-stars-big" id="avg-rating-stars">☆☆☆☆☆</div>
+                    <div class="rating-count" id="avg-rating-count"></div>
+                </div>
+                <div style="flex:1">
+                    <div id="rating-bars"></div>
+                </div>
+            </div>
+
+            <!-- نموذج إضافة تعليق -->
+            <div class="review-form">
+                <h3>✍️ أضف تعليقك</h3>
+                <div class="grid gap-3" style="grid-template-columns:1fr 1fr">
+                    <input type="text" id="review-name" class="review-input" placeholder="اسمك *">
+                    <input type="email" id="review-email" class="review-input" placeholder="بريدك الإلكتروني (اختياري)">
+                </div>
+                <div style="margin:16px 0 8px">
+                    <p style="font-size:0.9rem;color:#555;margin-bottom:8px">تقييمك: *</p>
+                    <div class="stars-interactive">
+                        <input type="radio" name="review-rating" id="star5" value="5">
+                        <label for="star5" title="ممتاز">★</label>
+                        <input type="radio" name="review-rating" id="star4" value="4">
+                        <label for="star4" title="جيد جداً">★</label>
+                        <input type="radio" name="review-rating" id="star3" value="3">
+                        <label for="star3" title="جيد">★</label>
+                        <input type="radio" name="review-rating" id="star2" value="2">
+                        <label for="star2" title="مقبول">★</label>
+                        <input type="radio" name="review-rating" id="star1" value="1">
+                        <label for="star1" title="ضعيف">★</label>
+                    </div>
+                </div>
+                <textarea id="review-comment" class="review-input" rows="3" placeholder="اكتب تعليقك هنا... *" style="margin-top:4px;resize:none"></textarea>
+                <button class="review-submit-btn" id="review-submit-btn" onclick="submitReview()">
+                    <i class="fas fa-paper-plane ml-2"></i> إرسال التعليق
+                </button>
+                <p id="review-form-msg" style="text-align:center;margin-top:10px;font-size:0.9rem;display:none"></p>
+            </div>
+
+            <!-- قائمة التعليقات -->
+            <div id="reviews-list">
+                <div class="no-reviews">
+                    <i class="fas fa-comment-dots"></i>
+                    جاري تحميل التعليقات...
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <antika-footer></antika-footer>
 
@@ -1317,7 +1474,143 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadProduct();
             updateCartCount();
+            loadReviews();
         });
+
+        // ===== REVIEWS SYSTEM =====
+
+        function starsHtml(rating, size) {
+            size = size || '1rem';
+            const full = Math.floor(rating);
+            const half = (rating - full) >= 0.5;
+            let html = '';
+            for (let i = 1; i <= 5; i++) {
+                if (i <= full) html += '<i class="fas fa-star" style="color:#f59e0b;font-size:' + size + '"></i>';
+                else if (i === full + 1 && half) html += '<i class="fas fa-star-half-alt" style="color:#f59e0b;font-size:' + size + '"></i>';
+                else html += '<i class="far fa-star" style="color:#ddd;font-size:' + size + '"></i>';
+            }
+            return html;
+        }
+
+        async function loadReviews() {
+            if (!productId) return;
+            try {
+                const data = await ReviewsAPI.getReviews(productId);
+                renderReviews(data);
+            } catch(e) {
+                document.getElementById('reviews-list').innerHTML =
+                    '<div class="no-reviews"><i class="fas fa-comment-dots"></i>لا توجد تعليقات بعد — كن أول من يعلّق!</div>';
+            }
+        }
+
+        function renderReviews(data) {
+            const reviews = data.reviews || [];
+            const avgRating = data.avgRating || 0;
+            const count = data.count || 0;
+
+            const badge = document.getElementById('reviews-count-badge');
+            if (badge) badge.textContent = count > 0 ? '(' + count + ')' : '';
+
+            const summary = document.getElementById('rating-summary');
+            if (count > 0 && summary) {
+                summary.style.display = 'flex';
+                document.getElementById('avg-rating-number').textContent = avgRating.toFixed(1);
+                document.getElementById('avg-rating-stars').innerHTML = starsHtml(avgRating, '1.3rem');
+                document.getElementById('avg-rating-count').textContent = count + ' تقييم';
+
+                const bars = [5,4,3,2,1].map(function(s) {
+                    const c = reviews.filter(function(r) { return r.rating === s; }).length;
+                    const pct = count > 0 ? Math.round(c / count * 100) : 0;
+                    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+                        + '<span style="font-size:0.8rem;color:#888;min-width:20px">' + s + '★</span>'
+                        + '<div style="flex:1;height:8px;background:#eee;border-radius:4px;overflow:hidden">'
+                        + '<div style="height:100%;background:#f59e0b;border-radius:4px;width:' + pct + '%"></div>'
+                        + '</div>'
+                        + '<span style="font-size:0.8rem;color:#aaa;min-width:28px">' + pct + '%</span>'
+                        + '</div>';
+                }).join('');
+                document.getElementById('rating-bars').innerHTML = bars;
+            }
+
+            const list = document.getElementById('reviews-list');
+            if (reviews.length === 0) {
+                list.innerHTML = '<div class="no-reviews"><i class="fas fa-comment-dots"></i>لا توجد تعليقات بعد — كن أول من يعلّق!</div>';
+                return;
+            }
+
+            const isAdmin = !!localStorage.getItem('antika_admin_token');
+            list.innerHTML = reviews.map(function(r) {
+                const date = new Date(r.createdAt).toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
+                return '<div class="review-card">'
+                    + '<div class="review-card-header">'
+                    + '<div>'
+                    + '<div class="reviewer-name"><i class="fas fa-user-circle" style="color:#D6C1A6;margin-left:6px"></i>' + r.userName + '</div>'
+                    + '<div class="review-stars" style="margin-top:4px">' + starsHtml(r.rating, '0.95rem') + '</div>'
+                    + '</div>'
+                    + '<div style="display:flex;align-items:center;gap:10px">'
+                    + '<span class="review-date">' + date + '</span>'
+                    + (isAdmin ? '<button onclick="deleteReview(\'' + r._id + '\')" style="color:#ef4444;background:none;border:none;cursor:pointer;font-size:0.85rem" title="حذف"><i class="fas fa-trash"></i></button>' : '')
+                    + '</div>'
+                    + '</div>'
+                    + '<p class="review-comment">' + r.comment + '</p>'
+                    + '</div>';
+            }).join('');
+        }
+
+        async function submitReview() {
+            const name = document.getElementById('review-name').value.trim();
+            const email = document.getElementById('review-email').value.trim();
+            const ratingInput = document.querySelector('input[name="review-rating"]:checked');
+            const comment = document.getElementById('review-comment').value.trim();
+            const msg = document.getElementById('review-form-msg');
+            const btn = document.getElementById('review-submit-btn');
+
+            function showMsg(text, color) {
+                msg.textContent = text;
+                msg.style.color = color;
+                msg.style.display = 'block';
+            }
+
+            if (!name) return showMsg('الرجاء إدخال اسمك', '#ef4444');
+            if (!ratingInput) return showMsg('الرجاء اختيار تقييم بالنجوم', '#ef4444');
+            if (!comment || comment.length < 5) return showMsg('التعليق قصير جداً', '#ef4444');
+
+            btn.disabled = true;
+            btn.textContent = 'جاري الإرسال...';
+
+            try {
+                await ReviewsAPI.addReview(productId, {
+                    userName: name,
+                    userEmail: email,
+                    rating: Number(ratingInput.value),
+                    comment: comment
+                });
+
+                document.getElementById('review-name').value = '';
+                document.getElementById('review-email').value = '';
+                document.getElementById('review-comment').value = '';
+                document.querySelectorAll('input[name="review-rating"]').forEach(function(i) { i.checked = false; });
+                msg.style.display = 'none';
+
+                showMsg('✅ تم إرسال تعليقك بنجاح!', '#22c55e');
+                await loadReviews();
+            } catch(e) {
+                showMsg(e.message || 'حدث خطأ، حاول مرة أخرى', '#ef4444');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane ml-2"></i> إرسال التعليق';
+            }
+        }
+
+        async function deleteReview(reviewId) {
+            if (!confirm('حذف هذا التعليق؟')) return;
+            try {
+                await ReviewsAPI.deleteReview(reviewId);
+                await loadReviews();
+            } catch(e) {
+                alert('حدث خطأ أثناء الحذف');
+            }
+        }
     </script>
     <script src="js/header.js"></script>
     <script src="js/auth-sync.js"></script>
@@ -1325,4 +1618,3 @@
     <script src="js/footer.js"></script>
 </body>
 </html>
-

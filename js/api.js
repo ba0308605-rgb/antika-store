@@ -842,8 +842,36 @@ async getCart() {
     }
 };
 
-// Expose API globally for other scripts
-window.API = API;
+// ============================================
+// REVIEWS API
+// ============================================
+const ReviewsAPI = {
+  async getReviews(productId) {
+    const res = await fetch(`/api/products/${productId}/reviews`);
+    if (!res.ok) throw new Error('فشل جلب التعليقات');
+    return await res.json();
+  },
+  async addReview(productId, data) {
+    const res = await fetch(`/api/products/${productId}/reviews`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'فشل إضافة التعليق');
+    return json;
+  },
+  async deleteReview(reviewId) {
+    const token = localStorage.getItem('antika_admin_token');
+    const res = await fetch(`/api/reviews/${reviewId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) throw new Error('فشل حذف التعليق');
+    return await res.json();
+  }
+};
+window.ReviewsAPI = ReviewsAPI;
 
 // Expose API globally for other scripts
 window.API = API;

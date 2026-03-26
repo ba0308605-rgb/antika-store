@@ -555,6 +555,19 @@ const settingsSchema = new mongoose.Schema({
   value: mongoose.Schema.Types.Mixed
 });
 
+// ============================================
+// REVIEW SCHEMA
+// ============================================
+const reviewSchema = new mongoose.Schema({
+  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+  userName: { type: String, required: true, trim: true },
+  userEmail: { type: String, default: '' },
+  rating: { type: Number, required: true, min: 1, max: 5 },
+  comment: { type: String, required: true, trim: true },
+  createdAt: { type: Date, default: Date.now }
+});
+const Review = mongoose.model('Review', reviewSchema);
+
 const Product = mongoose.model('Product', productSchema);
 const Category = mongoose.model('Category', categorySchema);
 const Cart = mongoose.model('Cart', cartSchema);
@@ -2157,6 +2170,102 @@ app.put('/api/pages/:pageId', requireAdmin, async (req, res) => {
     res.json({ message: 'Page updated', page: { title, content } });
   } catch (err) {
     console.error('Error updating page:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// REVIEWS ROUTES
+// ============================================
+
+// GET: جلب تعليقات منتج
+app.get('/api/products/:id/reviews', async (req, res) => {
+  try {
+    if (!requireMongo(res, 'Reviews fetch')) return;
+    const { id } = req.params;
+
+    // إيجاد المنتج
+    let product = null;
+    if (id.match(/^[0-9a-fA-F]{24}$/)) product = await Product.findById(id);
+    if (!product) product = await Product.findOne({ id });
+    if (!product) return res.status(404).json({ error: 'المنتج غير موجود' });
+
+    const reviews = await Review.find({ productId: product._id }).sort({ createdAt: -1 });
+    const avgRating = reviews.length > 0
+      ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length) * 10) / 10
+      : 0;
+
+    res.json({ reviews, avgRating, count: reviews.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST: إضافة تعليق جديد
+app.post('/api/products/:id/reviews', async (req, res) => {
+  try {
+    if (!requireMongo(res, 'Review add')) return;
+    const { id } = req.params;
+    const { userName, userEmail, rating, comment } = req.body || {};
+
+    if (!userName || !rating || !comment) {
+      return res.status(400).json({ error: 'الاسم والتقييم والتعليق مطلوبة' });
+    }
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'التقييم يجب أن يكون بين 1 و 5' });
+    }
+    if (comment.trim().length < 5) {
+      return res.status(400).json({ error: 'التعليق قصير جداً' });
+    }
+
+    // إيجاد المنتج
+    let product = null;
+    if (id.match(/^[0-9a-fA-F]{24}$/)) product = await Product.findById(id);
+    if (!product) product = await Product.findOne({ id });
+    if (!product) return res.status(404).json({ error: 'المنتج غير موجود' });
+
+    const review = new Review({
+      productId: product._id,
+      userName: userName.trim(),
+      userEmail: (userEmail || '').trim(),
+      rating: Number(rating),
+      comment: comment.trim()
+    });
+    await review.save();
+
+    // تحديث متوسط التقييم في المنتج
+    const allReviews = await Review.find({ productId: product._id });
+    const avgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+    await Product.findByIdAndUpdate(product._id, {
+      rating: Math.round(avgRating * 10) / 10,
+      reviews: allReviews.length
+    });
+
+    res.json({ success: true, review });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE: حذف تعليق (أدمن فقط)
+app.delete('/api/reviews/:reviewId', requireAdmin, async (req, res) => {
+  try {
+    if (!requireMongo(res, 'Review delete')) return;
+    const review = await Review.findByIdAndDelete(req.params.reviewId);
+    if (!review) return res.status(404).json({ error: 'التعليق غير موجود' });
+
+    // تحديث متوسط التقييم
+    const allReviews = await Review.find({ productId: review.productId });
+    const avgRating = allReviews.length > 0
+      ? allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length
+      : 5;
+    await Product.findByIdAndUpdate(review.productId, {
+      rating: Math.round(avgRating * 10) / 10,
+      reviews: allReviews.length
+    });
+
+    res.json({ success: true });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
