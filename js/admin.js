@@ -1905,3 +1905,169 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(statsSection, { attributes: true, attributeFilter: ['class'] });
     }
 });
+
+
+// ============================================
+// REVIEWS MANAGEMENT
+// ============================================
+
+let currentReviewData = null;
+
+function starsHtmlAdmin(rating) {
+    let html = '';
+    for (let i = 1; i <= 5; i++) {
+        html += i <= rating
+            ? '<i class="fas fa-star" style="color:#f59e0b"></i>'
+            : '<i class="far fa-star" style="color:#ddd"></i>';
+    }
+    return html;
+}
+
+async function loadAllReviews() {
+    const container = document.getElementById('reviews-table-container');
+    const filter = document.getElementById('reviews-filter')?.value || 'all';
+    if (!container) return;
+
+    container.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-spinner fa-spin text-4xl mb-3 block"></i>جاري التحميل...</div>';
+
+    try {
+        // جلب كل المنتجات أولاً
+        const products = await API.getProducts();
+        if (!products || products.length === 0) {
+            container.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-comments text-5xl mb-3 block"></i>لا توجد منتجات</div>';
+            return;
+        }
+
+        // جلب تعليقات كل منتج
+        let allReviews = [];
+        for (const p of products) {
+            try {
+                const pid = p._id || p.id;
+                const data = await fetch('/api/products/' + pid + '/reviews').then(r => r.json());
+                if (data.reviews && data.reviews.length > 0) {
+                    data.reviews.forEach(function(r) {
+                        allReviews.push({ ...r, productName: p.name, productId: pid });
+                    });
+                }
+            } catch(e) {}
+        }
+
+        // فلتر حسب التقييم
+        if (filter !== 'all') {
+            allReviews = allReviews.filter(function(r) { return r.rating === Number(filter); });
+        }
+
+        // ترتيب من الأحدث
+        allReviews.sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
+
+        // إحصائيات
+        renderReviewsStats(allReviews);
+
+        if (allReviews.length === 0) {
+            container.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-comments text-5xl mb-3 block"></i>لا توجد تعليقات</div>';
+            return;
+        }
+
+        // جدول التعليقات
+        let html = '<div class="overflow-x-auto">'
+            + '<table class="w-full text-sm">'
+            + '<thead><tr class="bg-gray-50 border-b border-gray-100">'
+            + '<th class="px-4 py-3 text-right font-bold text-gray-600">المعلق</th>'
+            + '<th class="px-4 py-3 text-right font-bold text-gray-600">المنتج</th>'
+            + '<th class="px-4 py-3 text-right font-bold text-gray-600">التقييم</th>'
+            + '<th class="px-4 py-3 text-right font-bold text-gray-600">التعليق</th>'
+            + '<th class="px-4 py-3 text-right font-bold text-gray-600">التاريخ</th>'
+            + '<th class="px-4 py-3 text-center font-bold text-gray-600">إجراء</th>'
+            + '</tr></thead>'
+            + '<tbody>';
+
+        allReviews.forEach(function(r) {
+            const date = new Date(r.createdAt).toLocaleDateString('ar-SA', { year:'numeric', month:'short', day:'numeric' });
+            const shortComment = r.comment.length > 50 ? r.comment.substring(0, 50) + '...' : r.comment;
+            const ratingColor = r.rating >= 4 ? 'text-green-600' : r.rating === 3 ? 'text-yellow-600' : 'text-red-500';
+
+            html += '<tr class="border-b border-gray-50 hover:bg-gray-50 transition">'
+                + '<td class="px-4 py-3"><div class="font-semibold text-gray-800">' + r.userName + '</div>'
+                + (r.userEmail ? '<div class="text-xs text-gray-400">' + r.userEmail + '</div>' : '') + '</td>'
+                + '<td class="px-4 py-3 text-gray-600 text-xs max-w-32">' + r.productName + '</td>'
+                + '<td class="px-4 py-3"><span class="' + ratingColor + ' font-bold">' + r.rating + ' ★</span></td>'
+                + '<td class="px-4 py-3 text-gray-600 text-xs">' + shortComment + '</td>'
+                + '<td class="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">' + date + '</td>'
+                + '<td class="px-4 py-3 text-center">'
+                + '<div class="flex gap-2 justify-center">'
+                + '<button onclick='openReviewModal(' + JSON.stringify(r).replace(/'/g, "\'") + ')' class="bg-blue-100 text-blue-600 px-3 py-1 rounded-lg hover:bg-blue-200 transition text-xs"><i class="fas fa-eye"></i></button>'
+                + '<button onclick="confirmDeleteReview('' + r._id + '')" class="bg-red-100 text-red-500 px-3 py-1 rounded-lg hover:bg-red-200 transition text-xs"><i class="fas fa-trash"></i></button>'
+                + '</div></td>'
+                + '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+
+    } catch(e) {
+        console.error('Error loading reviews:', e);
+        container.innerHTML = '<div class="text-center py-12 text-red-400">حدث خطأ أثناء تحميل التعليقات</div>';
+    }
+}
+
+function renderReviewsStats(reviews) {
+    const container = document.getElementById('reviews-stats-row');
+    if (!container) return;
+
+    const total = reviews.length;
+    const avg = total > 0 ? (reviews.reduce(function(s, r) { return s + r.rating; }, 0) / total).toFixed(1) : 0;
+    const positive = reviews.filter(function(r) { return r.rating >= 4; }).length;
+    const negative = reviews.filter(function(r) { return r.rating <= 2; }).length;
+
+    container.innerHTML = [
+        { label: 'إجمالي التعليقات', value: total, icon: 'fa-comments', color: 'blue' },
+        { label: 'متوسط التقييم', value: avg + ' ★', icon: 'fa-star', color: 'yellow' },
+        { label: 'تعليقات إيجابية', value: positive, icon: 'fa-thumbs-up', color: 'green' },
+        { label: 'تعليقات سلبية', value: negative, icon: 'fa-thumbs-down', color: 'red' },
+    ].map(function(s) {
+        return '<div class="bg-white rounded-2xl shadow p-4 flex items-center gap-4">'
+            + '<div class="w-12 h-12 rounded-full bg-' + s.color + '-100 flex items-center justify-center text-' + s.color + '-600">'
+            + '<i class="fas ' + s.icon + '"></i></div>'
+            + '<div><p class="text-gray-500 text-xs">' + s.label + '</p>'
+            + '<p class="text-2xl font-bold text-gray-800">' + s.value + '</p></div>'
+            + '</div>';
+    }).join('');
+}
+
+function openReviewModal(review) {
+    currentReviewData = review;
+    document.getElementById('modal-reviewer-name').textContent = review.userName || '-';
+    document.getElementById('modal-reviewer-email').textContent = review.userEmail || 'غير محدد';
+    document.getElementById('modal-review-date').textContent = new Date(review.createdAt).toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
+    document.getElementById('modal-product-name').textContent = review.productName || '-';
+    document.getElementById('modal-review-stars').innerHTML = starsHtmlAdmin(review.rating);
+    document.getElementById('modal-review-comment').textContent = review.comment;
+    document.getElementById('review-detail-modal').classList.remove('hidden');
+}
+
+function closeReviewModal() {
+    document.getElementById('review-detail-modal').classList.add('hidden');
+    currentReviewData = null;
+}
+
+async function deleteReviewFromModal() {
+    if (!currentReviewData) return;
+    await confirmDeleteReview(currentReviewData._id);
+    closeReviewModal();
+}
+
+async function confirmDeleteReview(reviewId) {
+    if (!confirm('هل أنت متأكد من حذف هذا التعليق؟')) return;
+    try {
+        const token = localStorage.getItem('antika_admin_token');
+        const res = await fetch('/api/reviews/' + reviewId, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) throw new Error('فشل الحذف');
+        showNotification('تم حذف التعليق بنجاح');
+        await loadAllReviews();
+    } catch(e) {
+        showNotification('حدث خطأ أثناء الحذف', 'error');
+    }
+}

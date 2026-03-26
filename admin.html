@@ -151,6 +151,10 @@
                         <i class="fas fa-chart-pie w-6"></i>
                         <span>إحصائيات العملاء</span>
                     </button>
+                    <button onclick="showSection('reviews'); loadAllReviews();" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
+                        <i class="fas fa-comments w-6"></i>
+                        <span>التعليقات</span>
+                    </button>
                 </nav>
             </aside>
 
@@ -450,6 +454,83 @@
                     <p class="text-gray-500 text-sm">ارفع صورة لكل بنر وحدد ارتفاعه</p>
                     <div id="banners-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
                 </section>
+
+                <!-- Reviews Management Section -->
+                <section id="reviews-section" class="hidden space-y-6">
+                    <div class="flex justify-between items-center flex-wrap gap-3">
+                        <h2 class="text-2xl font-bold text-antika-gold">💬 إدارة التعليقات</h2>
+                        <div class="flex items-center gap-3">
+                            <select id="reviews-filter" onchange="loadAllReviews()" class="border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-antika-pink focus:outline-none text-sm">
+                                <option value="all">جميع التعليقات</option>
+                                <option value="5">⭐⭐⭐⭐⭐ 5 نجوم</option>
+                                <option value="4">⭐⭐⭐⭐ 4 نجوم</option>
+                                <option value="3">⭐⭐⭐ 3 نجوم</option>
+                                <option value="2">⭐⭐ 2 نجوم</option>
+                                <option value="1">⭐ نجمة واحدة</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Stats Row -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="reviews-stats-row"></div>
+
+                    <!-- Reviews Table -->
+                    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div id="reviews-table-container">
+                            <div class="text-center py-12 text-gray-400">
+                                <i class="fas fa-comments text-5xl mb-3 block"></i>
+                                جاري التحميل...
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Review Detail Modal -->
+                <div id="review-detail-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+                    <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl m-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-bold text-gray-800">تفاصيل التعليق</h3>
+                            <button onclick="closeReviewModal()" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+                        </div>
+
+                        <!-- معلومات المعلق -->
+                        <div class="bg-gray-50 rounded-xl p-4 mb-4">
+                            <h4 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                <i class="fas fa-user text-antika-gold"></i> معلومات المعلق
+                            </h4>
+                            <p class="text-sm text-gray-600 mb-1"><strong>الاسم:</strong> <span id="modal-reviewer-name"></span></p>
+                            <p class="text-sm text-gray-600 mb-1"><strong>الإيميل:</strong> <span id="modal-reviewer-email"></span></p>
+                            <p class="text-sm text-gray-600"><strong>التاريخ:</strong> <span id="modal-review-date"></span></p>
+                        </div>
+
+                        <!-- المنتج -->
+                        <div class="bg-amber-50 rounded-xl p-4 mb-4">
+                            <h4 class="font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                <i class="fas fa-box text-antika-gold"></i> المنتج
+                            </h4>
+                            <p class="text-sm text-gray-700" id="modal-product-name"></p>
+                        </div>
+
+                        <!-- التعليق -->
+                        <div class="bg-pink-50 rounded-xl p-4 mb-5">
+                            <div class="flex items-center gap-2 mb-2">
+                                <h4 class="font-bold text-gray-700">التقييم:</h4>
+                                <span id="modal-review-stars"></span>
+                            </div>
+                            <p class="text-gray-700 leading-relaxed" id="modal-review-comment"></p>
+                        </div>
+
+                        <!-- أزرار الإجراءات -->
+                        <div class="flex gap-3">
+                            <button id="modal-delete-btn" onclick="deleteReviewFromModal()" class="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 transition flex items-center justify-center gap-2">
+                                <i class="fas fa-trash"></i> حذف التعليق
+                            </button>
+                            <button onclick="closeReviewModal()" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-300 transition">
+                                إغلاق
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Customer Statistics Section -->
                 <section id="customer-stats-section" class="hidden space-y-6">
