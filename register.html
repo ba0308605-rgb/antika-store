@@ -65,13 +65,15 @@
             top: 24px;
             right: -50%;
             width: calc(100% - 20px);
-            height: 2px;
+            height: 3px;
             background: #e5e7eb;
             z-index: 0;
+            border-radius: 2px;
         }
         
-        .step.active:not(:last-child)::after {
-            background: #D6C1A6;
+        .step.active:not(:last-child)::after,
+        .step.completed:not(:last-child)::after {
+            background: linear-gradient(90deg, #C4AC8E, #D6C1A6);
         }
         
         .step-number {
@@ -89,29 +91,38 @@
             position: relative;
             z-index: 1;
             transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
         
         .step.active .step-number {
-            background: #D6C1A6;
+            background: linear-gradient(135deg, #D6C1A6, #C4AC8E);
             color: white;
             border-color: #D6C1A6;
+            box-shadow: 0 4px 15px rgba(214,193,166,0.4);
+            transform: scale(1.1);
         }
         
         .step.completed .step-number {
             background: #10b981;
             color: white;
             border-color: #10b981;
+            box-shadow: 0 4px 15px rgba(16,185,129,0.3);
         }
         
         .step-title {
             margin-top: 8px;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 600;
-            color: #666;
+            color: #bbb;
         }
         
         .step.active .step-title {
             color: #D6C1A6;
+            font-weight: 700;
+        }
+
+        .step.completed .step-title {
+            color: #10b981;
         }
         
         .step-form {
@@ -263,16 +274,23 @@
                     <h2 class="text-xl font-bold text-gray-800 mb-4">البريد الإلكتروني ورقم الجوال</h2>
                     
                     <div>
-                        <label class="block text-gray-700 font-bold mb-2">البريد الإلكتروني</label>
+                        <label class="block text-gray-700 font-bold mb-2">البريد الإلكتروني <span class="text-red-500">*</span></label>
                         <input type="email" id="step1-email" class="antika-input" 
-                               placeholder="example@email.com">
+                               placeholder="example@email.com" required>
+                        <p class="text-sm text-antika-gold mt-2 flex items-center gap-1">
+                            <i class="fas fa-envelope text-xs"></i>
+                            سيتم إرسال رمز التحقق على هذا البريد
+                        </p>
                     </div>
                     
                     <div>
-                        <label class="block text-gray-700 font-bold mb-2">رقم الجوال</label>
+                        <label class="block text-gray-700 font-bold mb-2">رقم الجوال <span class="text-red-500">*</span></label>
                         <input type="tel" id="step1-phone" class="antika-input" 
-                               placeholder="05xxxxxxxx">
-                        <p class="text-sm text-gray-400 mt-2">يمكنك إدخال البريد أو الجوال أو كليهما</p>
+                               placeholder="05xxxxxxxx" required>
+                        <p class="text-sm text-gray-400 mt-2 flex items-center gap-1">
+                            <i class="fas fa-phone text-xs"></i>
+                            تأكد من صحة رقمك للتواصل معك بخصوص طلباتك
+                        </p>
                     </div>
                     
                     <div class="pt-4 flex gap-4">
@@ -541,8 +559,21 @@
                 const email = document.getElementById('step1-email').value.trim();
                 const phone = document.getElementById('step1-phone').value.trim();
                 
-                if (!email && !phone) {
-                    showNotification('الرجاء إدخال البريد الإلكتروني أو رقم الجوال', 'error');
+                if (!email) {
+                    showNotification('الرجاء إدخال البريد الإلكتروني', 'error');
+                    document.getElementById('step1-email').focus();
+                    return;
+                }
+
+                if (!phone) {
+                    showNotification('الرجاء إدخال رقم الجوال', 'error');
+                    document.getElementById('step1-phone').focus();
+                    return;
+                }
+
+                if (!/^05\d{8}$/.test(phone)) {
+                    showNotification('رقم الجوال يجب أن يبدأ بـ 05 ويتكون من 10 أرقام', 'error');
+                    document.getElementById('step1-phone').focus();
                     return;
                 }
                 
