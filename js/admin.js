@@ -1968,6 +1968,9 @@ async function loadAllReviews() {
             return;
         }
 
+        // تخزين التعليقات في متغير عام للوصول منه عند الضغط
+        window.adminReviewsList = allReviews;
+
         // جدول التعليقات
         let html = '<div class="overflow-x-auto">'
             + '<table class="w-full text-sm">'
@@ -1981,7 +1984,7 @@ async function loadAllReviews() {
             + '</tr></thead>'
             + '<tbody>';
 
-        allReviews.forEach(function(r) {
+        allReviews.forEach(function(r, idx) {
             const date = new Date(r.createdAt).toLocaleDateString('ar-SA', { year:'numeric', month:'short', day:'numeric' });
             const shortComment = r.comment.length > 50 ? r.comment.substring(0, 50) + '...' : r.comment;
             const ratingColor = r.rating >= 4 ? 'text-green-600' : r.rating === 3 ? 'text-yellow-600' : 'text-red-500';
@@ -1995,8 +1998,8 @@ async function loadAllReviews() {
                 + '<td class="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">' + date + '</td>'
                 + '<td class="px-4 py-3 text-center">'
                 + '<div class="flex gap-2 justify-center">'
-                + '<button onclick='openReviewModal(' + JSON.stringify(r).replace(/'/g, "\'") + ')' class="bg-blue-100 text-blue-600 px-3 py-1 rounded-lg hover:bg-blue-200 transition text-xs"><i class="fas fa-eye"></i></button>'
-                + '<button onclick="confirmDeleteReview('' + r._id + '')" class="bg-red-100 text-red-500 px-3 py-1 rounded-lg hover:bg-red-200 transition text-xs"><i class="fas fa-trash"></i></button>'
+                + '<button onclick="openReviewModal(window.adminReviewsList[' + idx + '])" class="bg-blue-100 text-blue-600 px-3 py-1 rounded-lg hover:bg-blue-200 transition text-xs"><i class="fas fa-eye"></i></button>'
+                + '<button onclick="confirmDeleteReview(window.adminReviewsList[' + idx + ']._id)" class="bg-red-100 text-red-500 px-3 py-1 rounded-lg hover:bg-red-200 transition text-xs"><i class="fas fa-trash"></i></button>'
                 + '</div></td>'
                 + '</tr>';
         });
