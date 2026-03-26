@@ -2037,15 +2037,72 @@ function renderReviewsStats(reviews) {
     }).join('');
 }
 
-function openReviewModal(review) {
+async function openReviewModal(review) {
     currentReviewData = review;
+
+    // بيانات التعليق الأساسية
     document.getElementById('modal-reviewer-name').textContent = review.userName || '-';
     document.getElementById('modal-reviewer-email').textContent = review.userEmail || 'غير محدد';
     document.getElementById('modal-review-date').textContent = new Date(review.createdAt).toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
     document.getElementById('modal-product-name').textContent = review.productName || '-';
     document.getElementById('modal-review-stars').innerHTML = starsHtmlAdmin(review.rating);
     document.getElementById('modal-review-comment').textContent = review.comment;
+
+    // تحميل معلومات المستخدم الكاملة
+    const userInfoEl = document.getElementById('modal-user-full-info');
+    if (userInfoEl) {
+        userInfoEl.innerHTML = '<p class="text-gray-400 text-sm text-center py-2"><i class="fas fa-spinner fa-spin ml-2"></i>جاري التحميل...</p>';
+    }
+
     document.getElementById('review-detail-modal').classList.remove('hidden');
+
+    if (!review.userEmail) {
+        if (userInfoEl) userInfoEl.innerHTML = '<p class="text-gray-400 text-sm text-center py-2">لا يوجد إيميل مرتبط بهذا التعليق</p>';
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem('antika_admin_token');
+        const res = await fetch('/api/admin/user-info/' + encodeURIComponent(review.userEmail), {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+
+        if (!data.found || !data.user) {
+            if (userInfoEl) userInfoEl.innerHTML = '<p class="text-gray-400 text-sm text-center py-2">⚠️ المستخدم غير مسجل في المتجر (علّق كزائر)</p>';
+            return;
+        }
+
+        const u = data.user;
+        const regDate = u.createdAt ? new Date(u.createdAt).toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' }) : 'غير محدد';
+
+        let html = '<div class="space-y-2">'
+            + '<p class="text-sm text-gray-700"><i class="fas fa-user ml-2 text-antika-gold"></i><strong>الاسم:</strong> ' + (u.name || '-') + '</p>'
+            + '<p class="text-sm text-gray-700"><i class="fas fa-envelope ml-2 text-antika-gold"></i><strong>الإيميل:</strong> ' + (u.email || '-') + '</p>'
+            + '<p class="text-sm text-gray-700"><i class="fas fa-phone ml-2 text-antika-gold"></i><strong>الجوال:</strong> ' + (u.phone || 'غير محدد') + '</p>'
+            + '<p class="text-sm text-gray-700"><i class="fas fa-calendar ml-2 text-antika-gold"></i><strong>تاريخ التسجيل:</strong> ' + regDate + '</p>'
+            + '<p class="text-sm text-gray-700"><i class="fas fa-shopping-bag ml-2 text-antika-gold"></i><strong>عدد الطلبات:</strong> ' + data.ordersCount + '</p>'
+            + '<p class="text-sm text-gray-700"><i class="fas fa-coins ml-2 text-antika-gold"></i><strong>إجمالي المشتريات:</strong> ' + Number(data.totalSpent || 0).toFixed(2) + ' ر.س</p>';
+
+        // العناوين المحفوظة
+        if (u.addresses && u.addresses.length > 0) {
+            html += '<div class="mt-3 pt-3 border-t border-gray-100">'
+                + '<p class="text-sm font-bold text-gray-700 mb-2"><i class="fas fa-map-marker-alt ml-2 text-antika-gold"></i>العناوين المحفوظة:</p>'
+                + u.addresses.map(function(a) {
+                    return '<div class="bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-600 mb-1">'
+                        + '<span class="font-semibold">' + (a.label || 'عنوان') + ':</span> ' + (a.address || '-')
+                        + (a.location && a.location.lat ? ' <span class="text-blue-400 mr-1"><i class="fas fa-map-pin"></i> موقع محفوظ</span>' : '')
+                        + '</div>';
+                }).join('')
+                + '</div>';
+        }
+
+        html += '</div>';
+        if (userInfoEl) userInfoEl.innerHTML = html;
+
+    } catch(e) {
+        if (userInfoEl) userInfoEl.innerHTML = '<p class="text-red-400 text-sm text-center py-2">حدث خطأ أثناء تحميل المعلومات</p>';
+    }
 }
 
 function closeReviewModal() {

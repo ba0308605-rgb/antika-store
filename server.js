@@ -2175,6 +2175,58 @@ app.put('/api/pages/:pageId', requireAdmin, async (req, res) => {
 });
 
 // ============================================
+// ADMIN USER INFO (معلومات المستخدم الكاملة للأدمن)
+// ============================================
+
+app.get('/api/admin/user-info/:email', requireAdmin, async (req, res) => {
+  try {
+    if (!requireMongo(res, 'User info')) return;
+    const email = decodeURIComponent(req.params.email).toLowerCase().trim();
+
+    // جلب بيانات المستخدم
+    const user = await User.findOne({ email: { $regex: new RegExp('^' + email + '$', 'i') } });
+
+    // جلب طلباته
+    const orders = await Order.find(
+      { customerEmail: { $regex: new RegExp('^' + email + '$', 'i') } },
+      { _id:1, orderCode:1, total:1, status:1, date:1, items:1 }
+    ).sort({ date: -1 }).limit(10);
+
+    // جلب تعليقاته
+    const reviews = await Review.find({ userEmail: { $regex: new RegExp('^' + email + '$', 'i') } })
+      .sort({ createdAt: -1 }).limit(20);
+
+    if (!user && orders.length === 0) {
+      return res.json({
+        found: false,
+        email,
+        orders: [],
+        reviews: []
+      });
+    }
+
+    res.json({
+      found: true,
+      user: user ? {
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        createdAt: user.createdAt || null,
+        addresses: user.addresses || [],
+        defaultLocation: user.defaultLocation || null,
+        locationLabel: user.locationLabel || ''
+      } : null,
+      orders,
+      ordersCount: orders.length,
+      totalSpent: orders.reduce((s, o) => s + (o.total || 0), 0),
+      reviews
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
 // REVIEWS ROUTES
 // ============================================
 
