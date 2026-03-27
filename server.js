@@ -8,6 +8,12 @@ const nodemailer = require('nodemailer');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+const GMAIL_USER = String(process.env.GMAIL_USER || '').trim();
+const GMAIL_APP_PASSWORD = String(process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '').trim();
+
+if (GMAIL_USER) process.env.GMAIL_USER = GMAIL_USER;
+if (GMAIL_APP_PASSWORD) process.env.GMAIL_APP_PASSWORD = GMAIL_APP_PASSWORD;
+
 // ☁️ Cloudinary Setup
 const cloudinary = require('cloudinary').v2;
 cloudinary.config({
@@ -49,14 +55,35 @@ async function deleteFromCloudinary(imageUrl) {
 const app = express();
 mongoose.set('bufferCommands', false);
 
-// 📧 Email Configuration (Gmail SMTP with Nodemailer)
-const emailTransporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER || 'your-email@gmail.com',
-    pass: process.env.GMAIL_APP_PASSWORD || 'your-app-password'
+// 📧 Email Configuration (Resend API)
+const RESEND_API_KEY = (process.env.RESEND_API_KEY || '').trim();
+
+async function sendEmailViaResend({ to, subject, html }) {
+  if (!RESEND_API_KEY) {
+    console.log(`[EMAIL DEV MODE] To: ${to} | Subject: ${subject}`);
+    return { devMode: true };
   }
-});
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from: 'Antika Store <onboarding@resend.dev>',
+      to,
+      subject,
+      html
+    })
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    const err = new Error(errData.message || 'Resend API error');
+    err.resendError = errData;
+    throw err;
+  }
+  return await res.json();
+}
 
 // In-memory OTP storage (email -> {code, timestamp, attempts})
 const otpStore = new Map();
@@ -88,6 +115,47 @@ if (!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD) {
 // Helper: Generate random 6-digit OTP
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function maskEmailForLog(email = '') {
+  const value = String(email || '').trim();
+  if (!value || !value.includes('@')) return value || null;
+  const [localPart, domain] = value.split('@');
+  const visibleLocal = localPart.length <= 2
+    ? `${localPart.charAt(0) || '*'}*`
+    : `${localPart.slice(0, 2)}***`;
+  return `${visibleLocal}@${domain}`;
+}
+
+function logEmailFailure(context, error, meta = {}) {
+  const stackLines = String(error?.stack || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 6);
+
+  const payload = {
+    context,
+    message: error?.message || 'Unknown email error',
+    name: error?.name || null,
+    code: error?.code || null,
+    command: error?.command || null,
+    responseCode: error?.responseCode || null,
+    response: error?.response || null,
+    errno: error?.errno || null,
+    syscall: error?.syscall || null,
+    address: error?.address || null,
+    port: error?.port || null,
+    stage: error?.stage || null,
+    gmailUserConfigured: Boolean(GMAIL_USER),
+    gmailUser: maskEmailForLog(GMAIL_USER),
+    gmailAppPasswordLength: GMAIL_APP_PASSWORD.length,
+    gmailAppPasswordHasSpaces: /\s/.test(GMAIL_APP_PASSWORD),
+    ...meta,
+    stack: stackLines
+  };
+
+  console.error('[EMAIL ERROR]', JSON.stringify(payload, null, 2));
 }
 
 // Check MongoDB connection status
@@ -351,20 +419,19 @@ async function sendOrderCustomerNotification(order, { title = '', message = '', 
     </div>
   `;
 
-  const gmailUser = process.env.GMAIL_USER || '';
-  const gmailPass = process.env.GMAIL_APP_PASSWORD || '';
-  const isPlaceholderCreds = gmailUser.includes('your-email') || gmailPass.includes('your-app-password') || !gmailUser || !gmailPass;
-  if (isPlaceholderCreds) {
-    console.log(`[ORDER NOTIFY DEV] ${toEmail} | ${safeSubject} | ${safeMessage}`);
-    return { sent: true, devMode: true };
+  try {
+    const result = await sendEmailViaResend({ to: toEmail, subject: safeSubject, html });
+    if (result.devMode) {
+      console.log(`[ORDER NOTIFY DEV] ${toEmail} | ${safeSubject} | ${safeMessage}`);
+      return { sent: true, devMode: true };
+    }
+  } catch (error) {
+    logEmailFailure('order-customer-notification', error, {
+      to: maskEmailForLog(toEmail),
+      subject: safeSubject
+    });
+    throw error;
   }
-
-  await emailTransporter.sendMail({
-    from: process.env.GMAIL_USER,
-    to: toEmail,
-    subject: safeSubject,
-    html
-  });
 
   return { sent: true, devMode: false };
 }
@@ -1929,7 +1996,7 @@ app.post('/api/send-verification-email', async (req, res) => {
 
     // Send email with OTP
     const mailOptions = {
-      from: process.env.GMAIL_USER || 'noreply@antika-store.com',
+      from: GMAIL_USER || 'noreply@antika-store.com',
       to: email,
       subject: 'Antika Store - Email Verification Code',
       html: `
@@ -1948,29 +2015,28 @@ app.post('/api/send-verification-email', async (req, res) => {
       `
     };
 
-    // Development fallback: if Gmail credentials are not configured,
-    // log the OTP to the server console and return a dev response so
-    // developers can test verification without SMTP.
-    const gmailUser = (process.env.GMAIL_USER || '').toLowerCase();
-    const gmailPass = (process.env.GMAIL_APP_PASSWORD || '').toLowerCase();
-    const isPlaceholderCreds = gmailUser.includes('your-email') || gmailPass.includes('your-app-password') || !gmailUser || !gmailPass;
-
-    if (isPlaceholderCreds) {
-      console.log(`DEV MODE: Verification OTP for ${email} is ${otp}`);
-      // Return OTP in response only when not running in production (safe for local dev)
-      const devResponse = { success: true, message: 'Verification code logged on server (dev mode)', email };
-      if ((process.env.NODE_ENV || 'development') !== 'production') devResponse.otp = otp;
-      return res.json(devResponse);
-    }
-
-    emailTransporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.error('❌ Email send error:', error);
-        return res.status(500).json({ error: 'Failed to send verification email', details: error.message });
+    try {
+      const result = await sendEmailViaResend({
+        to: email,
+        subject: mailOptions.subject,
+        html: mailOptions.html
+      });
+      if (result.devMode) {
+        console.log(`DEV MODE: Verification OTP for ${email} is ${otp}`);
+        const devResponse = { success: true, message: 'Verification code logged on server (dev mode)', email };
+        if ((process.env.NODE_ENV || 'development') !== 'production') devResponse.otp = otp;
+        return res.json(devResponse);
       }
-      console.log('✅ Email sent:', info.response);
-      res.json({ success: true, message: 'Verification code sent to email', email });
-    });
+      console.log('✅ Email sent via Resend');
+      return res.json({ success: true, message: 'Verification code sent to email', email });
+    } catch (error) {
+      logEmailFailure('verification-email-send', error, {
+        to: maskEmailForLog(email),
+        subject: mailOptions.subject
+      });
+      console.error('❌ Email send error:', error);
+      return res.status(500).json({ error: 'Failed to send verification email', details: error.message });
+    }
   } catch (err) {
     console.error('Error in send-verification-email:', err);
     res.status(500).json({ error: err.message });
