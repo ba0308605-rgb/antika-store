@@ -139,13 +139,35 @@ const Auth = {
                         ...savedProfile,
                         uid: user.uid,
                         email: user.email,
-                        name: user.displayName || user.email.split('@')[0],
-                        isAdmin: false, // Regular users are not admins
-                        photoURL: user.photoURL,
+                        name: user.displayName || savedProfile.name || user.email.split('@')[0],
+                        isAdmin: false,
+                        photoURL: user.photoURL || savedProfile.photoURL || null,
                         provider: this.isGoogleProvider(user) ? 'google' : 'firebase'
                     };
                     this.saveUserToStorage();
                     this.setManualLogout(false);
+                    // جلب البيانات الكاملة من Firestore (firstName, lastName, birthDate, gender, phone)
+                    if (typeof firebase !== 'undefined' && firebase.firestore) {
+                        firebase.firestore().collection('users').doc(user.uid).get().then((doc) => {
+                            if (doc.exists) {
+                                const firestoreData = doc.data() || {};
+                                this.currentUser = {
+                                    ...this.currentUser,
+                                    firstName: firestoreData.firstName || this.currentUser.firstName || '',
+                                    lastName: firestoreData.lastName || this.currentUser.lastName || '',
+                                    birthDate: firestoreData.birthDate || this.currentUser.birthDate || '',
+                                    gender: firestoreData.gender || this.currentUser.gender || '',
+                                    phone: firestoreData.phone || this.currentUser.phone || '',
+                                    avatar: firestoreData.avatar || this.currentUser.avatar || null
+                                };
+                                this.saveUserToStorage();
+                                window.dispatchEvent(new Event('userUpdated'));
+                                console.log('✅ Profile loaded from Firestore');
+                            }
+                        }).catch(err => {
+                            console.warn('⚠️ Could not load Firestore profile:', err.message);
+                        });
+                    }
                     this.maybeRedirectToGoogleProfileCompletion();
                     console.log('✅ Firebase user signed in:', user.email);
                 } else {
@@ -350,7 +372,7 @@ const Auth = {
     
     // User registration with Firebase
     // originalEmail: the email the user actually entered (may be empty when registering with phone only)
-    async userRegister(name, email, password, phone = '', originalEmail = null) {
+    async userRegister(name, email, password, phone = '', originalEmail = null, extraData = {}) {
         this.setAuthInProgress(true);
         this.setManualLogout(false);
         try {
@@ -374,6 +396,10 @@ const Auth = {
                 email: authEmail,
                 name: name,
                 phone: phone,
+                firstName: extraData.firstName || '',
+                lastName: extraData.lastName || '',
+                birthDate: extraData.birthDate || '',
+                gender: extraData.gender || '',
                 isAdmin: false,
                 provider: 'firebase'
             };
@@ -389,6 +415,10 @@ const Auth = {
                     name: name,
                     email: emailToStore,
                     phone: phone,
+                    firstName: extraData.firstName || '',
+                    lastName: extraData.lastName || '',
+                    birthDate: extraData.birthDate || '',
+                    gender: extraData.gender || '',
                     phoneOnly: !!isPhoneOnly,
                     createdAt: new Date().toISOString(),
                     isAdmin: false
@@ -1068,4 +1098,3 @@ document.addEventListener('DOMContentLoaded', () => {
 // Export for global use
 // Make Auth available globally
 window.Auth = Auth;
-

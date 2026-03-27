@@ -415,6 +415,11 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadUserData();
         });
+
+        // إعادة تحميل البيانات لما تجي من Firestore
+        window.addEventListener('userUpdated', function() {
+            loadUserData();
+        });
         
         function loadUserData() {
             const userData = localStorage.getItem('antika_user');
@@ -569,14 +574,18 @@
                 // Save to localStorage
                 localStorage.setItem('antika_user', JSON.stringify(updatedUser));
                 
-                // Try to sync to Auth system if available
+                // Sync to Auth system (saves to Firestore)
                 if (window.Auth && typeof Auth.updateUserProfile === 'function') {
                     try {
                         await Auth.updateUserProfile({
+                            name: fullName,
                             firstName: firstName,
                             lastName: lastName,
+                            email: email,
+                            phone: phone ? '+966' + phone : user.phone,
                             birthDate: birthDate,
-                            gender: gender
+                            gender: gender,
+                            lastUpdated: new Date().toISOString()
                         });
                     } catch (e) {
                         console.warn('Failed to sync to Auth:', e);
