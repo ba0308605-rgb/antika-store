@@ -59,7 +59,7 @@
             position: relative;
         }
         
-        .step:not(:last-child)::after {
+        .step:not(:first-child)::before {
             content: '';
             position: absolute;
             top: 24px;
@@ -70,9 +70,12 @@
             z-index: 0;
             border-radius: 2px;
         }
+        .step:not(:last-child)::after {
+            display: none;
+        }
         
-        .step.active:not(:last-child)::after,
-        .step.completed:not(:last-child)::after {
+        .step.active::before,
+        .step.completed::before {
             background: linear-gradient(90deg, #C4AC8E, #D6C1A6);
         }
         
@@ -739,12 +742,18 @@
             
             // Show new step
             currentStep = step;
-            document.getElementById(`step-${currentStep}-form`).classList.add('active');
-            document.getElementById(`step-${currentStep}-indicator`).classList.add('active');
+            const nextForm = document.getElementById(`step-${currentStep}-form`);
+            const nextIndicator = document.getElementById(`step-${currentStep}-indicator`);
+            if (nextForm) nextForm.classList.add('active');
+            if (nextIndicator) {
+                nextIndicator.style.display = '';
+                nextIndicator.classList.add('active');
+            }
             
             // Mark completed steps
             for (let i = 1; i < currentStep; i++) {
-                document.getElementById(`step-${i}-indicator`).classList.add('completed');
+                const ind = document.getElementById(`step-${i}-indicator`);
+                if (ind) ind.classList.add('completed');
             }
             
             // Scroll to top
@@ -802,10 +811,17 @@
                     localStorage.setItem('userEmail', originalEmail || authEmail);
                     
                     hideLoadingOverlay();
-                    console.log('✅ Registration successful. Redirecting to index...');
-                    
-                    // Redirect immediately to index.html
-                    window.location.href = 'index.html';
+                    console.log('✅ Registration successful. Showing success screen...');
+
+                    // Show step 5 success screen
+                    goToStep(5);
+                    document.getElementById('loading-state').classList.add('hidden');
+                    document.getElementById('success-state').classList.remove('hidden');
+
+                    // Redirect after 3 seconds
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 3000);
                 } else {
                     hideLoadingOverlay();
                     console.error('❌ Registration failed:', result.error);
