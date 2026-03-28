@@ -781,7 +781,7 @@
 
             try {
                 await firebase.auth().sendPasswordResetEmail(email);
-                showPassMsg('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني', 'success');
+                showPassMsg('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني ✅ — إذا لم تجده تحقق من مجلد البريد غير المرغوب فيه (Spam)', 'success');
             } catch (error) {
                 console.error('Reset error:', error);
                 showPassMsg('فشل إرسال الرابط: ' + error.message, 'error');
