@@ -1551,10 +1551,9 @@
             }
 
             const isAdmin = !!localStorage.getItem('antika_admin_token');
-            const currentUser = (window.Auth && typeof Auth.getCurrentUser === 'function')
-                ? Auth.getCurrentUser()
-                : (() => { try { return JSON.parse(localStorage.getItem('antika_user') || 'null'); } catch(e) { return null; } })();
-            const currentUserEmail = currentUser ? (currentUser.email || '') : '';
+            // نتحقق من Firebase مباشرة عشان ما نعتمد على localStorage بعد تسجيل الخروج
+            const firebaseCurrentUser = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+            const currentUserEmail = firebaseCurrentUser ? (firebaseCurrentUser.email || '') : '';
             list.innerHTML = reviews.map(function(r) {
                 const date = new Date(r.createdAt).toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
                 return '<div class="review-card">'
