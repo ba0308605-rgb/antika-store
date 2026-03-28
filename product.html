@@ -1483,10 +1483,21 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             loadProduct();
-            initReviewForm();
-            window.addEventListener('userUpdated', initReviewForm);
             updateCartCount();
-            loadReviews();
+
+            // ننتظر Firebase يتحقق من الجلسة أولاً ثم نحمّل التعليقات والفورم
+            if (typeof firebase !== 'undefined' && firebase.auth) {
+                const unsubscribe = firebase.auth().onAuthStateChanged(function() {
+                    unsubscribe(); // مرة وحدة فقط
+                    initReviewForm();
+                    loadReviews();
+                });
+            } else {
+                initReviewForm();
+                loadReviews();
+            }
+
+            window.addEventListener('userUpdated', initReviewForm);
         });
 
         // ===== REVIEWS SYSTEM =====
