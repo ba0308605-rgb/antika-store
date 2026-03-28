@@ -770,13 +770,13 @@
             const userData = localStorage.getItem('antika_user');
             const email = userData ? JSON.parse(userData).email : '';
             if (!email) return showPassMsg('لا يوجد بريد إلكتروني مرتبط بهذا الحساب', 'error');
-            if (!window.Auth || typeof Auth.resetPassword !== 'function') return showPassMsg('نظام المصادقة غير متوفر', 'error');
 
-            const result = await Auth.resetPassword(email);
-            if (result.success) {
+            try {
+                await firebase.auth().sendPasswordResetEmail(email);
                 showPassMsg('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني', 'success');
-            } else {
-                showPassMsg(result.error || 'فشل إرسال الرابط', 'error');
+            } catch (error) {
+                console.error('Reset error:', error);
+                showPassMsg('فشل إرسال الرابط: ' + error.message, 'error');
             }
         }
     </script>
