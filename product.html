@@ -889,13 +889,23 @@
             </div>
 
             <!-- نموذج إضافة تعليق -->
-            <div class="review-form">
+
+            <!-- رسالة تسجيل الدخول (تظهر للزوار) -->
+            <div id="review-login-notice" class="review-form" style="text-align:center;padding:28px 20px;display:none">
+                <i class="fas fa-lock" style="font-size:2.5rem;color:#D6C1A6;margin-bottom:12px;display:block"></i>
+                <h3 style="margin-bottom:8px">يجب تسجيل الدخول أولاً</h3>
+                <p style="color:#999;font-size:0.9rem;margin-bottom:18px">لكتابة تعليق يجب أن تكون مسجلاً في المتجر</p>
+                <a href="login.html" style="display:inline-block;background:linear-gradient(135deg,#D6C1A6,#C4AC8E);color:white;padding:12px 32px;border-radius:12px;font-weight:700;text-decoration:none">
+                    <i class="fas fa-sign-in-alt ml-2"></i> تسجيل الدخول
+                </a>
+            </div>
+
+            <!-- فورم التعليق (يظهر للمسجلين فقط) -->
+            <div class="review-form" id="review-form-container" style="display:none">
                 <h3>✍️ أضف تعليقك</h3>
-                <div class="grid gap-3" style="grid-template-columns:1fr 1fr">
-                    <input type="text" id="review-name" class="review-input" placeholder="اسمك *">
-                    <input type="email" id="review-email" class="review-input" placeholder="بريدك الإلكتروني (اختياري)">
-                </div>
-                <div style="margin:16px 0 8px">
+                <input type="hidden" id="review-name">
+                <input type="hidden" id="review-email">
+                <div style="margin:0 0 16px">
                     <p style="font-size:0.9rem;color:#555;margin-bottom:8px">تقييمك: *</p>
                     <div class="stars-interactive">
                         <input type="radio" name="review-rating" id="star5" value="5">
@@ -1473,6 +1483,8 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             loadProduct();
+            initReviewForm();
+            window.addEventListener('userUpdated', initReviewForm);
             updateCartCount();
             loadReviews();
         });
@@ -1557,9 +1569,38 @@
             }).join('');
         }
 
+        function initReviewForm() {
+            const user = (window.Auth && typeof Auth.getCurrentUser === 'function')
+                ? Auth.getCurrentUser()
+                : (() => { try { return JSON.parse(localStorage.getItem('antika_user') || 'null'); } catch(e) { return null; } })();
+
+            const loginNotice = document.getElementById('review-login-notice');
+            const formContainer = document.getElementById('review-form-container');
+
+            if (user && (user.uid || user.email)) {
+                // مسجل — نعبئ الاسم والإيميل تلقائياً
+                document.getElementById('review-name').value = user.name || user.firstName || '';
+                document.getElementById('review-email').value = user.email || '';
+                if (loginNotice) loginNotice.style.display = 'none';
+                if (formContainer) formContainer.style.display = 'block';
+            } else {
+                // غير مسجل — نعرض رسالة تسجيل الدخول
+                if (loginNotice) loginNotice.style.display = 'block';
+                if (formContainer) formContainer.style.display = 'none';
+            }
+        }
+
         async function submitReview() {
             const name = document.getElementById('review-name').value.trim();
             const email = document.getElementById('review-email').value.trim();
+            // اسم وإيميل يتحملان تلقائياً من الجلسة - تأكد من وجودهم
+            if (!name) {
+                const msg = document.getElementById('review-form-msg');
+                msg.textContent = 'حدث خطأ، يرجى إعادة تحميل الصفحة';
+                msg.style.color = '#ef4444';
+                msg.style.display = 'block';
+                return;
+            }
             const ratingInput = document.querySelector('input[name="review-rating"]:checked');
             const comment = document.getElementById('review-comment').value.trim();
             const msg = document.getElementById('review-form-msg');
