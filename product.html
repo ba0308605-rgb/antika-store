@@ -1647,6 +1647,13 @@
         }
 
         async function deleteReview(reviewId) {
+            // تحقق من تسجيل الدخول أولاً
+            const firebaseUser = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+            const isAdmin = !!localStorage.getItem('antika_admin_token');
+            if (!firebaseUser && !isAdmin) {
+                alert('يجب تسجيل الدخول أولاً');
+                return;
+            }
             if (!confirm('حذف هذا التعليق؟')) return;
             try {
                 await ReviewsAPI.deleteReview(reviewId);
