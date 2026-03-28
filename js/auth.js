@@ -781,6 +781,40 @@ const Auth = {
     
     
     // Reset password
+    async changePassword(currentPassword, newPassword) {
+        try {
+            if (typeof firebase === 'undefined' || !firebase.auth) {
+                throw new Error('Firebase not initialized');
+            }
+            const user = firebase.auth().currentUser;
+            if (!user || !user.email) {
+                return { success: false, error: 'يجب تسجيل الدخول أولاً' };
+            }
+            // إعادة المصادقة بكلمة المرور الحالية
+            const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
+            await user.reauthenticateWithCredential(credential);
+            // تغيير كلمة المرور
+            await user.updatePassword(newPassword);
+            return { success: true };
+        } catch (error) {
+            console.error('Change password error:', error);
+            let errorMessage = 'فشل تغيير كلمة المرور';
+            switch (error.code) {
+                case 'auth/wrong-password':
+                case 'auth/invalid-credential':
+                    errorMessage = 'كلمة المرور الحالية غير صحيحة';
+                    break;
+                case 'auth/weak-password':
+                    errorMessage = 'كلمة المرور الجديدة ضعيفة جداً (6 أحرف على الأقل)';
+                    break;
+                case 'auth/requires-recent-login':
+                    errorMessage = 'انتهت جلستك، سجل الدخول مرة أخرى';
+                    break;
+            }
+            return { success: false, error: errorMessage };
+        }
+    },
+
     async resetPassword(email) {
         try {
             if (typeof firebase === 'undefined' || !firebase.auth) {

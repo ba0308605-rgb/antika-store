@@ -214,6 +214,27 @@
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        /* Password Toggle */
+        .password-wrapper {
+            position: relative;
+        }
+        .password-toggle {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #9ca3af;
+            transition: color 0.2s;
+        }
+        .password-toggle:hover { color: #D6C1A6; }
+
+        /* Password Section Divider */
+        .section-divider {
+            border: none;
+            border-top: 2px dashed #f0ebe4;
+            margin: 28px 0;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
@@ -384,6 +405,61 @@
                                 </button>
                             </div>
                             
+                            <!-- Password Change Section -->
+                            <hr class="section-divider">
+                            <div>
+                                <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                                    <i class="fas fa-lock text-antika-gold"></i>
+                                    تغيير كلمة المرور
+                                </h3>
+
+                                <!-- Current Password -->
+                                <div class="mb-4">
+                                    <label class="block text-gray-700 font-bold mb-2 text-sm">كلمة المرور الحالية</label>
+                                    <div class="password-wrapper">
+                                        <input type="password" id="current-password" class="antika-input" placeholder="أدخل كلمة المرور الحالية" style="padding-left:44px">
+                                        <span class="password-toggle" onclick="togglePass('current-password', this)">
+                                            <i class="fas fa-eye"></i>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- New Password -->
+                                <div class="mb-4">
+                                    <label class="block text-gray-700 font-bold mb-2 text-sm">كلمة المرور الجديدة</label>
+                                    <div class="password-wrapper">
+                                        <input type="password" id="new-password" class="antika-input" placeholder="6 أحرف على الأقل" style="padding-left:44px">
+                                        <span class="password-toggle" onclick="togglePass('new-password', this)">
+                                            <i class="fas fa-eye"></i>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Confirm New Password -->
+                                <div class="mb-5">
+                                    <label class="block text-gray-700 font-bold mb-2 text-sm">تأكيد كلمة المرور الجديدة</label>
+                                    <div class="password-wrapper">
+                                        <input type="password" id="confirm-password" class="antika-input" placeholder="أعد كتابة كلمة المرور الجديدة" style="padding-left:44px">
+                                        <span class="password-toggle" onclick="togglePass('confirm-password', this)">
+                                            <i class="fas fa-eye"></i>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                                    <button type="button" id="change-pass-btn" onclick="handleChangePassword()" class="save-btn">
+                                        <i class="fas fa-key ml-2"></i>
+                                        تغيير كلمة المرور
+                                    </button>
+                                    <button type="button" onclick="handleForgotPassword()" class="text-sm text-antika-gold hover:underline">
+                                        نسيت كلمة المرور؟
+                                    </button>
+                                </div>
+
+                                <!-- Password feedback -->
+                                <div id="password-msg" class="mt-3 text-sm hidden"></div>
+                            </div>
+
                             <!-- Delete Account -->
                             <div class="pt-6">
                                 <button id="delete-account-btn" type="button" class="w-full bg-red-50 text-red-600 py-3 rounded-lg hover:bg-red-100 transition" onclick="confirmDeleteAccount()">
@@ -621,6 +697,85 @@
             localStorage.removeItem('antika_user');
             localStorage.removeItem('antika_token');
             window.location.href = 'index.html';
+        }
+
+        // Toggle password visibility
+        function togglePass(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+
+        function showPassMsg(text, type) {
+            const el = document.getElementById('password-msg');
+            el.textContent = text;
+            el.className = 'mt-3 text-sm ' + (type === 'success' ? 'text-green-600' : 'text-red-500');
+            el.classList.remove('hidden');
+            if (type === 'success') {
+                setTimeout(() => { el.classList.add('hidden'); }, 4000);
+            }
+        }
+
+        async function handleChangePassword() {
+            const currentPass = document.getElementById('current-password').value.trim();
+            const newPass = document.getElementById('new-password').value.trim();
+            const confirmPass = document.getElementById('confirm-password').value.trim();
+
+            if (!currentPass || !newPass || !confirmPass) {
+                return showPassMsg('يرجى ملء جميع حقول كلمة المرور', 'error');
+            }
+            if (newPass.length < 6) {
+                return showPassMsg('كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل', 'error');
+            }
+            if (newPass !== confirmPass) {
+                return showPassMsg('كلمة المرور الجديدة وتأكيدها غير متطابقين', 'error');
+            }
+            if (newPass === currentPass) {
+                return showPassMsg('كلمة المرور الجديدة مطابقة للحالية، اختر كلمة مرور مختلفة', 'error');
+            }
+
+            const btn = document.getElementById('change-pass-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري التغيير...';
+
+            if (!window.Auth || typeof Auth.changePassword !== 'function') {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-key ml-2"></i> تغيير كلمة المرور';
+                return showPassMsg('نظام المصادقة غير متوفر', 'error');
+            }
+
+            const result = await Auth.changePassword(currentPass, newPass);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-key ml-2"></i> تغيير كلمة المرور';
+
+            if (result.success) {
+                document.getElementById('current-password').value = '';
+                document.getElementById('new-password').value = '';
+                document.getElementById('confirm-password').value = '';
+                showPassMsg('تم تغيير كلمة المرور بنجاح', 'success');
+            } else {
+                showPassMsg(result.error || 'فشل تغيير كلمة المرور', 'error');
+            }
+        }
+
+        async function handleForgotPassword() {
+            const userData = localStorage.getItem('antika_user');
+            const email = userData ? JSON.parse(userData).email : '';
+            if (!email) return showPassMsg('لا يوجد بريد إلكتروني مرتبط بهذا الحساب', 'error');
+            if (!window.Auth || typeof Auth.resetPassword !== 'function') return showPassMsg('نظام المصادقة غير متوفر', 'error');
+
+            const result = await Auth.resetPassword(email);
+            if (result.success) {
+                showPassMsg('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني', 'success');
+            } else {
+                showPassMsg(result.error || 'فشل إرسال الرابط', 'error');
+            }
         }
     </script>
 </body>
