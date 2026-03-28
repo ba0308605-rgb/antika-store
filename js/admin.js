@@ -427,7 +427,7 @@ async function loadAdminProducts() {
                             <span class="text-antika-gold font-bold text-sm">${product.price} ر.س</span>
                         `}
                     </div>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 mb-2">
                         <button onclick='editProduct(${JSON.stringify(productId)})' class="flex-1 bg-blue-100 text-blue-600 py-2 rounded-lg hover:bg-blue-200 transition text-xs">
                             <i class="fas fa-edit"></i> تعديل
                         </button>
@@ -435,6 +435,9 @@ async function loadAdminProducts() {
                             <i class="fas fa-trash"></i> حذف
                         </button>
                     </div>
+                    <button onclick='openProductReviews(${JSON.stringify(productId)}, ${JSON.stringify(product.name)})' class="w-full bg-amber-50 text-amber-700 py-2 rounded-lg hover:bg-amber-100 transition text-xs font-bold border border-amber-200">
+                        <i class="fas fa-comments ml-1"></i> التعليقات
+                    </button>
                 </div>
             </div>
             `;
@@ -2127,6 +2130,81 @@ async function confirmDeleteReview(reviewId) {
         if (!res.ok) throw new Error('فشل الحذف');
         showNotification('تم حذف التعليق بنجاح');
         await loadAllReviews();
+    } catch(e) {
+        showNotification('حدث خطأ أثناء الحذف', 'error');
+    }
+}
+// ============================================
+// PRODUCT REVIEWS MODAL
+// ============================================
+
+async function openProductReviews(productId, productName) {
+    const modal = document.getElementById('product-reviews-modal');
+    const title = document.getElementById('product-reviews-title');
+    const container = document.getElementById('product-reviews-list');
+    if (!modal || !container) return;
+
+    title.textContent = '💬 تعليقات: ' + (productName || '');
+    container.innerHTML = '<div class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin text-2xl"></i></div>';
+    modal.classList.remove('hidden');
+
+    try {
+        const data = await fetch('/api/products/' + productId + '/reviews').then(r => r.json());
+        const reviews = data.reviews || [];
+
+        if (reviews.length === 0) {
+            container.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fas fa-comments text-4xl mb-3 block"></i>لا توجد تعليقات على هذا المنتج</div>';
+            return;
+        }
+
+        container.innerHTML = reviews.map(function(r, idx) {
+            const stars = Array.from({length:5}, function(_,i) {
+                return '<i class="fas fa-star ' + (i < r.rating ? 'text-yellow-400' : 'text-gray-200') + ' text-xs"></i>';
+            }).join('');
+            const date = new Date(r.createdAt).toLocaleDateString('ar-SA', {year:'numeric', month:'long', day:'numeric'});
+            const ratingColor = r.rating <= 2 ? 'border-red-200 bg-red-50' : r.rating === 3 ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50';
+
+            return '<div class="border rounded-xl p-4 mb-3 ' + ratingColor + '">'
+                + '<div class="flex justify-between items-start mb-2">'
+                +   '<div>'
+                +     '<p class="font-bold text-gray-800 text-sm">' + (r.userName || '-') + '</p>'
+                +     '<p class="text-xs text-gray-500">' + (r.userEmail || 'بدون إيميل') + '</p>'
+                +   '</div>'
+                +   '<div class="flex flex-col items-end gap-1">'
+                +     '<div>' + stars + '</div>'
+                +     '<p class="text-xs text-gray-400">' + date + '</p>'
+                +   '</div>'
+                + '</div>'
+                + '<p class="text-gray-700 text-sm leading-relaxed mb-3">' + (r.comment || '') + '</p>'
+                + '<div class="flex gap-2">'
+                +   '<button data-ridx="' + idx + '" onclick="openReviewModal(window._productReviews[this.dataset.ridx])" class="flex-1 bg-blue-100 text-blue-600 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-200 transition"><i class="fas fa-eye ml-1"></i>تفاصيل المستخدم</button>'
+                +   '<button data-rid="' + r._id + '" data-pid="' + productId + '" onclick="confirmDeleteReviewInProduct(this.dataset.rid, this.dataset.pid)" class="flex-1 bg-red-100 text-red-500 py-1.5 rounded-lg text-xs font-bold hover:bg-red-200 transition"><i class="fas fa-trash ml-1"></i>حذف</button>'
+                + '</div>'
+                + '</div>';
+        }).join('');
+
+        window._productReviews = reviews;
+
+    } catch(e) {
+        container.innerHTML = '<div class="text-center py-8 text-red-400">حدث خطأ أثناء تحميل التعليقات</div>';
+    }
+}
+
+function closeProductReviewsModal() {
+    document.getElementById('product-reviews-modal')?.classList.add('hidden');
+}
+
+async function confirmDeleteReviewInProduct(reviewId, productId, productName) {
+    if (!confirm('هل أنت متأكد من حذف هذا التعليق؟')) return;
+    try {
+        const token = localStorage.getItem('antika_admin_token');
+        const res = await fetch('/api/reviews/' + reviewId, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) throw new Error('فشل الحذف');
+        showNotification('تم حذف التعليق بنجاح');
+        openProductReviews(productId, productName);
     } catch(e) {
         showNotification('حدث خطأ أثناء الحذف', 'error');
     }
