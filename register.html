@@ -394,7 +394,20 @@
                 <!-- Step 4: Personal Info -->
                 <form id="step-4-form" class="step-form space-y-4">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">البيانات الشخصية</h2>
-                    
+
+                    <!-- Phone (Google mode only) -->
+                    <div id="step4-phone-field" class="hidden">
+                        <label class="block text-gray-700 font-bold mb-2">رقم الجوال <span class="text-red-500">*</span></label>
+                        <div class="flex border-2 border-gray-200 rounded-lg overflow-hidden focus-within:border-antika-gold transition">
+                            <div class="bg-gray-50 px-3 flex items-center gap-2 border-l-2 border-gray-200 font-semibold text-gray-700">
+                                <span>🇸🇦</span><span>+966</span>
+                            </div>
+                            <input type="tel" id="step4-phone" class="flex-1 px-4 py-3 outline-none text-base"
+                                   placeholder="05xxxxxxxx" maxlength="10">
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1"><i class="fas fa-phone ml-1"></i> تأكد من صحة رقمك للتواصل بخصوص طلباتك</p>
+                    </div>
+
                     <div class="grid md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-gray-700 font-bold mb-2">الاسم الأول <span class="text-red-500">*</span></label>
@@ -541,6 +554,17 @@
 
             formData.email = user.email || '';
             formData.phone = user.phone || '';
+
+            // Show phone field in Google mode
+            const phoneField = document.getElementById('step4-phone-field');
+            if (phoneField) phoneField.classList.remove('hidden');
+
+            // Pre-fill phone if exists (remove +966 prefix)
+            const phoneInput = document.getElementById('step4-phone');
+            if (phoneInput && user.phone) {
+                let ph = String(user.phone).replace(/^\+?966/, '');
+                phoneInput.value = ph;
+            }
 
             const currentForm = document.getElementById(`step-${currentStep}-form`);
             const currentIndicator = document.getElementById(`step-${currentStep}-indicator`);
@@ -707,9 +731,17 @@
                     return;
                 }
 
-                if (isGoogleProfileMode && (!birthDate || !gender)) {
-                    showNotification('يرجى إدخال تاريخ الميلاد واختيار الجنس', 'error');
-                    return;
+                if (isGoogleProfileMode) {
+                    if (!birthDate || !gender) {
+                        showNotification('يرجى إدخال تاريخ الميلاد واختيار الجنس', 'error');
+                        return;
+                    }
+                    const phoneVal = (document.getElementById('step4-phone')?.value || '').trim();
+                    if (!phoneVal || phoneVal.length < 9) {
+                        showNotification('يرجى إدخال رقم جوال صحيح', 'error');
+                        return;
+                    }
+                    formData.phone = '+966' + phoneVal.replace(/^0/, '');
                 }
                 
                 formData.firstName = firstName;
