@@ -2366,6 +2366,39 @@ app.post('/api/products/:id/reviews', async (req, res) => {
 });
 
 // DELETE: حذف تعليق (أدمن فقط)
+// DELETE: حذف تعليق بواسطة صاحبه (بدون admin)
+app.delete('/api/reviews/:reviewId/user', async (req, res) => {
+  try {
+    if (!requireMongo(res, 'Review delete')) return;
+    const { userEmail } = req.body || {};
+    if (!userEmail) return res.status(400).json({ error: 'userEmail مطلوب' });
+
+    const review = await Review.findById(req.params.reviewId);
+    if (!review) return res.status(404).json({ error: 'التعليق غير موجود' });
+
+    // تحقق إن الإيميل مطابق لصاحب التعليق
+    if (!review.userEmail || review.userEmail.toLowerCase() !== userEmail.toLowerCase()) {
+      return res.status(403).json({ error: 'غير مصرح لك بحذف هذا التعليق' });
+    }
+
+    await Review.findByIdAndDelete(req.params.reviewId);
+
+    // تحديث متوسط التقييم
+    const allReviews = await Review.find({ productId: review.productId });
+    const avgRating = allReviews.length > 0
+      ? allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length
+      : 5;
+    await Product.findByIdAndUpdate(review.productId, {
+      rating: Math.round(avgRating * 10) / 10,
+      reviews: allReviews.length
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.delete('/api/reviews/:reviewId', requireAdmin, async (req, res) => {
   try {
     if (!requireMongo(res, 'Review delete')) return;

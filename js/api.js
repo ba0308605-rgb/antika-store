@@ -862,12 +862,33 @@ const ReviewsAPI = {
     return json;
   },
   async deleteReview(reviewId) {
-    const token = localStorage.getItem('antika_admin_token');
-    const res = await fetch(`/api/reviews/${reviewId}`, {
+    const adminToken = localStorage.getItem('antika_admin_token');
+
+    if (adminToken) {
+      // حذف بواسطة الأدمن
+      const res = await fetch(`/api/reviews/${reviewId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + adminToken }
+      });
+      if (!res.ok) throw new Error('فشل حذف التعليق');
+      return await res.json();
+    }
+
+    // حذف بواسطة صاحب التعليق — نتحقق من Firebase أولاً
+    const firebaseUser = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+    if (!firebaseUser || !firebaseUser.email) {
+      throw new Error('يجب تسجيل الدخول أولاً');
+    }
+
+    const res = await fetch(`/api/reviews/${reviewId}/user`, {
       method: 'DELETE',
-      headers: { 'Authorization': 'Bearer ' + token }
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userEmail: firebaseUser.email })
     });
-    if (!res.ok) throw new Error('فشل حذف التعليق');
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'فشل حذف التعليق');
+    }
     return await res.json();
   }
 };
