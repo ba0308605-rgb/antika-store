@@ -771,6 +771,10 @@
             const email = userData ? JSON.parse(userData).email : '';
             if (!email) return showPassMsg('لا يوجد بريد إلكتروني مرتبط بهذا الحساب', 'error');
 
+            if (typeof firebase === 'undefined' || !firebase.auth) {
+                return showPassMsg('جاري التحميل، حاول مرة أخرى', 'error');
+            }
+
             try {
                 await firebase.auth().sendPasswordResetEmail(email);
                 showPassMsg('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني', 'success');
