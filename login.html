@@ -266,11 +266,22 @@
                         window.location.href = 'index.html';
                     }, 1500);
                 } else {
-                    showNotification(result.error, 'error');
+                    // رسائل خطأ واضحة
+                    let errMsg = result.error || 'حدث خطأ';
+                    if (errMsg.includes('user-not-found') || errMsg.includes('no user')) {
+                        errMsg = 'لم يتم العثور على حساب بهذا البريد الإلكتروني';
+                    } else if (errMsg.includes('wrong-password') || errMsg.includes('invalid-credential') || errMsg.includes('invalid credential')) {
+                        errMsg = 'كلمة المرور غير صحيحة، تحقق منها وأعد المحاولة';
+                    } else if (errMsg.includes('too-many-requests')) {
+                        errMsg = 'تم تجاوز عدد المحاولات، حاول لاحقاً أو أعد تعيين كلمة المرور';
+                    } else if (errMsg.includes('network')) {
+                        errMsg = 'تحقق من اتصال الإنترنت وأعد المحاولة';
+                    }
+                    showNotification(errMsg, 'error');
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                showNotification('حدث خطأ أثناء تسجيل الدخول', 'error');
+                showNotification('حدث خطأ، تحقق من اتصالك بالإنترنت وأعد المحاولة', 'error');
             }
         });
 

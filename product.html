@@ -1551,6 +1551,10 @@
             }
 
             const isAdmin = !!localStorage.getItem('antika_admin_token');
+            const currentUser = (window.Auth && typeof Auth.getCurrentUser === 'function')
+                ? Auth.getCurrentUser()
+                : (() => { try { return JSON.parse(localStorage.getItem('antika_user') || 'null'); } catch(e) { return null; } })();
+            const currentUserEmail = currentUser ? (currentUser.email || '') : '';
             list.innerHTML = reviews.map(function(r) {
                 const date = new Date(r.createdAt).toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
                 return '<div class="review-card">'
@@ -1561,7 +1565,7 @@
                     + '</div>'
                     + '<div style="display:flex;align-items:center;gap:10px">'
                     + '<span class="review-date">' + date + '</span>'
-                    + (isAdmin ? '<button onclick="deleteReview(\'' + r._id + '\')" style="color:#ef4444;background:none;border:none;cursor:pointer;font-size:0.85rem" title="حذف"><i class="fas fa-trash"></i></button>' : '')
+                    + ((() => { const isOwner = currentUserEmail && r.userEmail && currentUserEmail.toLowerCase() === r.userEmail.toLowerCase(); return (isAdmin || isOwner) ? '<button onclick="deleteReview(\'' + r._id + '\')" style="color:#ef4444;background:none;border:none;cursor:pointer;font-size:0.85rem" title="حذف"><i class="fas fa-trash"></i></button>' : ''; })())
                     + '</div>'
                     + '</div>'
                     + '<p class="review-comment">' + r.comment + '</p>'
