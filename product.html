@@ -279,12 +279,27 @@
         }
         .review-submit-btn:hover { opacity: 0.9; }
         .review-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        #reviews-list {
+            display: flex;
+            gap: 14px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+        }
+        #reviews-list::-webkit-scrollbar { height: 4px; }
+        #reviews-list::-webkit-scrollbar-track { background: #f5f0ea; border-radius: 4px; }
+        #reviews-list::-webkit-scrollbar-thumb { background: #D6C1A6; border-radius: 4px; }
         .review-card {
             border: 1px solid #f0e8e0;
             border-radius: 14px;
             padding: 18px 20px;
-            margin-bottom: 14px;
+            min-width: 260px;
+            max-width: 300px;
+            flex-shrink: 0;
+            scroll-snap-align: start;
             transition: box-shadow 0.2s;
+            background: white;
         }
         .review-card:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.07); }
         .review-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
@@ -292,7 +307,7 @@
         .review-date { font-size: 0.8rem; color: #aaa; }
         .review-stars { color: #f59e0b; font-size: 1rem; letter-spacing: 1px; }
         .review-comment { color: #555; font-size: 0.95rem; line-height: 1.7; }
-        .no-reviews { text-align: center; padding: 40px; color: #aaa; }
+        .no-reviews { text-align: center; padding: 40px; color: #aaa; width: 100%; }
         .no-reviews i { font-size: 3rem; margin-bottom: 12px; display: block; }
 
         /* Review owner actions */
@@ -1699,10 +1714,14 @@
                 // نتحقق إذا كان عنده تعليق مسبق
                 if (productId && user.email) {
                     ReviewsAPI.getReviews(productId).then(function(data) {
-                        const hasReview = (data.reviews || []).some(function(r) {
+                        const myReview = (data.reviews || []).find(function(r) {
                             return r.userEmail && r.userEmail.toLowerCase() === user.email.toLowerCase();
                         });
-                        if (formContainer) formContainer.style.display = hasReview ? 'none' : 'block';
+                        if (formContainer) formContainer.style.display = 'block';
+                        const formTitle = formContainer ? formContainer.querySelector('h3') : null;
+                        if (myReview && formTitle) {
+                            formTitle.innerHTML = '✏️ عدّل تعليقك';
+                        }
                     }).catch(function() {
                         if (formContainer) formContainer.style.display = 'block';
                     });
