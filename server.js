@@ -2342,6 +2342,17 @@ app.post('/api/products/:id/reviews', async (req, res) => {
     if (!product) product = await Product.findOne({ id });
     if (!product) return res.status(404).json({ error: 'المنتج غير موجود' });
 
+    // منع أكثر من تعليق واحد لنفس الإيميل على نفس المنتج
+    if (userEmail && userEmail.trim()) {
+      const existing = await Review.findOne({
+        productId: product._id,
+        userEmail: { $regex: new RegExp('^' + userEmail.trim().replace(/[-.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') }
+      });
+      if (existing) {
+        return res.status(400).json({ error: 'لقد كتبت تعليقاً على هذا المنتج مسبقاً', reviewId: existing._id });
+      }
+    }
+
     const review = new Review({
       productId: product._id,
       userName: userName.trim(),
@@ -2357,6 +2368,64 @@ app.post('/api/products/:id/reviews', async (req, res) => {
     await Product.findByIdAndUpdate(product._id, {
       rating: Math.round(avgRating * 10) / 10,
       reviews: allReviews.length
+    });
+
+    res.json({ success: true, review });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT: تعديل تعليق بواسطة صاحبه - مع تحقق من Firebase ID Token
+app.put('/api/reviews/:reviewId/user', async (req, res) => {
+  try {
+    if (!requireMongo(res, 'Review update')) return;
+
+    const authHeader = req.headers.authorization || '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'يجب تسجيل الدخول أولاً' });
+    }
+    const idToken = authHeader.slice(7).trim();
+
+    const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || '';
+    if (!FIREBASE_API_KEY) {
+      return res.status(500).json({ error: 'Firebase API Key غير مضبوط' });
+    }
+
+    let verifiedEmail = '';
+    try {
+      const verifyRes = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }) }
+      );
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok || !verifyData.users || !verifyData.users.length) {
+        return res.status(401).json({ error: 'جلسة غير صالحة' });
+      }
+      verifiedEmail = verifyData.users[0].email || '';
+    } catch (e) {
+      return res.status(401).json({ error: 'فشل التحقق من الهوية' });
+    }
+
+    const { rating, comment } = req.body || {};
+    if (!rating || !comment) return res.status(400).json({ error: 'التقييم والتعليق مطلوبان' });
+    if (comment.trim().length < 5) return res.status(400).json({ error: 'التعليق قصير جداً' });
+
+    const review = await Review.findById(req.params.reviewId);
+    if (!review) return res.status(404).json({ error: 'التعليق غير موجود' });
+
+    if (!review.userEmail || review.userEmail.toLowerCase() !== verifiedEmail.toLowerCase()) {
+      return res.status(403).json({ error: 'غير مصرح لك بتعديل هذا التعليق' });
+    }
+
+    review.rating = Number(rating);
+    review.comment = comment.trim();
+    await review.save();
+
+    const allReviews = await Review.find({ productId: review.productId });
+    const avgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+    await Product.findByIdAndUpdate(review.productId, {
+      rating: Math.round(avgRating * 10) / 10
     });
 
     res.json({ success: true, review });

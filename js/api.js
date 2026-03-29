@@ -861,6 +861,22 @@ const ReviewsAPI = {
     if (!res.ok) throw new Error(json.error || 'فشل إضافة التعليق');
     return json;
   },
+  async updateReview(reviewId, { rating, comment }) {
+    const firebaseUser = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+    if (!firebaseUser) throw new Error('يجب تسجيل الدخول أولاً');
+    const idToken = await firebaseUser.getIdToken();
+    const res = await fetch(`/api/reviews/${reviewId}/user`, {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating, comment })
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'فشل تعديل التعليق');
+    }
+    return await res.json();
+  },
+
   async deleteReview(reviewId) {
     const adminToken = localStorage.getItem('antika_admin_token');
 
