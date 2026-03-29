@@ -203,7 +203,7 @@
         .reviews-section {
             background: white;
             border-radius: 20px;
-            padding: 32px;
+            padding: 28px 32px;
             margin-top: 32px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.06);
         }
@@ -211,19 +211,31 @@
             font-size: 1.4rem;
             font-weight: 800;
             color: #333;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
             gap: 10px;
         }
+        /* التخطيط الأفقي الرئيسي */
+        .reviews-top-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 28px;
+            align-items: start;
+        }
+        @media (max-width: 640px) {
+            .reviews-top-row { grid-template-columns: 1fr; }
+        }
+        /* ملخص التقييم - يمين */
         .rating-summary {
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: 16px;
             background: #fdf8f4;
             border-radius: 16px;
-            padding: 20px 24px;
-            margin-bottom: 28px;
+            padding: 20px;
+            height: 100%;
         }
         .rating-big-number {
             font-size: 3.5rem;
@@ -231,8 +243,8 @@
             color: #D6C1A6;
             line-height: 1;
         }
-        .rating-stars-big { font-size: 1.4rem; color: #f59e0b; letter-spacing: 2px; }
-        .rating-count { color: #999; font-size: 0.9rem; margin-top: 4px; }
+        .rating-stars-big { font-size: 1.2rem; color: #f59e0b; letter-spacing: 2px; }
+        .rating-count { color: #999; font-size: 0.85rem; margin-top: 4px; }
         .stars-interactive { display: flex; gap: 6px; flex-direction: row-reverse; justify-content: flex-end; }
         .stars-interactive input { display: none; }
         .stars-interactive label {
@@ -244,23 +256,24 @@
         .stars-interactive input:checked ~ label,
         .stars-interactive label:hover,
         .stars-interactive label:hover ~ label { color: #f59e0b; }
+        /* فورم التعليق - يسار */
         .review-form {
             background: #fdf8f4;
             border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 32px;
+            padding: 20px;
         }
-        .review-form h3 { font-weight: 700; font-size: 1.1rem; margin-bottom: 16px; color: #333; }
+        .review-form h3 { font-weight: 700; font-size: 1rem; margin-bottom: 12px; color: #333; }
         .review-input {
             width: 100%;
             border: 2px solid #e5e7eb;
             border-radius: 10px;
-            padding: 12px 16px;
+            padding: 10px 14px;
             font-family: Tajawal, sans-serif;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             outline: none;
             transition: border-color 0.2s;
             background: white;
+            box-sizing: border-box;
         }
         .review-input:focus { border-color: #FF69B4; }
         .review-submit-btn {
@@ -268,46 +281,37 @@
             color: white;
             border: none;
             border-radius: 50px;
-            padding: 12px 32px;
+            padding: 11px 28px;
             font-family: Tajawal, sans-serif;
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 700;
             cursor: pointer;
             transition: opacity 0.2s;
             width: 100%;
-            margin-top: 12px;
+            margin-top: 10px;
         }
         .review-submit-btn:hover { opacity: 0.9; }
         .review-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        /* قائمة التعليقات - تحت الصفين */
         #reviews-list {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
             gap: 14px;
-            overflow-x: auto;
-            padding-bottom: 10px;
-            scroll-snap-type: x mandatory;
-            -webkit-overflow-scrolling: touch;
         }
-        #reviews-list::-webkit-scrollbar { height: 4px; }
-        #reviews-list::-webkit-scrollbar-track { background: #f5f0ea; border-radius: 4px; }
-        #reviews-list::-webkit-scrollbar-thumb { background: #D6C1A6; border-radius: 4px; }
         .review-card {
             border: 1px solid #f0e8e0;
             border-radius: 14px;
-            padding: 18px 20px;
-            min-width: 260px;
-            max-width: 300px;
-            flex-shrink: 0;
-            scroll-snap-align: start;
+            padding: 16px 18px;
             transition: box-shadow 0.2s;
             background: white;
         }
         .review-card:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.07); }
         .review-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-        .reviewer-name { font-weight: 700; color: #333; font-size: 0.95rem; }
-        .review-date { font-size: 0.8rem; color: #aaa; }
-        .review-stars { color: #f59e0b; font-size: 1rem; letter-spacing: 1px; }
-        .review-comment { color: #555; font-size: 0.95rem; line-height: 1.7; }
-        .no-reviews { text-align: center; padding: 40px; color: #aaa; width: 100%; }
+        .reviewer-name { font-weight: 700; color: #333; font-size: 0.9rem; }
+        .review-date { font-size: 0.78rem; color: #aaa; }
+        .review-stars { color: #f59e0b; font-size: 0.95rem; letter-spacing: 1px; }
+        .review-comment { color: #555; font-size: 0.9rem; line-height: 1.7; }
+        .no-reviews { text-align: center; padding: 40px; color: #aaa; grid-column: 1/-1; }
         .no-reviews i { font-size: 3rem; margin-bottom: 12px; display: block; }
 
         /* Review owner actions */
@@ -940,61 +944,66 @@
             <h2>
                 <i class="fas fa-star" style="color:#f59e0b"></i>
                 التقييمات والتعليقات
-                <span id="reviews-count-badge" class="text-sm font-normal text-gray-400"></span>
+                <span id="reviews-count-badge" style="font-size:0.9rem;font-weight:400;color:#aaa"></span>
             </h2>
 
-            <!-- ملخص التقييم -->
-            <div class="rating-summary" id="rating-summary" style="display:none">
-                <div class="text-center">
-                    <div class="rating-big-number" id="avg-rating-number">0</div>
-                    <div class="rating-stars-big" id="avg-rating-stars">☆☆☆☆☆</div>
-                    <div class="rating-count" id="avg-rating-count"></div>
-                </div>
-                <div style="flex:1">
-                    <div id="rating-bars"></div>
-                </div>
-            </div>
+            <!-- الصف الأفقي: ملخص التقييم + فورم التعليق -->
+            <div class="reviews-top-row">
 
-            <!-- نموذج إضافة تعليق -->
-
-            <!-- رسالة تسجيل الدخول (تظهر للزوار) -->
-            <div id="review-login-notice" class="review-form" style="text-align:center;padding:28px 20px;display:none">
-                <i class="fas fa-lock" style="font-size:2.5rem;color:#D6C1A6;margin-bottom:12px;display:block"></i>
-                <h3 style="margin-bottom:8px">يجب تسجيل الدخول أولاً</h3>
-                <p style="color:#999;font-size:0.9rem;margin-bottom:18px">لكتابة تعليق يجب أن تكون مسجلاً في المتجر</p>
-                <a href="login.html" style="display:inline-block;background:linear-gradient(135deg,#D6C1A6,#C4AC8E);color:white;padding:12px 32px;border-radius:12px;font-weight:700;text-decoration:none">
-                    <i class="fas fa-sign-in-alt ml-2"></i> تسجيل الدخول
-                </a>
-            </div>
-
-            <!-- فورم التعليق (يظهر للمسجلين فقط) -->
-            <div class="review-form" id="review-form-container" style="display:none">
-                <h3>✍️ أضف تعليقك</h3>
-                <input type="hidden" id="review-name">
-                <input type="hidden" id="review-email">
-                <div style="margin:0 0 16px">
-                    <p style="font-size:0.9rem;color:#555;margin-bottom:8px">تقييمك: *</p>
-                    <div class="stars-interactive">
-                        <input type="radio" name="review-rating" id="star5" value="5">
-                        <label for="star5" title="ممتاز">★</label>
-                        <input type="radio" name="review-rating" id="star4" value="4">
-                        <label for="star4" title="جيد جداً">★</label>
-                        <input type="radio" name="review-rating" id="star3" value="3">
-                        <label for="star3" title="جيد">★</label>
-                        <input type="radio" name="review-rating" id="star2" value="2">
-                        <label for="star2" title="مقبول">★</label>
-                        <input type="radio" name="review-rating" id="star1" value="1">
-                        <label for="star1" title="ضعيف">★</label>
+                <!-- يمين: ملخص التقييم -->
+                <div class="rating-summary" id="rating-summary">
+                    <div style="text-align:center;flex-shrink:0">
+                        <div class="rating-big-number" id="avg-rating-number">—</div>
+                        <div class="rating-stars-big" id="avg-rating-stars">☆☆☆☆☆</div>
+                        <div class="rating-count" id="avg-rating-count">لا يوجد تقييم بعد</div>
+                    </div>
+                    <div style="flex:1">
+                        <div id="rating-bars"></div>
                     </div>
                 </div>
-                <textarea id="review-comment" class="review-input" rows="3" placeholder="اكتب تعليقك هنا... *" style="margin-top:4px;resize:none"></textarea>
-                <button class="review-submit-btn" id="review-submit-btn" onclick="submitReview()">
-                    <i class="fas fa-paper-plane ml-2"></i> إرسال التعليق
-                </button>
-                <p id="review-form-msg" style="text-align:center;margin-top:10px;font-size:0.9rem;display:none"></p>
+
+                <!-- يسار: رسالة تسجيل الدخول أو فورم التعليق -->
+                <div>
+                    <!-- رسالة تسجيل الدخول -->
+                    <div id="review-login-notice" class="review-form" style="text-align:center;padding:28px 20px;display:none;height:100%;box-sizing:border-box;justify-content:center;flex-direction:column;align-items:center">
+                        <i class="fas fa-lock" style="font-size:2rem;color:#D6C1A6;margin-bottom:10px;display:block"></i>
+                        <h3 style="margin-bottom:6px;font-size:1rem">يجب تسجيل الدخول أولاً</h3>
+                        <p style="color:#999;font-size:0.85rem;margin-bottom:14px">لكتابة تعليق يجب أن تكون مسجلاً في المتجر</p>
+                        <a href="login.html" style="display:inline-block;background:linear-gradient(135deg,#D6C1A6,#C4AC8E);color:white;padding:10px 28px;border-radius:12px;font-weight:700;text-decoration:none;font-size:0.9rem">
+                            <i class="fas fa-sign-in-alt ml-2"></i> تسجيل الدخول
+                        </a>
+                    </div>
+
+                    <!-- فورم التعليق -->
+                    <div class="review-form" id="review-form-container" style="display:none">
+                        <h3>✍️ أضف تعليقك</h3>
+                        <input type="hidden" id="review-name">
+                        <input type="hidden" id="review-email">
+                        <div style="margin:0 0 12px">
+                            <p style="font-size:0.85rem;color:#555;margin-bottom:6px">تقييمك: *</p>
+                            <div class="stars-interactive">
+                                <input type="radio" name="review-rating" id="star5" value="5">
+                                <label for="star5" title="ممتاز">★</label>
+                                <input type="radio" name="review-rating" id="star4" value="4">
+                                <label for="star4" title="جيد جداً">★</label>
+                                <input type="radio" name="review-rating" id="star3" value="3">
+                                <label for="star3" title="جيد">★</label>
+                                <input type="radio" name="review-rating" id="star2" value="2">
+                                <label for="star2" title="مقبول">★</label>
+                                <input type="radio" name="review-rating" id="star1" value="1">
+                                <label for="star1" title="ضعيف">★</label>
+                            </div>
+                        </div>
+                        <textarea id="review-comment" class="review-input" rows="3" placeholder="اكتب تعليقك هنا... *" style="resize:none"></textarea>
+                        <button class="review-submit-btn" id="review-submit-btn" onclick="submitReview()">
+                            <i class="fas fa-paper-plane ml-2"></i> إرسال التعليق
+                        </button>
+                        <p id="review-form-msg" style="text-align:center;margin-top:8px;font-size:0.85rem;display:none"></p>
+                    </div>
+                </div>
             </div>
 
-            <!-- قائمة التعليقات -->
+            <!-- قائمة التعليقات تحت الصفين -->
             <div id="reviews-list">
                 <div class="no-reviews">
                     <i class="fas fa-comment-dots"></i>
@@ -1820,10 +1829,17 @@
         // فتح modal التعديل
         function openEditModal(reviewId, rating, comment) {
             document.getElementById('edit-review-id').value = reviewId;
-            document.getElementById('edit-comment').value = comment;
-            const ratingInput = document.querySelector('input[name="edit-rating"][value="' + rating + '"]');
-            if (ratingInput) ratingInput.checked = true;
-            document.getElementById('edit-review-msg').style.display = 'none';
+            // تأخير بسيط عشان يضمن تحميل العناصر
+            setTimeout(function() {
+                const commentEl = document.getElementById('edit-comment');
+                if (commentEl) {
+                    commentEl.value = '';
+                    commentEl.value = String(comment || '');
+                }
+                const ratingInput = document.querySelector('input[name="edit-rating"][value="' + rating + '"]');
+                if (ratingInput) ratingInput.checked = true;
+                document.getElementById('edit-review-msg').style.display = 'none';
+            }, 50);
             document.getElementById('edit-review-overlay').classList.add('open');
         }
 
