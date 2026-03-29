@@ -2366,18 +2366,52 @@ app.post('/api/products/:id/reviews', async (req, res) => {
 });
 
 // DELETE: حذف تعليق (أدمن فقط)
-// DELETE: حذف تعليق بواسطة صاحبه (بدون admin)
+// DELETE: حذف تعليق بواسطة صاحبه - مع تحقق من Firebase ID Token
 app.delete('/api/reviews/:reviewId/user', async (req, res) => {
   try {
     if (!requireMongo(res, 'Review delete')) return;
-    const { userEmail } = req.body || {};
-    if (!userEmail) return res.status(400).json({ error: 'userEmail مطلوب' });
+
+    // استخرج Firebase ID Token من الهيدر
+    const authHeader = req.headers.authorization || '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'يجب تسجيل الدخول أولاً' });
+    }
+    const idToken = authHeader.slice(7).trim();
+
+    // تحقق من التوكن عبر Firebase REST API
+    const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || '';
+    if (!FIREBASE_API_KEY) {
+      return res.status(500).json({ error: 'Firebase API Key غير مضبوط في السيرفر' });
+    }
+
+    let verifiedEmail = '';
+    try {
+      const verifyRes = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken })
+        }
+      );
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok || !verifyData.users || verifyData.users.length === 0) {
+        return res.status(401).json({ error: 'جلسة غير صالحة، سجل الدخول مرة أخرى' });
+      }
+      verifiedEmail = verifyData.users[0].email || '';
+    } catch (e) {
+      return res.status(401).json({ error: 'فشل التحقق من الهوية' });
+    }
+
+    if (!verifiedEmail) {
+      return res.status(401).json({ error: 'لم يتم التعرف على البريد الإلكتروني' });
+    }
 
     const review = await Review.findById(req.params.reviewId);
     if (!review) return res.status(404).json({ error: 'التعليق غير موجود' });
 
-    // تحقق إن الإيميل مطابق لصاحب التعليق
-    if (!review.userEmail || review.userEmail.toLowerCase() !== userEmail.toLowerCase()) {
+    // تحقق إن الإيميل المؤكد من Firebase مطابق لصاحب التعليق
+    if (!review.userEmail || review.userEmail.toLowerCase() !== verifiedEmail.toLowerCase()) {
       return res.status(403).json({ error: 'غير مصرح لك بحذف هذا التعليق' });
     }
 

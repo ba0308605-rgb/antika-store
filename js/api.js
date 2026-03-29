@@ -874,16 +874,20 @@ const ReviewsAPI = {
       return await res.json();
     }
 
-    // حذف بواسطة صاحب التعليق — نتحقق من Firebase أولاً
+    // حذف بواسطة صاحب التعليق — نجيب Firebase ID Token للتحقق الحقيقي
     const firebaseUser = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
-    if (!firebaseUser || !firebaseUser.email) {
+    if (!firebaseUser) {
       throw new Error('يجب تسجيل الدخول أولاً');
     }
 
+    // نجيب ID Token من Firebase — هذا مشفر ولا يقدر أحد يزوره
+    const idToken = await firebaseUser.getIdToken();
+
     const res = await fetch(`/api/reviews/${reviewId}/user`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userEmail: firebaseUser.email })
+      headers: {
+        'Authorization': 'Bearer ' + idToken
+      }
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
