@@ -1487,8 +1487,13 @@
 
             // ننتظر Firebase يتحقق من الجلسة أولاً ثم نحمّل التعليقات والفورم
             if (typeof firebase !== 'undefined' && firebase.auth) {
-                const unsubscribe = firebase.auth().onAuthStateChanged(function() {
-                    unsubscribe(); // مرة وحدة فقط
+                const unsubscribe = firebase.auth().onAuthStateChanged(function(firebaseUser) {
+                    unsubscribe();
+                    // لو Firebase قال ما في مستخدم، نمسح localStorage عشان نتأكد
+                    if (!firebaseUser) {
+                        localStorage.removeItem('antika_user');
+                        localStorage.removeItem('antika_token');
+                    }
                     initReviewForm();
                     loadReviews();
                 });
