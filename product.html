@@ -1575,7 +1575,7 @@
                     + '</div>'
                     + '<div style="display:flex;align-items:center;gap:10px">'
                     + '<span class="review-date">' + date + '</span>'
-                    + ((() => { const isOwner = currentUserEmail && r.userEmail && currentUserEmail.toLowerCase() === r.userEmail.toLowerCase(); return (isAdmin || isOwner) ? '<button onclick="deleteReview(\'' + r._id + '\')" style="color:#ef4444;background:none;border:none;cursor:pointer;font-size:0.85rem" title="حذف"><i class="fas fa-trash"></i></button>' : ''; })())
+                    + ((() => { const isOwner = currentUserEmail && r.userEmail && r.userEmail.length > 0 && currentUserEmail.toLowerCase() === r.userEmail.toLowerCase(); return (isAdmin || isOwner) ? '<button onclick="deleteReview(\'' + r._id + '\')" style="color:#ef4444;background:none;border:none;cursor:pointer;font-size:0.85rem" title="حذف"><i class="fas fa-trash"></i></button>' : ''; })())
                     + '</div>'
                     + '</div>'
                     + '<p class="review-comment">' + r.comment + '</p>'
