@@ -1480,6 +1480,9 @@
             }
         }
 
+        // متغير يحفظ المستخدم بعد تأكيد Firebase
+        let verifiedUser = null;
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             loadProduct();
@@ -1489,11 +1492,7 @@
             if (typeof firebase !== 'undefined' && firebase.auth) {
                 const unsubscribe = firebase.auth().onAuthStateChanged(function(firebaseUser) {
                     unsubscribe();
-                    // لو Firebase قال ما في مستخدم، نمسح localStorage عشان نتأكد
-                    if (!firebaseUser) {
-                        localStorage.removeItem('antika_user');
-                        localStorage.removeItem('antika_token');
-                    }
+                    verifiedUser = firebaseUser || null;
                     initReviewForm();
                     loadReviews();
                 });
@@ -1567,9 +1566,8 @@
             }
 
             const isAdmin = !!localStorage.getItem('antika_admin_token');
-            // نتحقق من Firebase مباشرة عشان ما نعتمد على localStorage بعد تسجيل الخروج
-            const firebaseCurrentUser = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
-            const currentUserEmail = firebaseCurrentUser ? (firebaseCurrentUser.email || '') : '';
+            // نستخدم verifiedUser اللي Firebase أكّده في onAuthStateChanged
+            const currentUserEmail = verifiedUser ? (verifiedUser.email || '') : '';
             list.innerHTML = reviews.map(function(r) {
                 const date = new Date(r.createdAt).toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
                 return '<div class="review-card">'
@@ -1664,9 +1662,8 @@
 
         async function deleteReview(reviewId) {
             // تحقق من تسجيل الدخول أولاً
-            const firebaseUser = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
             const isAdmin = !!localStorage.getItem('antika_admin_token');
-            if (!firebaseUser && !isAdmin) {
+            if (!verifiedUser && !isAdmin) {
                 alert('يجب تسجيل الدخول أولاً');
                 return;
             }
