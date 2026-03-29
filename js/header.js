@@ -249,6 +249,12 @@ class AntikaHeader extends HTMLElement {
                                 <span id="cart-count" class="absolute -top-2 -right-2 bg-antika-pink text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold hidden">0</span>
                             </a>
 
+                            <!-- Notification Bell (shown when logged in) -->
+                            <a href="notifications.html" id="notif-bell-btn" class="relative text-gray-600 hover:text-antika-gold transition hidden">
+                                <i class="fas fa-bell text-xl"></i>
+                                <span id="notif-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold hidden">0</span>
+                            </a>
+
                             <!-- Login (shown when not logged in) -->
                             <a href="login.html" id="login-btn" class="text-gray-600 hover:text-antika-gold transition flex items-center gap-2">
                                 <span class="hidden sm:inline text-sm">تسجيل الدخول</span>
@@ -439,6 +445,13 @@ class AntikaHeader extends HTMLElement {
             }
             
             window.currentUser = user;
+
+            // Show notification bell
+            const bellBtn = document.getElementById('notif-bell-btn');
+            if (bellBtn) bellBtn.classList.remove('hidden');
+
+            // Load notification count
+            this.updateNotifCount(user.email);
         } else {
             if (loginBtn) loginBtn.classList.remove('hidden');
             if (userInfoBtn) userInfoBtn.classList.add('hidden');
@@ -446,6 +459,25 @@ class AntikaHeader extends HTMLElement {
 
         // Update cart count
         this.updateCartCount();
+    }
+
+    async updateNotifCount(email) {
+        if (!email) return;
+        try {
+            const res = await fetch('/api/notifications?email=' + encodeURIComponent(email));
+            if (!res.ok) return;
+            const data = await res.json();
+            const count = data.unreadCount || 0;
+            const badge = document.getElementById('notif-count');
+            if (badge) {
+                if (count > 0) {
+                    badge.textContent = count > 9 ? '9+' : count;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+        } catch(e) {}
     }
 
     async updateCartCount() {

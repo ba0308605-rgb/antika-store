@@ -17,9 +17,7 @@
                         'antika-gold': '#D6C1A6',
                         'antika-gold-dark': '#C4AC8E',
                     },
-                    fontFamily: {
-                        'tajawal': ['Tajawal', 'sans-serif'],
-                    }
+                    fontFamily: { 'tajawal': ['Tajawal', 'sans-serif'] }
                 }
             }
         }
@@ -27,40 +25,34 @@
     <style>
         html { overflow-y: scroll; }
         body { font-family: 'Tajawal', sans-serif; }
-        
         .sidebar-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 14px 16px;
-            color: #4b5563;
-            transition: all 0.2s;
-            border-radius: 8px;
-            margin-bottom: 4px;
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 16px; color: #4b5563; transition: all 0.2s;
+            border-radius: 8px; margin-bottom: 4px;
         }
-        .sidebar-item:hover {
-            background-color: #f9fafb;
-            color: #D6C1A6;
-        }
-        .sidebar-item.active {
-            background-color: #f3f4f6;
-            color: #D6C1A6;
-            font-weight: 600;
-        }
+        .sidebar-item:hover { background-color: #f9fafb; color: #D6C1A6; }
+        .sidebar-item.active { background-color: #f3f4f6; color: #D6C1A6; font-weight: 600; }
         .sidebar-item i { width: 20px; text-align: center; }
+        .notif-card {
+            background: white; border-radius: 14px; padding: 18px 20px;
+            border: 1px solid #f0e8e0; display: flex; gap: 14px; align-items: flex-start;
+            transition: box-shadow 0.2s;
+        }
+        .notif-card:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.06); }
+        .notif-card.unread { border-right: 4px solid #FF69B4; }
+        .notif-icon {
+            width: 46px; height: 46px; border-radius: 50%;
+            background: #fff0f5; display: flex; align-items: center;
+            justify-content: center; flex-shrink: 0; font-size: 1.3rem;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
 
-    <!-- Unified Announcement Bar -->
     <antika-announcement-bar></antika-announcement-bar>
-
-    <!-- Unified Header Component -->
     <antika-header></antika-header>
 
-    <!-- Main Content -->
     <main>
-        <!-- Breadcrumb -->
         <nav class="bg-white border-b py-3">
             <div class="container mx-auto px-4">
                 <div class="flex items-center text-sm">
@@ -73,66 +65,158 @@
             </div>
         </nav>
 
-        <!-- Page Content -->
         <div class="container mx-auto px-4 py-8">
             <div class="flex flex-col lg:flex-row gap-6">
-                
-                <!-- Sidebar Menu -->
+
+                <!-- Sidebar -->
                 <aside class="w-full lg:w-64 flex-shrink-0">
                     <div class="bg-white rounded-xl shadow-sm border p-4">
                         <a href="notifications.html" class="sidebar-item active">
-                            <i class="fas fa-bell"></i>
-                            <span>الإشعارات</span>
+                            <i class="fas fa-bell"></i><span>الإشعارات</span>
                         </a>
                         <a href="orders.html" class="sidebar-item">
-                            <i class="fas fa-shopping-bag"></i>
-                            <span>الطلبات</span>
+                            <i class="fas fa-shopping-bag"></i><span>الطلبات</span>
                         </a>
                         <a href="wishlist.html" class="sidebar-item">
-                            <i class="fas fa-heart"></i>
-                            <span>المفضلة</span>
+                            <i class="fas fa-heart"></i><span>المفضلة</span>
                         </a>
                         <a href="account.html" class="sidebar-item">
-                            <i class="fas fa-user-circle"></i>
-                            <span>حسابي</span>
+                            <i class="fas fa-user-circle"></i><span>حسابي</span>
                         </a>
                         <a href="addresses.html" class="sidebar-item">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <span>عناويني</span>
+                            <i class="fas fa-map-marker-alt"></i><span>عناويني</span>
                         </a>
                         <a href="settings.html" class="sidebar-item">
-                            <i class="fas fa-cog"></i>
-                            <span>الإعدادات</span>
+                            <i class="fas fa-cog"></i><span>الإعدادات</span>
                         </a>
                         <div class="border-t my-3"></div>
                         <a href="login.html" class="sidebar-item text-red-500 hover:bg-red-50 hover:text-red-600">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span>تسجيل الخروج</span>
+                            <i class="fas fa-sign-out-alt"></i><span>تسجيل الخروج</span>
                         </a>
                     </div>
                 </aside>
 
-                <!-- Main Content Area -->
+                <!-- Main Content -->
                 <div class="flex-1">
-                    <div class="bg-white rounded-xl shadow-sm border p-12 text-center min-h-[400px] flex flex-col items-center justify-center">
-                        <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
-                            <i class="fas fa-bell text-4xl text-gray-300"></i>
+                    <div class="flex items-center justify-between mb-4">
+                        <h1 class="text-xl font-bold text-gray-800">
+                            <i class="fas fa-bell text-antika-gold ml-2"></i>الإشعارات
+                        </h1>
+                        <button id="mark-read-btn" onclick="markAllRead()" class="text-sm text-antika-gold hover:text-antika-gold-dark transition hidden">
+                            تحديد الكل كمقروء
+                        </button>
+                    </div>
+
+                    <div id="notif-container" class="space-y-3">
+                        <div class="bg-white rounded-xl shadow-sm border p-12 text-center">
+                            <i class="fas fa-spinner fa-spin text-3xl text-gray-300 mb-4 block"></i>
+                            <p class="text-gray-400">جاري التحميل...</p>
                         </div>
-                        <h2 class="text-xl font-bold text-gray-800 mb-2">لا توجد إشعارات</h2>
-                        <p class="text-gray-500">سيتم إعلامك عند وجود أي تحديثات أو عروض جديدة</p>
                     </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Footer -->
     <antika-footer></antika-footer>
 
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
     <script src="js/header.js"></script>
     <script src="js/auth-sync.js"></script>
     <script src="js/announcement-bar.js"></script>
     <script src="js/footer.js"></script>
+
+    <script>
+        let currentUserEmail = null;
+
+        async function loadNotifications() {
+            const user = (window.Auth && typeof Auth.getCurrentUser === 'function')
+                ? Auth.getCurrentUser()
+                : (() => { try { return JSON.parse(localStorage.getItem('antika_user') || 'null'); } catch(e) { return null; } })();
+
+            if (!user || !user.email) {
+                document.getElementById('notif-container').innerHTML =
+                    '<div class="bg-white rounded-xl shadow-sm border p-12 text-center"><i class="fas fa-lock text-4xl text-gray-300 mb-4 block"></i><p class="text-gray-500">يجب تسجيل الدخول لعرض الإشعارات</p><a href="login.html" class="mt-4 inline-block bg-antika-gold text-white px-6 py-2 rounded-lg font-bold">تسجيل الدخول</a></div>';
+                return;
+            }
+
+            currentUserEmail = user.email;
+
+            try {
+                const res = await fetch('/api/notifications?email=' + encodeURIComponent(user.email));
+                const data = await res.json();
+                const notifications = data.notifications || [];
+
+                // تحديد كمقروء تلقائياً
+                if (notifications.some(n => !n.read)) {
+                    document.getElementById('mark-read-btn').classList.remove('hidden');
+                    await markAllRead(false);
+                }
+
+                renderNotifications(notifications);
+            } catch(e) {
+                document.getElementById('notif-container').innerHTML =
+                    '<div class="bg-white rounded-xl p-8 text-center text-red-400">حدث خطأ في تحميل الإشعارات</div>';
+            }
+        }
+
+        function renderNotifications(notifications) {
+            const container = document.getElementById('notif-container');
+
+            if (!notifications.length) {
+                container.innerHTML = '<div class="bg-white rounded-xl shadow-sm border p-12 text-center min-h-[300px] flex flex-col items-center justify-center"><div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-5"><i class="fas fa-bell text-3xl text-gray-300"></i></div><h2 class="text-lg font-bold text-gray-700 mb-2">لا توجد إشعارات</h2><p class="text-gray-400 text-sm">ستظهر هنا عندما يعجب أحد بتعليقاتك</p></div>';
+                return;
+            }
+
+            container.innerHTML = notifications.map(function(n) {
+                const date = new Date(n.updatedAt).toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
+                const newCount = n.newLikes || 0;
+                const total = n.totalLikes || 0;
+                const shortComment = (n.comment || '').length > 60 ? n.comment.substring(0, 60) + '...' : (n.comment || '');
+                const unreadClass = !n.read ? ' unread' : '';
+
+                let msg = '';
+                if (total === 1) msg = 'أعجب شخص واحد بتعليقك';
+                else if (total === 2) msg = 'أعجب شخصان بتعليقك';
+                else msg = 'أعجب ' + total + ' أشخاص بتعليقك';
+
+                return '<div class="notif-card' + unreadClass + '">' 
+                    + '<div class="notif-icon">❤️</div>'
+                    + '<div style="flex:1">'
+                    + '<p class="font-bold text-gray-800 text-sm mb-1">' + msg + '</p>'
+                    + (n.productName ? '<p class="text-xs text-antika-gold mb-1"><i class="fas fa-box ml-1"></i>' + n.productName + '</p>' : '')
+                    + '<p class="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 mb-2 leading-relaxed">&ldquo;' + shortComment + '&rdquo;</p>'
+                    + '<p class="text-xs text-gray-400"><i class="fas fa-clock ml-1"></i>' + date + '</p>'
+                    + '</div>'
+                    + (n.productId ? '<a href="product.html?id=' + n.productId + '" class="text-xs text-antika-gold hover:text-antika-gold-dark transition mt-1 flex-shrink-0"><i class="fas fa-arrow-left"></i></a>' : '')
+                    + '</div>';
+            }).join('');
+        }
+
+        async function markAllRead(reload = true) {
+            if (!currentUserEmail) return;
+            try {
+                await fetch('/api/notifications/read-all', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: currentUserEmail })
+                });
+                document.getElementById('mark-read-btn').classList.add('hidden');
+                // تصفير جرس الإشعارات في الهيدر
+                const badge = document.getElementById('notif-count');
+                if (badge) badge.classList.add('hidden');
+                if (reload) loadNotifications();
+            } catch(e) {}
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(loadNotifications, 300);
+        });
+    </script>
 </body>
 </html>

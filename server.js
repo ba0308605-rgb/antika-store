@@ -631,9 +631,27 @@ const reviewSchema = new mongoose.Schema({
   userEmail: { type: String, default: '' },
   rating: { type: Number, required: true, min: 1, max: 5 },
   comment: { type: String, required: true, trim: true },
+  likes: [{ type: String }], // إيميلات المعجبين
   createdAt: { type: Date, default: Date.now }
 });
 const Review = mongoose.model('Review', reviewSchema);
+
+// ============================================
+// NOTIFICATION SCHEMA
+// ============================================
+const notificationSchema = new mongoose.Schema({
+  ownerEmail: { type: String, required: true },       // صاحب التعليق
+  reviewId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Review', required: true },
+  productId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+  productName:{ type: String, default: '' },
+  comment:    { type: String, default: '' },
+  newLikes:   { type: Number, default: 0 },           // عدد الإعجابات الجديدة غير المقروءة
+  totalLikes: { type: Number, default: 0 },           // إجمالي الإعجابات
+  read:       { type: Boolean, default: false },
+  updatedAt:  { type: Date, default: Date.now }
+});
+notificationSchema.index({ ownerEmail: 1, reviewId: 1 }, { unique: true });
+const Notification = mongoose.model('Notification', notificationSchema);
 
 const Product = mongoose.model('Product', productSchema);
 const Category = mongoose.model('Category', categorySchema);
@@ -2515,6 +2533,104 @@ app.delete('/api/reviews/:reviewId', requireAdmin, async (req, res) => {
       rating: Math.round(avgRating * 10) / 10,
       reviews: allReviews.length
     });
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// LIKES & NOTIFICATIONS
+// ============================================
+
+// POST: إضافة أو إزالة إعجاب
+app.post('/api/reviews/:reviewId/like', async (req, res) => {
+  try {
+    if (!requireMongo(res, 'Like')) return;
+    const { userEmail } = req.body || {};
+    if (!userEmail) return res.status(400).json({ error: 'يجب تسجيل الدخول للإعجاب' });
+
+    const review = await Review.findById(req.params.reviewId);
+    if (!review) return res.status(404).json({ error: 'التعليق غير موجود' });
+
+    const likes = review.likes || [];
+    const alreadyLiked = likes.includes(userEmail);
+
+    if (alreadyLiked) {
+      // إزالة الإعجاب
+      review.likes = likes.filter(e => e !== userEmail);
+    } else {
+      // إضافة الإعجاب
+      review.likes.push(userEmail);
+    }
+    await review.save();
+
+    const totalLikes = review.likes.length;
+
+    // تحديث الإشعار فقط عند الإعجاب (وليس عند الإزالة)
+    // ولا تُرسل إشعار لصاحب التعليق لو أعجب بتعليق نفسه
+    if (!alreadyLiked && review.userEmail && review.userEmail !== userEmail) {
+      // جلب اسم المنتج
+      let productName = '';
+      try {
+        const prod = await Product.findById(review.productId, 'name');
+        productName = prod ? prod.name : '';
+      } catch(_) {}
+
+      // تحديث أو إنشاء إشعار
+      await Notification.findOneAndUpdate(
+        { ownerEmail: review.userEmail, reviewId: review._id },
+        {
+          $inc: { newLikes: 1 },
+          $set: {
+            totalLikes,
+            productId: review.productId,
+            productName,
+            comment: review.comment,
+            read: false,
+            updatedAt: new Date()
+          }
+        },
+        { upsert: true, new: true }
+      );
+    }
+
+    res.json({ success: true, liked: !alreadyLiked, totalLikes });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET: جلب إشعارات المستخدم
+app.get('/api/notifications', async (req, res) => {
+  try {
+    if (!requireMongo(res, 'Notifications')) return;
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ error: 'الإيميل مطلوب' });
+
+    const notifications = await Notification.find({ ownerEmail: email })
+      .sort({ updatedAt: -1 })
+      .limit(50);
+
+    const unreadCount = notifications.filter(n => !n.read).length;
+    res.json({ notifications, unreadCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT: تحديد الإشعارات كمقروءة (عند فتح صفحة الإشعارات)
+app.put('/api/notifications/read-all', async (req, res) => {
+  try {
+    if (!requireMongo(res, 'Notifications')) return;
+    const { email } = req.body || {};
+    if (!email) return res.status(400).json({ error: 'الإيميل مطلوب' });
+
+    await Notification.updateMany(
+      { ownerEmail: email, read: false },
+      { $set: { read: true, newLikes: 0 } }
+    );
 
     res.json({ success: true });
   } catch (err) {

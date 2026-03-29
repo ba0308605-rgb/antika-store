@@ -313,6 +313,14 @@
         .review-comment { color: #555; font-size: 0.9rem; line-height: 1.7; }
         .no-reviews { text-align: center; padding: 40px; color: #aaa; grid-column: 1/-1; }
         .no-reviews i { font-size: 3rem; margin-bottom: 12px; display: block; }
+        .like-btn {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: none; border: 1px solid #f0e0e8; border-radius: 20px;
+            padding: 4px 12px; font-size: 0.82rem; color: #aaa;
+            cursor: pointer; transition: all 0.2s; font-family: Tajawal, sans-serif; margin-top: 10px;
+        }
+        .like-btn:hover, .like-btn.liked { border-color: #FF69B4; color: #FF69B4; background: #fff0f5; }
+        .like-btn i { font-size: 0.85rem; }
 
         /* Review owner actions */
         .review-card { cursor: default; }
@@ -1687,6 +1695,17 @@
                 const ownerTip = (isOwner || isAdmin) ? ' title="اضغط للإجراءات"' : '';
                 const onclick = (isOwner || isAdmin) ? ' onclick="toggleReviewActions(this)"' : '';
 
+                const likes = r.likes || [];
+                const likeCount = likes.length;
+                const isLiked = !!(currentUserEmail && likes.includes(currentUserEmail));
+                const showLike = !!(currentUserEmail && !isOwner && !isAdmin);
+                const likeBtn = showLike
+                    ? '<button class="like-btn' + (isLiked ? ' liked' : '') + '" id="like-' + r._id + '" onclick="event.stopPropagation();toggleLike(this,\'' + r._id + '\')">'
+                      + '<i class="' + (isLiked ? 'fas' : 'far') + ' fa-heart"></i>'
+                      + '<span class="like-count">' + (likeCount > 0 ? likeCount : '') + '</span>'
+                      + '</button>'
+                    : (likeCount > 0 ? '<span style="font-size:0.8rem;color:#aaa;margin-top:8px;display:inline-block"><i class="fas fa-heart" style="color:#FF69B4;margin-left:4px"></i>' + likeCount + '</span>' : '');
+
                 return '<div class="review-card' + ownerClass + '"' + ownerTip + onclick + '>'
                     + '<div class="review-card-header">'
                     + '<div>'
@@ -1699,6 +1718,7 @@
                     + '</div>'
                     + '</div>'
                     + '<p class="review-comment">' + r.comment + '</p>'
+                    + likeBtn
                     + ((isOwner || isAdmin) ? '<div class="review-owner-actions">'
                         + (isOwner ? '<button class="review-action-btn review-edit-btn" onclick="event.stopPropagation();openEditModal(\'' + r._id + '\',\'' + r.rating + '\',`' + r.comment.replace(/`/g, "'") + '`)"><i class="fas fa-edit ml-1"></i>تعديل</button>' : '')
                         + '<button class="review-action-btn review-delete-btn" onclick="event.stopPropagation();deleteReview(\'' + r._id + '\')"><i class="fas fa-trash ml-1"></i>حذف</button>'
@@ -1742,6 +1762,36 @@
                 if (loginNotice) loginNotice.style.display = 'block';
                 if (formContainer) formContainer.style.display = 'none';
             }
+        }
+
+        // ===== LIKE SYSTEM =====
+        async function toggleLike(btn, reviewId) {
+            const user = (window.Auth && typeof Auth.getCurrentUser === 'function')
+                ? Auth.getCurrentUser()
+                : (() => { try { return JSON.parse(localStorage.getItem('antika_user') || 'null'); } catch(e) { return null; } })();
+
+            if (!user || !user.email) { window.location.href = 'login.html'; return; }
+
+            try {
+                const res = await fetch('/api/reviews/' + reviewId + '/like', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userEmail: user.email })
+                });
+                const data = await res.json();
+                if (!res.ok) return;
+
+                const icon = btn.querySelector('i');
+                const countEl = btn.querySelector('.like-count');
+                if (data.liked) {
+                    btn.classList.add('liked');
+                    if (icon) icon.className = 'fas fa-heart';
+                } else {
+                    btn.classList.remove('liked');
+                    if (icon) icon.className = 'far fa-heart';
+                }
+                if (countEl) countEl.textContent = data.totalLikes > 0 ? data.totalLikes : '';
+            } catch(e) { console.error('Like error:', e); }
         }
 
         async function submitReview() {
