@@ -1494,7 +1494,7 @@
                     unsubscribe();
                     verifiedUser = firebaseUser || null;
                     initReviewForm();
-                    loadReviews(verifiedUser);
+                    loadReviews();
                 });
             } else {
                 initReviewForm();
@@ -1519,7 +1519,7 @@
             return html;
         }
 
-        async function loadReviews(currentFirebaseUser) {
+        async function loadReviews() {
             if (!productId) return;
             try {
                 const data = await ReviewsAPI.getReviews(productId);
@@ -1566,9 +1566,8 @@
             }
 
             const isAdmin = !!localStorage.getItem('antika_admin_token');
-            // نستخدم المستخدم اللي مُرر مباشرة من onAuthStateChanged
-            const resolvedUser = (currentFirebaseUser !== undefined) ? currentFirebaseUser : verifiedUser;
-            const currentUserEmail = resolvedUser ? (resolvedUser.email || '') : '';
+            // نستخدم verifiedUser المحدّث من Firebase
+            const currentUserEmail = verifiedUser ? (verifiedUser.email || '') : '';
             list.innerHTML = reviews.map(function(r) {
                 const date = new Date(r.createdAt).toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
                 return '<div class="review-card">'
@@ -1652,7 +1651,7 @@
                 msg.style.display = 'none';
 
                 showMsg('✅ تم إرسال تعليقك بنجاح!', '#22c55e');
-                await loadReviews(verifiedUser);
+                await loadReviews();
             } catch(e) {
                 showMsg(e.message || 'حدث خطأ، حاول مرة أخرى', '#ef4444');
             } finally {
@@ -1671,7 +1670,7 @@
             if (!confirm('حذف هذا التعليق؟')) return;
             try {
                 await ReviewsAPI.deleteReview(reviewId);
-                await loadReviews(verifiedUser);
+                await loadReviews();
             } catch(e) {
                 alert('حدث خطأ أثناء الحذف');
             }
