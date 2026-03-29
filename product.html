@@ -1751,7 +1751,7 @@
 
             if (!name) return showMsg('الرجاء إدخال اسمك', '#ef4444');
             if (!ratingInput) return showMsg('الرجاء اختيار تقييم بالنجوم', '#ef4444');
-            if (!comment || comment.length < 5) return showMsg('التعليق قصير جداً', '#ef4444');
+            if (!comment) return showMsg('يرجى كتابة تعليق', '#ef4444');
 
             btn.disabled = true;
             btn.textContent = 'جاري الإرسال...';
@@ -1825,7 +1825,7 @@
             }
 
             if (!ratingInput) return showEditMsg('يرجى اختيار تقييم', '#ef4444');
-            if (!comment || comment.length < 5) return showEditMsg('التعليق قصير جداً', '#ef4444');
+            if (!comment) return showEditMsg('يرجى كتابة تعليق', '#ef4444');
 
             try {
                 await ReviewsAPI.updateReview(reviewId, { rating: Number(ratingInput.value), comment });

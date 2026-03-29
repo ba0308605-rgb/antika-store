@@ -2332,9 +2332,7 @@ app.post('/api/products/:id/reviews', async (req, res) => {
     if (rating < 1 || rating > 5) {
       return res.status(400).json({ error: 'التقييم يجب أن يكون بين 1 و 5' });
     }
-    if (comment.trim().length < 5) {
-      return res.status(400).json({ error: 'التعليق قصير جداً' });
-    }
+
 
     // إيجاد المنتج
     let product = null;
