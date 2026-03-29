@@ -1722,7 +1722,7 @@
             // اسم وإيميل يتحملان تلقائياً من الجلسة - تأكد من وجودهم
             if (!name) {
                 const msg = document.getElementById('review-form-msg');
-                msg.textContent = 'حدث خطأ، يرجى إعادة تحميل الصفحة';
+                msg.textContent = 'يُسمح لك بتعليق واحد فقط على هذا المنتج';
                 msg.style.color = '#ef4444';
                 msg.style.display = 'block';
                 return;
@@ -1734,7 +1734,7 @@
                     return r.userEmail && r.userEmail.toLowerCase() === email.toLowerCase();
                 });
                 if (hasReview) {
-                    showMsg('لقد كتبت تعليقاً على هذا المنتج مسبقاً — يمكنك تعديله من تعليقك', '#f59e0b');
+                    showMsg('يُسمح لك بتعليق واحد فقط — يمكنك تعديل تعليقك الحالي', '#f59e0b');
                     return;
                 }
             }
