@@ -976,9 +976,21 @@
                 </div>
 
                 <div class="flex gap-3">
-                    <div class="w-24">
+                    <div class="w-28">
                         <label class="block text-gray-700 font-bold mb-2">أيقونة:</label>
-                        <input type="text" id="category-icon" placeholder="🕯️" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none text-2xl text-center">
+                        <!-- معاينة الأيقونة -->
+                        <div id="icon-preview" class="w-full h-14 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center text-2xl mb-2 cursor-pointer hover:border-antika-pink transition bg-gray-50" onclick="document.getElementById('icon-file-input').click()" title="اضغط لرفع صورة">
+                            <span id="icon-preview-content">🕯️</span>
+                        </div>
+                        <!-- حقل الإيموجي النصي -->
+                        <input type="text" id="category-icon" placeholder="🕯️" class="w-full border-2 border-gray-200 rounded-lg px-2 py-2 focus:border-antika-pink focus:outline-none text-xl text-center mb-1" oninput="updateIconPreview(this.value)">
+                        <!-- زر رفع صورة -->
+                        <input type="file" id="icon-file-input" accept="image/svg+xml,image/png,image/jpeg,image/webp" class="hidden" onchange="handleIconUpload(this)">
+                        <button type="button" onclick="document.getElementById('icon-file-input').click()" class="w-full text-xs bg-gray-100 text-gray-600 py-1.5 rounded-lg hover:bg-gray-200 transition">
+                            <i class="fas fa-image ml-1"></i> رفع صورة
+                        </button>
+                        <!-- حقل مخفي لتخزين base64 -->
+                        <input type="hidden" id="category-icon-image">
                     </div>
                     <div class="flex-1">
                         <label class="block text-gray-700 font-bold mb-2">الاسم:</label>
@@ -1099,7 +1111,10 @@
         document.getElementById('category-edit-id').value = '';
         document.getElementById('category-modal-title').textContent = 'إضافة تصنيف';
         document.getElementById('category-icon').value = '';
+        document.getElementById('category-icon-image').value = '';
         document.getElementById('category-name').value = '';
+        const previewReset = document.getElementById('icon-preview-content');
+        if (previewReset) previewReset.innerHTML = '🕯️';
         document.getElementById('cat-type-main').checked = true;
         document.getElementById('cat-type-sub').checked = false;
         document.getElementById('parent-cat-row').classList.add('hidden');
@@ -1136,7 +1151,10 @@
         }
         document.getElementById('category-edit-id').value = mongoId;
         document.getElementById('category-modal-title').textContent = 'تعديل التصنيف';
-        document.getElementById('category-icon').value = cat.icon || '';
+        const iconVal = cat.icon || '';
+        document.getElementById('category-icon').value = iconVal.startsWith('data:') || iconVal.startsWith('http') ? '' : iconVal;
+        document.getElementById('category-icon-image').value = (iconVal.startsWith('data:') || iconVal.startsWith('http')) ? iconVal : '';
+        updateIconPreviewFromValue(iconVal);
         document.getElementById('category-name').value = cat.name || '';
         if (cat.parentId) {
             document.getElementById('cat-type-sub').checked = true;
@@ -1192,6 +1210,48 @@
         setTimeout(() => n.remove(), 3000);
     }
 
+    // ===== ICON HELPERS =====
+    function updateIconPreview(val) {
+        const preview = document.getElementById('icon-preview-content');
+        const imgField = document.getElementById('category-icon-image');
+        if (!preview) return;
+        if (val && val.trim()) {
+            // مسح الصورة المرفوعة لو كتب إيموجي
+            if (imgField) imgField.value = '';
+            preview.innerHTML = val;
+        } else {
+            preview.innerHTML = '🕯️';
+        }
+    }
+
+    function handleIconUpload(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const base64 = e.target.result;
+            // تخزين في الحقل المخفي
+            document.getElementById('category-icon-image').value = base64;
+            // مسح حقل الإيموجي
+            document.getElementById('category-icon').value = '';
+            // تحديث المعاينة
+            const preview = document.getElementById('icon-preview-content');
+            if (preview) preview.innerHTML = '<img src="' + base64 + '" style="width:36px;height:36px;object-fit:contain">';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // تحديث المعاينة عند فتح مودال التعديل
+    function updateIconPreviewFromValue(val) {
+        const preview = document.getElementById('icon-preview-content');
+        if (!preview) return;
+        if (val && (val.startsWith('data:') || val.startsWith('http'))) {
+            preview.innerHTML = '<img src="' + val + '" style="width:36px;height:36px;object-fit:contain">';
+        } else {
+            preview.innerHTML = val || '🕯️';
+        }
+    }
+
     // Hook into category form submission
     document.addEventListener('DOMContentLoaded', () => {
         const form = document.getElementById('category-form');
@@ -1201,7 +1261,9 @@
                 const editId = document.getElementById('category-edit-id').value;
                 const isSub = document.getElementById('cat-type-sub').checked;
                 const name = document.getElementById('category-name').value.trim();
-                const icon = document.getElementById('category-icon').value.trim() || '📦';
+                const iconText = document.getElementById('category-icon').value.trim();
+                const iconImage = document.getElementById('category-icon-image').value.trim();
+                const icon = iconImage || iconText || '📦';
                 const parentId = isSub ? (document.getElementById('category-parent').value || null) : null;
 
                 if (isSub && !parentId) {
