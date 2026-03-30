@@ -975,41 +975,7 @@ function closeCategoryModal() {
     if (modal) modal.classList.add('hidden');
 }
 
-document.getElementById('category-form')?.addEventListener('submit', async function(e) {
-    e.preventDefault();
-
-    const iconInput = document.getElementById('category-icon');
-    const nameInput = document.getElementById('category-name');
-    const subInput = document.getElementById('category-subcategories');
-
-    const categoryData = {
-        icon: iconInput?.value || '📦',
-        name: nameInput?.value || '',
-        subcategories: subInput?.value ? subInput.value.split(',').map(s => s.trim()).filter(s => s) : []
-    };
-
-    if (!categoryData.name) {
-        showNotification('الرجاء إدخال اسم التصنيف', 'error');
-        return;
-    }
-
-    try {
-        if (currentEditingCategory) {
-            await API.updateCategory(currentEditingCategory, categoryData);
-            showNotification('تم تحديث التصنيف بنجاح! 🏷️');
-        } else {
-            await API.addCategory(categoryData);
-            showNotification('تم إضافة التصنيف بنجاح! 🏷️');
-        }
-
-        closeCategoryModal();
-        await loadCategoriesTable();
-        await populateCategorySelects();
-    } catch (error) {
-        console.error('Error saving category:', error);
-        showNotification('حدث خطأ أثناء حفظ التصنيف', 'error');
-    }
-});
+// category-form submit handled in admin.html
 
 // editCategory handled in admin.html
 
