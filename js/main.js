@@ -338,7 +338,7 @@ async function loadCategories() {
         if (dropdown) {
             dropdown.innerHTML = categories.map(cat => `
                 <a href="products.html?category=${cat.id}" class="block px-4 py-2 hover:bg-antika-lavender transition text-gray-700">
-                    ${cat.icon} ${cat.name}
+                    ${cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('data:')) ? `<img src="${cat.icon}" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;display:inline-block">` : cat.icon} ${cat.name}
                 </a>
             `).join('');
         }
@@ -348,7 +348,7 @@ async function loadCategories() {
             grid.innerHTML = categories.map(cat => `
                 <a href="products.html?category=${cat.id}" class="group">
                     <div class="bg-antika-lavender rounded-2xl p-6 text-center hover:shadow-xl transition transform hover:-translate-y-2 border-2 border-transparent hover:border-antika-pink">
-                        <div class="text-5xl mb-4 group-hover:scale-110 transition">${cat.icon}</div>
+                        <div class="text-5xl mb-4 group-hover:scale-110 transition">${cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('data:')) ? `<img src="${cat.icon}" style="width:60px;height:60px;object-fit:contain;display:inline-block">` : cat.icon}</div>
                         <h3 class="font-bold text-antika-gold text-lg mb-2">${cat.name}</h3>
                         <p class="text-sm text-gray-500">${cat.subcategories ? cat.subcategories.length : 0} تصنيف فرعي</p>
                     </div>
@@ -364,7 +364,7 @@ async function loadCategories() {
             } else {
                 mobileCategories.innerHTML = categories.map(cat => `
                     <a href="products.html?category=${cat.id}" class="flex items-center gap-3 py-2 text-gray-700 hover:text-antika-pink transition" onclick="toggleMenu()">
-                        <span class="text-xl">${cat.icon || '📦'}</span>
+                        <span class="text-xl">${cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('data:')) ? `<img src="${cat.icon}" style="width:24px;height:24px;object-fit:contain;vertical-align:middle">` : (cat.icon || '📦')}</span>
                         <span>${cat.name}</span>
                     </a>
                 `).join('');
