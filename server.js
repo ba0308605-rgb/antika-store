@@ -1082,11 +1082,25 @@ app.post('/api/categories', requireAdmin, async (req, res) => {
 // Update category
 app.put('/api/categories/:id', requireAdmin, async (req, res) => {
   try {
-    // رفع أيقونة التصنيف على Cloudinary إذا كانت Base64
     if (req.body.icon && req.body.icon.startsWith('data:')) {
       req.body.icon = await uploadToCloudinary(req.body.icon, 'antika/categories');
     }
-    const category = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
+
+    const updateFields = {};
+    if (req.body.name !== undefined) updateFields.name = req.body.name;
+    if (req.body.icon !== undefined) updateFields.icon = req.body.icon;
+    if (req.body.hasOwnProperty('parentId')) {
+      updateFields.parentId = req.body.parentId || null;
+    }
+
+    // Try by _id first, then by custom id field
+    let category = null;
+    if (req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      category = await Category.findByIdAndUpdate(req.params.id, { $set: updateFields }, { new: true });
+    }
+    if (!category) {
+      category = await Category.findOneAndUpdate({ id: req.params.id }, { $set: updateFields }, { new: true });
+    }
     if (!category) return res.status(404).json({ error: 'Category not found' });
     res.json(repairArabicMojibakeDeep(category));
   } catch (err) {
@@ -1098,7 +1112,13 @@ app.put('/api/categories/:id', requireAdmin, async (req, res) => {
 // Delete category
 app.delete('/api/categories/:id', requireAdmin, async (req, res) => {
   try {
-    const category = await Category.findByIdAndDelete(req.params.id);
+    let category = null;
+    if (req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      category = await Category.findByIdAndDelete(req.params.id);
+    }
+    if (!category) {
+      category = await Category.findOneAndDelete({ id: req.params.id });
+    }
     if (!category) return res.status(404).json({ error: 'Category not found' });
     // Also delete all children
     await Category.deleteMany({ parentId: category.id });

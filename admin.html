@@ -1133,7 +1133,6 @@
     }
 
     async function editCategory(mongoId) {
-        const idStr = String(mongoId || '').trim();
         // إذا لم تكن البيانات محملة بعد، احملها أولاً
         if (!adminAllCategories || adminAllCategories.length === 0) {
             try {
@@ -1144,13 +1143,13 @@
                 return;
             }
         }
-        const cat = adminAllCategories.find(c => String(c._id) === idStr);
+        const cat = adminAllCategories.find(c => String(c._id) === String(mongoId));
         if (!cat) {
             console.error('Category not found with _id:', mongoId);
             showAdminNotif('لم يتم العثور على التصنيف', 'error');
             return;
         }
-        document.getElementById('category-edit-id').value = idStr;
+        document.getElementById('category-edit-id').value = String(mongoId);
         document.getElementById('category-modal-title').textContent = 'تعديل التصنيف';
         const iconVal = cat.icon || '';
         document.getElementById('category-icon').value = iconVal.startsWith('data:') || iconVal.startsWith('http') ? '' : iconVal;
@@ -1176,16 +1175,22 @@
     }
 
     async function deleteCategoryById(mongoId, name, isMain) {
+        const idStr = String(mongoId || '').trim();
+        if (!idStr || idStr.length < 10) {
+            showAdminNotif('معرّف التصنيف غير صالح', 'error');
+            return;
+        }
         const msg = isMain
             ? `حذف القسم الرئيسي "${name}" وجميع أقسامه الفرعية؟`
             : `حذف القسم الفرعي "${name}"؟`;
         if (!confirm(msg)) return;
         try {
-            await API.deleteCategory(mongoId);
+            await API.deleteCategory(idStr);
             await loadAndRenderCategoriesTree();
-            showAdminNotif('تم الحذف بنجاح', 'success');
+            showAdminNotif('تم الحذف بنجاح ✅', 'success');
         } catch(e) {
-            showAdminNotif('حدث خطأ أثناء الحذف', 'error');
+            console.error('Delete error:', e);
+            showAdminNotif('حدث خطأ أثناء الحذف: ' + (e.message || ''), 'error');
         }
     }
 
