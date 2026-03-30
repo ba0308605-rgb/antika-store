@@ -432,7 +432,7 @@
                 <button id="sub-btn-${s.id}" onclick="selectSubCategory('${s.id}')"
                     class="sub-cat-btn px-3 py-1 rounded-full border text-xs font-bold transition
                     ${selectedSubCat === s.id ? 'bg-antika-pink border-antika-pink text-white' : 'border-antika-pink text-antika-pink hover:bg-antika-pink hover:text-white'}">
-                    ${s.icon || ''} ${s.name}
+                    ${s.icon && (s.icon.startsWith('http') || s.icon.startsWith('data:')) ? '<img src="' + s.icon + '" style="width:22px;height:22px;object-fit:contain;vertical-align:middle;display:inline-block">' : (s.icon || '')} ${s.name}
                 </button>`).join('');
         }
 
