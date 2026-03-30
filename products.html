@@ -409,7 +409,7 @@
                             <button id="cat-btn-${cat.id}" onclick="selectMainCategory('${cat.id}')"
                                 class="cat-main-btn px-4 py-2 rounded-full border-2 font-bold text-sm transition
                                 ${selectedMainCat === cat.id ? 'bg-antika-gold border-antika-gold text-white' : 'border-antika-gold text-antika-gold hover:bg-antika-gold hover:text-white'}">
-                                ${cat.icon || '📦'} ${cat.name}
+                                ${cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('data:')) ? '<img src="' + cat.icon + '" style="width:22px;height:22px;object-fit:contain;vertical-align:middle;display:inline-block">' : (cat.icon || '📦')} ${cat.name}
                             </button>`).join('')}
                     </div>
                     <div id="sub-categories-row" class="${selectedMainCat ? 'flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100' : 'hidden'}">
