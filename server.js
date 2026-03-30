@@ -1059,6 +1059,13 @@ app.get('/api/categories', async (req, res) => {
 // Create category
 app.post('/api/categories', requireAdmin, async (req, res) => {
   try {
+    // توليد id تلقائي إذا لم يُرسل
+    if (!req.body.id) {
+      const safeName = (req.body.name || 'cat').toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9\-؀-ۿ]/g, '');
+      req.body.id = safeName + '-' + Date.now();
+    }
     // رفع أيقونة التصنيف على Cloudinary إذا كانت Base64
     if (req.body.icon && req.body.icon.startsWith('data:')) {
       req.body.icon = await uploadToCloudinary(req.body.icon, 'antika/categories');
