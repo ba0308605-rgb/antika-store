@@ -1262,7 +1262,7 @@
         if (form) {
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const editId = document.getElementById('category-edit-id').value;
+                const editId = document.getElementById('category-edit-id').value.trim();
                 const isSub = document.getElementById('cat-type-sub').checked;
                 const name = document.getElementById('category-name').value.trim();
                 const iconText = document.getElementById('category-icon').value.trim();
@@ -1270,26 +1270,25 @@
                 const icon = iconImage || iconText || '📦';
                 const parentId = isSub ? (document.getElementById('category-parent').value || null) : null;
 
-                if (isSub && !parentId) {
-                    alert('اختر القسم الرئيسي للقسم الفرعي');
-                    return;
-                }
-
-                const catId = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-\u0600-\u06FF]/g, '') + '-' + Date.now();
-                const payload = { id: editId ? undefined : catId, name, icon, parentId };
-                if (editId) delete payload.id;
+                if (!name) { alert('الرجاء إدخال اسم التصنيف'); return; }
+                if (isSub && !parentId) { alert('اختر القسم الرئيسي للقسم الفرعي'); return; }
 
                 try {
                     if (editId) {
-                        await API.updateCategory(editId, { name, icon, parentId });
+                        // تعديل — نرسل parentId صراحةً (null للرئيسي، قيمة للفرعي)
+                        await API.updateCategory(editId, { name, icon, parentId: isSub ? parentId : null });
                     } else {
+                        // إضافة — نولّد id فريد
+                        const safeName = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-\u0600-\u06FF]/g, '');
+                        const catId = (safeName || 'cat') + '-' + Date.now();
                         await API.addCategory({ id: catId, name, icon, parentId });
                     }
                     closeCategoryModal();
                     await loadAndRenderCategoriesTree();
-                    showAdminNotif(editId ? 'تم التعديل' : 'تمت الإضافة', 'success');
+                    showAdminNotif(editId ? 'تم التعديل ✅' : 'تمت الإضافة ✅', 'success');
                 } catch(err) {
-                    showAdminNotif('حدث خطأ: ' + (err.message || ''), 'error');
+                    console.error('Category save error:', err);
+                    showAdminNotif('حدث خطأ: ' + (err.message || 'تحقق من الاتصال'), 'error');
                 }
             });
         }
