@@ -983,7 +983,7 @@
                             <span id="icon-preview-content">🕯️</span>
                         </div>
                         <!-- حقل الإيموجي النصي -->
-                        <input type="text" id="category-icon" placeholder="🕯️" class="w-full border-2 border-gray-200 rounded-lg px-2 py-2 focus:border-antika-pink focus:outline-none text-xl text-center mb-1" oninput="updateIconPreview(this.value)">
+                        <input type="text" id="category-icon" placeholder="اكتب إيموجي..." class="w-full border-2 border-gray-200 rounded-lg px-2 py-2 focus:border-antika-pink focus:outline-none text-xl text-center mb-1" oninput="updateIconPreview(this.value)">
                         <!-- زر رفع صورة -->
                         <input type="file" id="icon-file-input" accept="image/svg+xml,image/png,image/jpeg,image/webp" class="hidden" onchange="handleIconUpload(this)">
                         <button type="button" onclick="document.getElementById('icon-file-input').click()" class="w-full text-xs bg-gray-100 text-gray-600 py-1.5 rounded-lg hover:bg-gray-200 transition">
@@ -1095,7 +1095,7 @@
         if (!sel) return;
         const mainCats = cats.filter(c => !c.parentId);
         sel.innerHTML = '<option value="">اختر القسم الرئيسي...</option>' +
-            mainCats.map(c => `<option value="${c.id}">${c.icon || ''} ${c.name}</option>`).join('');
+            mainCats.map(c => `<option value="${c.id}">${c.icon && (c.icon.startsWith('http') || c.icon.startsWith('data:')) ? '' : (c.icon || '')} ${c.name}</option>`).join('');
     }
 
     function toggleCatType() {
@@ -1244,11 +1244,15 @@
     // تحديث المعاينة عند فتح مودال التعديل
     function updateIconPreviewFromValue(val) {
         const preview = document.getElementById('icon-preview-content');
+        const iconInput = document.getElementById('category-icon');
         if (!preview) return;
         if (val && (val.startsWith('data:') || val.startsWith('http'))) {
             preview.innerHTML = '<img src="' + val + '" style="width:36px;height:36px;object-fit:contain">';
+            // مسح حقل النص عشان ما يظهر مرتين
+            if (iconInput) iconInput.value = '';
         } else {
             preview.innerHTML = val || '🕯️';
+            if (iconInput) iconInput.value = val || '';
         }
     }
 
