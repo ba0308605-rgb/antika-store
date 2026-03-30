@@ -1059,6 +1059,10 @@ app.get('/api/categories', async (req, res) => {
 // Create category
 app.post('/api/categories', requireAdmin, async (req, res) => {
   try {
+    // رفع أيقونة التصنيف على Cloudinary إذا كانت Base64
+    if (req.body.icon && req.body.icon.startsWith('data:')) {
+      req.body.icon = await uploadToCloudinary(req.body.icon, 'antika/categories');
+    }
     const category = new Category(req.body);
     await category.save();
     res.json(repairArabicMojibakeDeep(category));
@@ -1071,6 +1075,10 @@ app.post('/api/categories', requireAdmin, async (req, res) => {
 // Update category
 app.put('/api/categories/:id', requireAdmin, async (req, res) => {
   try {
+    // رفع أيقونة التصنيف على Cloudinary إذا كانت Base64
+    if (req.body.icon && req.body.icon.startsWith('data:')) {
+      req.body.icon = await uploadToCloudinary(req.body.icon, 'antika/categories');
+    }
     const category = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!category) return res.status(404).json({ error: 'Category not found' });
     res.json(repairArabicMojibakeDeep(category));
