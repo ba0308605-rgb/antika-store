@@ -538,7 +538,8 @@ const categorySchema = new mongoose.Schema({
   name: { type: String, required: true },
   icon: { type: String, default: '📦' },
   parentId: { type: String, default: null }, // null = قسم رئيسي، string = قسم فرعي
-  subcategories: [{ type: String }] // legacy — kept for compatibility
+  subcategories: [{ type: String }], // legacy — kept for compatibility
+  sortOrder: { type: Number, default: 0 } // ترتيب العرض
 });
 
 // Cart Schema (Session-based)
@@ -1048,7 +1049,7 @@ app.get('/api/users/stats', requireAdmin, async (req, res) => {
 app.get('/api/categories', async (req, res) => {
   try {
     
-    const categories = await Category.find();
+    const categories = await Category.find().sort({ sortOrder: 1, _id: 1 });
     res.json(repairArabicMojibakeDeep(categories));
   } catch (err) {
     console.error('Error fetching categories:', err);
@@ -2569,6 +2570,30 @@ app.delete('/api/reviews/:reviewId', requireAdmin, async (req, res) => {
       reviews: allReviews.length
     });
 
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// CATEGORY REORDER
+// ============================================
+
+app.post('/api/categories/reorder', requireAdmin, async (req, res) => {
+  try {
+    if (!requireMongo(res, 'Category reorder')) return;
+    const { orderedIds } = req.body; // [{id, sortOrder}]
+    if (!Array.isArray(orderedIds)) {
+      return res.status(400).json({ error: 'orderedIds مطلوب' });
+    }
+    const updates = orderedIds.map(({ id, sortOrder }) => ({
+      updateOne: {
+        filter: { _id: id },
+        update: { $set: { sortOrder: Number(sortOrder) } }
+      }
+    }));
+    await Category.bulkWrite(updates);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

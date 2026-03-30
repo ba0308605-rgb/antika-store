@@ -334,6 +334,9 @@ async function loadCategories() {
     try {
         const categories = await API.getCategories();
 
+        // ترتيب التصنيفات حسب sortOrder
+        categories.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
         const dropdown = document.getElementById('categories-dropdown');
         if (dropdown) {
             dropdown.innerHTML = categories.map(cat => `

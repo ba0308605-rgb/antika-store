@@ -364,6 +364,7 @@
         async function loadCategories() {
             try {
                 const categories = await API.getCategories();
+        categories.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
                 allCategories = categories;
 
                 const mainCats = categories.filter(c => !c.parentId);
