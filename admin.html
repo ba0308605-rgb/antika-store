@@ -1053,15 +1053,18 @@
                         </div>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="openAddSubModal('${main.id}')"
+                        <button onclick="openAddSubModal(this.dataset.id)"
+                            data-id="${main.id}"
                             class="text-xs bg-antika-gold text-white px-3 py-1 rounded-full hover:bg-antika-gold-dark transition">
                             <i class="fas fa-plus"></i> فرعي
                         </button>
-                        <button onclick="editCategory('${String(main._id)}')"
+                        <button onclick="editCategory(this.dataset.id)"
+                            data-id="${String(main._id)}"
                             class="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full hover:bg-blue-200 transition">
                             <i class="fas fa-pen"></i>
                         </button>
-                        <button onclick="deleteCategoryById('${String(main._id)}', '${main.name}', true)"
+                        <button onclick="deleteCategoryById(this.dataset.id, this.dataset.name, true)"
+                            data-id="${String(main._id)}" data-name="${main.name.replace(/"/g, '&quot;')}"
                             class="text-xs bg-red-100 text-red-500 px-3 py-1 rounded-full hover:bg-red-200 transition">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -1075,11 +1078,13 @@
                         <span class="text-gray-700 text-sm font-medium">${sub.name}</span>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="editCategory('${String(sub._id)}')"
+                        <button onclick="editCategory(this.dataset.id)"
+                            data-id="${String(sub._id)}"
                             class="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full hover:bg-blue-200 transition">
                             <i class="fas fa-pen"></i>
                         </button>
-                        <button onclick="deleteCategoryById('${String(sub._id)}', '${sub.name}', false)"
+                        <button onclick="deleteCategoryById(this.dataset.id, this.dataset.name, false)"
+                            data-id="${String(sub._id)}" data-name="${sub.name.replace(/"/g, '&quot;')}"
                             class="text-xs bg-red-100 text-red-500 px-3 py-1 rounded-full hover:bg-red-200 transition">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -1176,13 +1181,15 @@
 
     async function deleteCategoryById(mongoId, name, isMain) {
         const idStr = String(mongoId || '').trim();
-        if (!idStr || idStr.length < 10) {
-            showAdminNotif('معرّف التصنيف غير صالح', 'error');
+        const nameStr = String(name || 'هذا التصنيف');
+        console.log('🗑️ Deleting category id:', idStr, 'length:', idStr.length);
+        if (!idStr || idStr.length < 20) {
+            showAdminNotif('معرّف التصنيف غير صالح: ' + idStr, 'error');
             return;
         }
         const msg = isMain
-            ? `حذف القسم الرئيسي "${name}" وجميع أقسامه الفرعية؟`
-            : `حذف القسم الفرعي "${name}"؟`;
+            ? `حذف القسم الرئيسي "${nameStr}" وجميع أقسامه الفرعية؟`
+            : `حذف القسم الفرعي "${nameStr}"؟`;
         if (!confirm(msg)) return;
         try {
             await API.deleteCategory(idStr);
