@@ -1057,11 +1057,11 @@
                             class="text-xs bg-antika-gold text-white px-3 py-1 rounded-full hover:bg-antika-gold-dark transition">
                             <i class="fas fa-plus"></i> فرعي
                         </button>
-                        <button onclick="editCategory('${main._id}')"
+                        <button onclick="editCategory('${String(main._id)}')"
                             class="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full hover:bg-blue-200 transition">
                             <i class="fas fa-pen"></i>
                         </button>
-                        <button onclick="deleteCategoryById('${main._id}', '${main.name}', true)"
+                        <button onclick="deleteCategoryById('${String(main._id)}', '${main.name}', true)"
                             class="text-xs bg-red-100 text-red-500 px-3 py-1 rounded-full hover:bg-red-200 transition">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -1075,11 +1075,11 @@
                         <span class="text-gray-700 text-sm font-medium">${sub.name}</span>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="editCategory('${sub._id}')"
+                        <button onclick="editCategory('${String(sub._id)}')"
                             class="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full hover:bg-blue-200 transition">
                             <i class="fas fa-pen"></i>
                         </button>
-                        <button onclick="deleteCategoryById('${sub._id}', '${sub.name}', false)"
+                        <button onclick="deleteCategoryById('${String(sub._id)}', '${sub.name}', false)"
                             class="text-xs bg-red-100 text-red-500 px-3 py-1 rounded-full hover:bg-red-200 transition">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -1133,6 +1133,7 @@
     }
 
     async function editCategory(mongoId) {
+        const idStr = String(mongoId || '').trim();
         // إذا لم تكن البيانات محملة بعد، احملها أولاً
         if (!adminAllCategories || adminAllCategories.length === 0) {
             try {
@@ -1143,13 +1144,13 @@
                 return;
             }
         }
-        const cat = adminAllCategories.find(c => c._id === mongoId);
+        const cat = adminAllCategories.find(c => String(c._id) === idStr);
         if (!cat) {
             console.error('Category not found with _id:', mongoId);
             showAdminNotif('لم يتم العثور على التصنيف', 'error');
             return;
         }
-        document.getElementById('category-edit-id').value = mongoId;
+        document.getElementById('category-edit-id').value = idStr;
         document.getElementById('category-modal-title').textContent = 'تعديل التصنيف';
         const iconVal = cat.icon || '';
         document.getElementById('category-icon').value = iconVal.startsWith('data:') || iconVal.startsWith('http') ? '' : iconVal;
