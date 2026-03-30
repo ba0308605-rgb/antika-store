@@ -1046,7 +1046,7 @@
             <div class="cat-main-card">
                 <div class="cat-main-header justify-between">
                     <div class="flex items-center gap-3">
-                        <span class="text-2xl">${main.icon || '📦'}</span>
+                        <span class="text-2xl">${main.icon && (main.icon.startsWith('http') || main.icon.startsWith('data:')) ? `<img src="${main.icon}" style="width:32px;height:32px;object-fit:contain">` : (main.icon || '📦')}</span>
                         <div>
                             <span class="font-bold text-gray-800">${main.name}</span>
                             <span class="text-xs text-gray-400 mr-2">${children.length} قسم فرعي</span>
@@ -1071,7 +1071,7 @@
                 <div class="cat-sub-row flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <i class="fas fa-corner-down-right text-gray-300 text-xs mr-2"></i>
-                        <span class="text-lg">${sub.icon || '📁'}</span>
+                        <span class="text-lg">${sub.icon && (sub.icon.startsWith('http') || sub.icon.startsWith('data:')) ? `<img src="${sub.icon}" style="width:26px;height:26px;object-fit:contain">` : (sub.icon || '📁')}</span>
                         <span class="text-gray-700 text-sm font-medium">${sub.name}</span>
                     </div>
                     <div class="flex gap-2">
@@ -1337,7 +1337,7 @@
             return '<div class="mb-2">'
                 // عنوان القسم الرئيسي (غير قابل للاختيار)
                 + '<div class="flex items-center gap-2 py-1 font-bold text-gray-600 text-xs uppercase tracking-wide select-none">'
-                + '<span>' + (main.icon || '📦') + '</span>'
+                + '<span>' + (main.icon && (main.icon.startsWith('http') || main.icon.startsWith('data:')) ? '<img src="' + main.icon + '" style="width:18px;height:18px;object-fit:contain;vertical-align:middle">' : (main.icon || '📦')) + '</span>'
                 + '<span>' + main.name + '</span>'
                 + '</div>'
                 // الأقسام الفرعية
@@ -1346,7 +1346,7 @@
                         '<label class="flex items-center gap-2 py-1 pr-4 cursor-pointer hover:bg-gray-50 rounded">'
                         + '<input type="checkbox" value="' + sub.id + '" class="accent-pink-400"'
                         + (checked.has(sub.id) ? ' checked' : '') + '>'
-                        + '<span class="text-sm text-gray-700">' + (sub.icon || '') + ' ' + sub.name + '</span>'
+                        + '<span class="text-sm text-gray-700">' + (sub.icon && (sub.icon.startsWith('http') || sub.icon.startsWith('data:')) ? '<img src="' + sub.icon + '" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin-left:4px">' : (sub.icon || '')) + ' ' + sub.name + '</span>'
                         + '</label>'
                       ).join('')
                     // إذا ما في أقسام فرعية — اعرض القسم الرئيسي نفسه كخيار
