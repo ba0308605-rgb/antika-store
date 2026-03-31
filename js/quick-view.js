@@ -101,7 +101,7 @@ async function openQuickView(productId) {
                         <img id="qv-main-image" src="${images[0]}" alt="${product.name}" style="
                             width: 100%;
                             height: 100%;
-                            object-fit: cover;
+                            object-fit: contain;
                             animation: fadeIn 0.3s ease;
                         ">
                         
