@@ -1176,13 +1176,22 @@
     }
 
     function openAddSubModal(parentId) {
-        openCategoryModal();
+        // مسح أي بيانات تعديل سابقة أولاً
+        document.getElementById('category-edit-id').value = '';
+        document.getElementById('category-icon').value = '';
+        document.getElementById('category-icon-image').value = '';
+        document.getElementById('category-name').value = '';
+        const previewReset = document.getElementById('icon-preview-content');
+        if (previewReset) previewReset.innerHTML = '🕯️';
+
         document.getElementById('category-modal-title').textContent = 'إضافة قسم فرعي';
         document.getElementById('cat-type-sub').checked = true;
         document.getElementById('cat-type-main').checked = false;
         document.getElementById('parent-cat-row').classList.remove('hidden');
+        populateParentDropdown(adminAllCategories);
         const sel = document.getElementById('category-parent');
         if (sel) sel.value = parentId;
+        document.getElementById('category-modal').classList.remove('hidden');
     }
 
     async function editCategory(mongoId) {
