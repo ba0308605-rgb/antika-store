@@ -18,6 +18,28 @@ async function openQuickView(productId) {
         
         // بناء HTML المعاينة - تصميم متقدم
         const quickViewHTML = `
+            <style>
+                @media (max-width: 768px) {
+                    #quick-view-inner {
+                        grid-template-columns: 1fr !important;
+                        max-height: 92vh !important;
+                        border-radius: 20px 20px 0 0 !important;
+                    }
+                    #quick-view-img-section {
+                        border-radius: 20px 20px 0 0 !important;
+                        min-height: 260px !important;
+                        max-height: 300px !important;
+                    }
+                    #quick-view-overlay {
+                        align-items: flex-end !important;
+                        padding: 0 !important;
+                    }
+                    #qv-overlay-close {
+                        top: 10px !important;
+                        right: 10px !important;
+                    }
+                }
+            </style>
             <div id="quick-view-overlay" style="
                 position: fixed;
                 top: 0;
@@ -32,7 +54,7 @@ async function openQuickView(productId) {
                 padding: 20px;
                 animation: fadeIn 0.3s ease;
             " onclick="if(event.target.id === 'quick-view-overlay') closeQuickView()">
-                <div style="
+                <div id="quick-view-inner" style="
                     background: white;
                     border-radius: 20px;
                     max-width: 900px;
@@ -65,7 +87,7 @@ async function openQuickView(productId) {
                     " onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='white'">✕</button>
 
                     <!-- الصور على اليمين -->
-                    <div style="
+                    <div id="quick-view-img-section" style="
                         background: #f5f5f5;
                         position: relative;
                         border-radius: 20px 0 0 20px;
@@ -720,4 +742,3 @@ function showToast(message, type = 'success') {
         console.warn('Toast failed', e);
     }
 }
-
