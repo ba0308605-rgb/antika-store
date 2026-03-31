@@ -379,7 +379,7 @@ class AntikaHeader extends HTMLElement {
             if (mainCats.length === 0) {
                 container.innerHTML = categories.map(cat => `
                     <a href="products.html?category=${cat.id}" class="flex items-center gap-3 py-2 text-gray-700 hover:text-antika-pink transition" onclick="toggleMenu()">
-                        <span class="text-xl">${cat.icon || '📦'}</span>
+                        <span class="text-xl">${cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('data:')) ? '<img src="' + cat.icon + '" style="width:28px;height:28px;object-fit:contain;vertical-align:middle">' : (cat.icon || '📦')}</span>
                         <span>${cat.name}</span>
                     </a>
                 `).join('');
@@ -393,7 +393,7 @@ class AntikaHeader extends HTMLElement {
                     + '<div class="flex items-center justify-between py-3 cursor-pointer select-none"'
                     + ' onclick="toggleMobileCatSubs(\'subs-' + cat.id + '\', this)">'
                     + '<div class="flex items-center gap-3 text-gray-700">'
-                    + '<span class="text-xl">' + (cat.icon || '📦') + '</span>'
+                    + '<span class="text-xl">' + (cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('data:')) ? '<img src="' + cat.icon + '" style="width:28px;height:28px;object-fit:contain;vertical-align:middle">' : (cat.icon || '📦')) + '</span>'
                     + '<span class="font-semibold">' + cat.name + '</span>'
                     + '</div>'
                     + (hasChildren
