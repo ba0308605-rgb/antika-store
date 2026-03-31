@@ -534,7 +534,12 @@
                             return `
                             <a href="products.html?category=${cat.id}" class="group">
                                 <div class="bg-antika-lavender rounded-2xl p-6 text-center hover:shadow-xl transition transform hover:-translate-y-2 border-2 border-transparent hover:border-antika-pink">
-                                    <div class="text-5xl mb-4 group-hover:scale-110 transition">${cat.icon || '📦'}</div>
+                                    <div class="mb-4 group-hover:scale-110 transition flex items-center justify-center" style="height:60px">
+                                        ${(cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('data:')))
+                                            ? `<img src="${cat.icon}" style="width:56px;height:56px;object-fit:contain;border-radius:12px;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"  /><span style="font-size:3rem;display:none">📦</span>`
+                                            : `<span style="font-size:3rem">${cat.icon || '📦'}</span>`
+                                        }
+                                    </div>
                                     <h3 class="font-bold text-antika-gold text-lg mb-2">${cat.name}</h3>
                                     <p class="text-sm text-gray-500">${subCount} تصنيف فرعي</p>
                                 </div>
