@@ -210,6 +210,79 @@ class AntikaHeader extends HTMLElement {
                 .search-modal-close:hover {
                     background: #f0f0f0;
                 }
+
+                /* ===== BOTTOM NAV BAR (mobile only) ===== */
+                .bottom-nav {
+                    display: none;
+                }
+                @media (max-width: 768px) {
+                    .bottom-nav {
+                        display: flex;
+                        position: fixed;
+                        bottom: 0;
+                        left: 0;
+                        right: 0;
+                        height: 62px;
+                        background: white;
+                        border-top: 1px solid #f0e8e0;
+                        z-index: 999;
+                        align-items: stretch;
+                        box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+                    }
+                    .bottom-nav-item {
+                        flex: 1;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 3px;
+                        color: #aaa;
+                        text-decoration: none;
+                        font-size: 10px;
+                        font-weight: 600;
+                        transition: color 0.2s;
+                        position: relative;
+                        cursor: pointer;
+                        background: none;
+                        border: none;
+                        font-family: inherit;
+                    }
+                    .bottom-nav-item:hover { color: #D6C1A6; }
+                    .bottom-nav-item.active { color: #D6C1A6; }
+                    .bottom-nav-item i { font-size: 1.2rem; }
+                    /* السلة في المنتصف — أكبر وبارز */
+                    .bottom-nav-center {
+                        flex: 1.3;
+                        background: linear-gradient(135deg, #FF69B4, #D6C1A6);
+                        color: white !important;
+                        border-radius: 16px 16px 0 0;
+                        margin: 0 4px;
+                        box-shadow: 0 -4px 12px rgba(255,105,180,0.3);
+                    }
+                    .bottom-nav-center:hover { opacity: 0.9; }
+                    .bottom-nav-center i { font-size: 1.4rem; }
+                    .bottom-nav-badge {
+                        position: absolute;
+                        top: 6px;
+                        left: 50%;
+                        transform: translateX(4px);
+                        background: #ef4444;
+                        color: white;
+                        font-size: 9px;
+                        font-weight: bold;
+                        min-width: 16px;
+                        height: 16px;
+                        border-radius: 8px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 0 3px;
+                    }
+                    /* إخفاء البحث من الهيدر العلوي على الجوال */
+                    .mobile-hide-search { display: none !important; }
+                    /* مسافة في الأسفل لتجنب التداخل مع الشريط */
+                    body { padding-bottom: 62px; }
+                }
             </style>
 
             <!-- Main Header -->
@@ -238,8 +311,8 @@ class AntikaHeader extends HTMLElement {
 
                         <!-- Left Side: Search, Cart, Login -->
                         <div class="flex items-center gap-4">
-                            <!-- Search Icon -->
-                            <button onclick="openSearchModal()" class="w-10 h-10 flex items-center justify-center text-gray-600 hover:text-antika-gold transition">
+                            <!-- Search Icon (hidden on mobile - moved to bottom nav) -->
+                            <button onclick="openSearchModal()" class="mobile-hide-search w-10 h-10 flex items-center justify-center text-gray-600 hover:text-antika-gold transition">
                                 <i class="fas fa-search text-lg"></i>
                             </button>
 
@@ -272,6 +345,36 @@ class AntikaHeader extends HTMLElement {
                     </div>
                 </div>
             </header>
+
+            <!-- ===== BOTTOM NAV BAR (mobile only) ===== -->
+            <nav class="bottom-nav">
+                <!-- الرئيسية -->
+                <a href="index.html" class="bottom-nav-item">
+                    <i class="fas fa-home"></i>
+                    <span>الرئيسية</span>
+                </a>
+                <!-- التصنيفات -->
+                <a href="products.html" class="bottom-nav-item">
+                    <i class="fas fa-th-large"></i>
+                    <span>التصنيفات</span>
+                </a>
+                <!-- السلة (مركز - بارز) -->
+                <a href="cart.html" class="bottom-nav-item bottom-nav-center">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span id="bottom-cart-count-badge" class="bottom-nav-badge hidden">0</span>
+                    <span>السلة</span>
+                </a>
+                <!-- بحث -->
+                <button onclick="openSearchModal()" class="bottom-nav-item">
+                    <i class="fas fa-search"></i>
+                    <span>بحث</span>
+                </button>
+                <!-- حسابي -->
+                <a href="account.html" id="bottom-account-btn" class="bottom-nav-item">
+                    <i class="fas fa-user"></i>
+                    <span>حسابي</span>
+                </a>
+            </nav>
 
             <!-- Search Modal -->
             <div id="search-modal" class="search-modal-overlay">
@@ -498,6 +601,16 @@ class AntikaHeader extends HTMLElement {
                     cartCount.classList.remove('hidden');
                 } else {
                     cartCount.classList.add('hidden');
+                }
+            }
+            // تحديث badge السلة في الشريط السفلي
+            const bottomBadge = document.getElementById('bottom-cart-count-badge');
+            if (bottomBadge) {
+                if (count > 0) {
+                    bottomBadge.textContent = count > 9 ? '9+' : count;
+                    bottomBadge.classList.remove('hidden');
+                } else {
+                    bottomBadge.classList.add('hidden');
                 }
             }
         } catch (error) {
