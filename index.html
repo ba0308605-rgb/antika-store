@@ -51,6 +51,11 @@
             visibility: visible !important;
             opacity: 1 !important;
         }
+        @media (max-width: 768px) {
+            #banner-hero { height: auto !important; min-height: 0 !important; }
+            #banner-hero img { height: auto !important; max-height: 240px !important; width: 100% !important; object-fit: cover !important; }
+            #ad-banner-2, #ad-banner-3, #ad-banner-4 { height: 140px !important; }
+        }
 
         /* Header Styles */
         .main-header {
@@ -362,7 +367,7 @@
 
     <!-- Banner الرئيسي -->
     <section class="container mx-auto px-4 pt-0 pb-0 md:py-8">
-        <div id="banner-hero" class="w-full rounded-3xl overflow-hidden relative flex items-center justify-center" style="height:400px; background: linear-gradient(135deg, #f5ede3 0%, #fce4ec 100%);">
+        <div id="banner-hero" class="w-full rounded-3xl overflow-hidden relative flex items-center justify-center" style="min-height:180px; height:400px; background: linear-gradient(135deg, #f5ede3 0%, #fce4ec 100%);">
             <span class="banner-placeholder text-gray-300 text-4xl">🖼️</span>
         </div>
     </section>
