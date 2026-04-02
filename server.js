@@ -53,7 +53,7 @@ async function deleteFromCloudinary(imageUrl) {
 }
 
 const app = express();
-mongoose.set('bufferCommands', false);
+mongoose.set('bufferCommands', true);
 
 // 📧 Email Configuration (Resend API)
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || '').trim();
