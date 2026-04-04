@@ -1336,11 +1336,6 @@ async function saveAnnouncingSettings() {
     const text = textInput.value.trim();
     const isVisible = visibleInput ? visibleInput.checked : true;
     
-    if (!text) {
-        showNotification('الرجاء إدخال نص الشريط المتحرك', 'error');
-        return;
-    }
-
     try {
         await API.updateAnnouncingSettings({ text, isVisible });
         showNotification('تم حفظ إعدادات الشريط المتحرك بنجاح! 📢');

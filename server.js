@@ -257,11 +257,22 @@ app.put('/api/categories/:id', requireAdmin, async (req, res) => {
 });
 app.delete('/api/categories/:id', requireAdmin, async (req, res) => {
   try {
-    const doc = await db.collection('categories').doc(req.params.id).get();
-    if (!doc.exists) return res.status(404).json({ error: 'Category not found' });
-    const catId = doc.data().id;
-    await db.collection('categories').doc(req.params.id).delete();
-    if (catId) { const ch = await db.collection('categories').where('parentId', '==', catId).get(); const b = db.batch(); ch.docs.forEach(d => b.delete(d.ref)); await b.commit(); }
+    const reqId = req.params.id;
+    // Try by Firestore document ID first
+    let docRef = db.collection('categories').doc(reqId);
+    let doc = await docRef.get();
+    // If not found, try by custom 'id' field
+    if (!doc.exists) {
+      const snap = await db.collection('categories').where('id', '==', reqId).get();
+      if (snap.empty) return res.status(404).json({ error: 'Category not found' });
+      docRef = snap.docs[0].ref;
+      doc = snap.docs[0];
+    }
+    const catId = doc.data().id || reqId;
+    await docRef.delete();
+    // Delete children
+    const ch = await db.collection('categories').where('parentId', '==', catId).get();
+    if (!ch.empty) { const b = db.batch(); ch.docs.forEach(d => b.delete(d.ref)); await b.commit(); }
     res.json({ message: 'Category deleted' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
