@@ -1052,7 +1052,7 @@
         container.innerHTML = mainCats.map(main => {
             const children = subCats.filter(s => s.parentId === main.id);
             return `
-            <div class="cat-main-card" data-id="${String(main._id)}">
+            <div class="cat-main-card" data-id="${String(main.id)}">
                 <div class="cat-main-header justify-between">
                     <div class="flex items-center gap-3">
                         <span class="drag-handle" title="اسحب لتغيير الترتيب">☰</span>
@@ -1069,12 +1069,12 @@
                             <i class="fas fa-plus"></i> فرعي
                         </button>
                         <button onclick="editCategory(this.dataset.id)"
-                            data-id="${String(main._id)}"
+                            data-id="${String(main.id)}"
                             class="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full hover:bg-blue-200 transition">
                             <i class="fas fa-pen"></i>
                         </button>
                         <button onclick="deleteCategoryById(this.dataset.id, this.dataset.name, true)"
-                            data-id="${String(main._id)}" data-name="${main.name.replace(/"/g, '&quot;')}"
+                            data-id="${String(main.id)}" data-name="${main.name.replace(/"/g, '&quot;')}"
                             class="text-xs bg-red-100 text-red-500 px-3 py-1 rounded-full hover:bg-red-200 transition">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -1089,12 +1089,12 @@
                     </div>
                     <div class="flex gap-2">
                         <button onclick="editCategory(this.dataset.id)"
-                            data-id="${String(sub._id)}"
+                            data-id="${String(sub.id)}"
                             class="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full hover:bg-blue-200 transition">
                             <i class="fas fa-pen"></i>
                         </button>
                         <button onclick="deleteCategoryById(this.dataset.id, this.dataset.name, false)"
-                            data-id="${String(sub._id)}" data-name="${sub.name.replace(/"/g, '&quot;')}"
+                            data-id="${String(sub.id)}" data-name="${sub.name.replace(/"/g, '&quot;')}"
                             class="text-xs bg-red-100 text-red-500 px-3 py-1 rounded-full hover:bg-red-200 transition">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -1205,9 +1205,9 @@
                 return;
             }
         }
-        const cat = adminAllCategories.find(c => String(c._id) === String(mongoId));
+        const cat = adminAllCategories.find(c => String(c.id) === String(mongoId) || String(c._id) === String(mongoId));
         if (!cat) {
-            console.error('Category not found with _id:', mongoId);
+            console.error('Category not found with id:', mongoId);
             showAdminNotif('لم يتم العثور على التصنيف', 'error');
             return;
         }
@@ -1240,7 +1240,7 @@
         const idStr = String(mongoId || '').trim();
         const nameStr = String(name || 'هذا التصنيف');
         console.log('🗑️ Deleting category id:', idStr, 'length:', idStr.length);
-        if (!idStr || idStr.length < 20) {
+        if (!idStr || idStr.length < 3) {
             showAdminNotif('معرّف التصنيف غير صالح: ' + idStr, 'error');
             return;
         }
@@ -1564,9 +1564,9 @@
                 + '<td class="px-4 py-3">' + statusBadge + '</td>'
                 + '<td class="px-4 py-3">'
                 + '<div class="flex gap-2">'
-                + '<button onclick="editCoupon(\'' + c._id + '\')" class="text-blue-500 hover:text-blue-700 text-sm font-bold"><i class="fas fa-edit"></i></button>'
-                + '<button onclick="toggleCouponActive(\'' + c._id + '\',' + !c.active + ')" class="text-yellow-500 hover:text-yellow-700 text-sm font-bold" title="' + (c.active ? 'إيقاف' : 'تفعيل') + '"><i class="fas fa-' + (c.active ? 'pause' : 'play') + '"></i></button>'
-                + '<button onclick="deleteCoupon(\'' + c._id + '\')" class="text-red-400 hover:text-red-600 text-sm font-bold"><i class="fas fa-trash"></i></button>'
+                + '<button onclick="editCoupon(\'' + (c.id || c._id) + '\')" class="text-blue-500 hover:text-blue-700 text-sm font-bold"><i class="fas fa-edit"></i></button>'
+                + '<button onclick="toggleCouponActive(\'' + (c.id || c._id) + '\',' + !c.active + ')" class="text-yellow-500 hover:text-yellow-700 text-sm font-bold" title="' + (c.active ? 'إيقاف' : 'تفعيل') + '"><i class="fas fa-' + (c.active ? 'pause' : 'play') + '"></i></button>'
+                + '<button onclick="deleteCoupon(\'' + (c.id || c._id) + '\')" class="text-red-400 hover:text-red-600 text-sm font-bold"><i class="fas fa-trash"></i></button>'
                 + '</div></td></tr>';
         }).join('');
     }
@@ -1589,7 +1589,7 @@
 
         if (id) {
             title.textContent = 'تعديل كوبون';
-            const c = couponsData.find(x => x._id === id);
+            const c = couponsData.find(x => (x.id || x._id) === id);
             if (c) {
                 document.getElementById('cp-code').value = c.code;
                 document.getElementById('cp-type').value = c.type;
