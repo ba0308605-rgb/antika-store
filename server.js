@@ -250,9 +250,16 @@ app.put('/api/categories/:id', requireAdmin, async (req, res) => {
     if (req.body.name !== undefined) u.name = req.body.name;
     if (req.body.icon !== undefined) u.icon = req.body.icon;
     if (Object.prototype.hasOwnProperty.call(req.body, 'parentId')) u.parentId = req.body.parentId || null;
-    await db.collection('categories').doc(req.params.id).update(u);
-    const doc = await db.collection('categories').doc(req.params.id).get();
-    res.json(Object.assign({ id: doc.id }, doc.data()));
+    let docRef = db.collection('categories').doc(req.params.id);
+    let doc = await docRef.get();
+    if (!doc.exists) {
+      const snap = await db.collection('categories').where('id', '==', req.params.id).get();
+      if (snap.empty) return res.status(404).json({ error: 'Category not found' });
+      docRef = snap.docs[0].ref;
+    }
+    await docRef.update(u);
+    const updated = await docRef.get();
+    res.json(Object.assign({ id: updated.id }, updated.data()));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.delete('/api/categories/:id', requireAdmin, async (req, res) => {
