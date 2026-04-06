@@ -1080,10 +1080,10 @@
                         </button>
                     </div>
                 </div>
-                ${children.length > 0 ? children.map(sub => `
-                <div class="cat-sub-row flex items-center justify-between">
+                ${children.length > 0 ? `<div class="sub-sortable-list" data-parent-id="${main.id}">` + children.map(sub => `
+                <div class="cat-sub-row flex items-center justify-between" data-sub-id="${String(sub.id)}">
                     <div class="flex items-center gap-3">
-                        <i class="fas fa-corner-down-right text-gray-300 text-xs mr-2"></i>
+                        <span class="sub-drag-handle" title="اسحب لتغيير الترتيب" style="cursor:grab;color:#ccc;padding:0 8px;font-size:1rem;">☰</span>
                         <span class="text-lg">${sub.icon && (sub.icon.startsWith('http') || sub.icon.startsWith('data:')) ? `<img src="${sub.icon}" style="width:40px;height:40px;object-fit:contain">` : (sub.icon || '📁')}</span>
                         <span class="text-gray-700 text-sm font-medium">${sub.name}</span>
                     </div>
@@ -1099,7 +1099,7 @@
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
-                </div>`).join('') : `
+                </div>`).join('') + '</div>' : `
                 <div class="px-6 py-3 text-xs text-gray-400 italic">لا توجد أقسام فرعية — اضغط "+ فرعي" لإضافة</div>`}
             </div>`;
         }).join('');
@@ -1115,19 +1115,18 @@
         // تدمير القديم إن وجد
         if (container._sortable) container._sortable.destroy();
 
+        // Drag & Drop للأصناف الرئيسية
         container._sortable = new Sortable(container, {
             animation: 200,
             handle: '.drag-handle',
             ghostClass: 'sortable-ghost',
             chosenClass: 'sortable-chosen',
             onEnd: async function() {
-                // جمع الترتيب الجديد
                 const cards = container.querySelectorAll('.cat-main-card[data-id]');
                 const orderedIds = Array.from(cards).map((el, idx) => ({
                     id: el.dataset.id,
                     sortOrder: idx
                 }));
-
                 try {
                     const token = localStorage.getItem('antika_admin_token');
                     await fetch('/api/categories/reorder', {
@@ -1140,6 +1139,37 @@
                     showAdminNotif('حدث خطأ في حفظ الترتيب', 'error');
                 }
             }
+        });
+
+        // Drag & Drop للأصناف الفرعية (داخل كل صنف رئيسي فقط)
+        const subLists = container.querySelectorAll('.sub-sortable-list');
+        subLists.forEach(list => {
+            if (list._sortable) list._sortable.destroy();
+            list._sortable = new Sortable(list, {
+                animation: 200,
+                handle: '.sub-drag-handle',
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                group: false, // منع السحب بين القوائم المختلفة
+                onEnd: async function() {
+                    const rows = list.querySelectorAll('.cat-sub-row[data-sub-id]');
+                    const orderedIds = Array.from(rows).map((el, idx) => ({
+                        id: el.dataset.subId,
+                        sortOrder: idx
+                    }));
+                    try {
+                        const token = localStorage.getItem('antika_admin_token');
+                        await fetch('/api/categories/reorder', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                            body: JSON.stringify({ orderedIds })
+                        });
+                        showAdminNotif('✅ تم حفظ ترتيب الأصناف الفرعية', 'success');
+                    } catch(e) {
+                        showAdminNotif('حدث خطأ في حفظ الترتيب', 'error');
+                    }
+                }
+            });
         });
     }
 
