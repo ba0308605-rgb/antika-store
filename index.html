@@ -52,8 +52,8 @@
             opacity: 1 !important;
         }
         @media (max-width: 768px) {
-            #banner-hero { height: auto !important; min-height: 0 !important; }
-            #banner-hero img { height: auto !important; max-height: 240px !important; width: 100% !important; object-fit: cover !important; }
+            #banner-hero { height: 220px !important; min-height: 220px !important; }
+            #banner-hero img { height: auto !important; max-height: 220px !important; width: 100% !important; object-fit: cover !important; }
             #ad-banner-2, #ad-banner-3, #ad-banner-4 { height: 140px !important; }
         }
 
@@ -467,6 +467,7 @@
         const dots = document.querySelectorAll('.banner-dot');
 
         function goToSlide(index) {
+            if (!slides.length) return;
             slides[currentSlide].classList.remove('active');
             dots[currentSlide].classList.remove('active');
             currentSlide = index;
@@ -475,11 +476,12 @@
         }
 
         function nextSlide() {
+            if (!slides.length) return;
             const next = (currentSlide + 1) % slides.length;
             goToSlide(next);
         }
 
-        setInterval(nextSlide, 5000);
+        if (slides.length > 0) setInterval(nextSlide, 5000);
 
         // Search Modal Functions
         function openSearchModal() {
@@ -590,7 +592,7 @@
                     el.style.height = (b.height || 400) + 'px';
                     el.querySelectorAll('.banner-placeholder').forEach(p => p.style.display = 'none');
                     el.style.backgroundImage = `url('${b.image}')`;
-                    el.style.backgroundSize = 'contain';
+                    el.style.backgroundSize = 'cover';
                     el.style.backgroundPosition = 'center';
                     el.style.backgroundRepeat = 'no-repeat';
                 });
