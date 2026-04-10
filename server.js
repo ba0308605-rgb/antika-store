@@ -292,7 +292,17 @@ app.post('/api/categories/reorder', requireAdmin, async (req, res) => {
     const { orderedIds } = req.body;
     if (!Array.isArray(orderedIds)) return res.status(400).json({ error: 'orderedIds required' });
     const b = db.batch();
-    orderedIds.forEach(item => b.update(db.collection('categories').doc(item.id), { sortOrder: Number(item.sortOrder) }));
+    for (const item of orderedIds) {
+      // Try Firestore doc ID first, then custom id field
+      let docRef = db.collection('categories').doc(item.id);
+      let doc = await docRef.get();
+      if (!doc.exists) {
+        const snap = await db.collection('categories').where('id', '==', item.id).get();
+        if (!snap.empty) docRef = snap.docs[0].ref;
+        else continue;
+      }
+      b.update(docRef, { sortOrder: Number(item.sortOrder) });
+    }
     await b.commit();
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
