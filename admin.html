@@ -1720,7 +1720,7 @@
             const banners = await res.json();
             const container = document.getElementById('banners-container');
             container.innerHTML = Object.entries(bannerLabels).map(([key, label]) => {
-                const b = banners[key] || { image: '', height: 400, active: true };
+                const b = banners[key] || { image: '', height: 400, heightMobile: 220, active: true };
                 return `
                 <div class="bg-white rounded-2xl shadow p-6 space-y-4">
                     <h3 class="font-bold text-gray-800">${label}</h3>
@@ -1734,9 +1734,15 @@
                         <label class="text-sm text-gray-600 mb-1 block">رفع صورة</label>
                         <input type="file" accept="image/*" onchange="previewBanner(this, '${key}')" class="w-full text-sm border rounded-lg p-2">
                     </div>
-                    <div>
-                        <label class="text-sm text-gray-600 mb-1 block">الارتفاع (px)</label>
-                        <input type="number" id="height-${key}" value="${b.height}" min="0" max="800" class="w-full border rounded-lg p-2 text-sm">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-sm text-gray-600 mb-1 block">🖥️ ارتفاع الكمبيوتر (px)</label>
+                            <input type="number" id="height-${key}" value="${b.height || 400}" min="100" max="1000" class="w-full border rounded-lg p-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-600 mb-1 block">📱 ارتفاع الجوال (px)</label>
+                            <input type="number" id="height-mobile-${key}" value="${b.heightMobile || 220}" min="100" max="600" class="w-full border rounded-lg p-2 text-sm">
+                        </div>
                     </div>
                     <button onclick="saveBanner('${key}')" class="w-full bg-antika-gold text-white py-2 rounded-lg font-semibold hover:bg-antika-gold-dark transition">
                         حفظ
@@ -1774,9 +1780,10 @@
     async function saveBanner(key) {
         try {
             const token = localStorage.getItem('antika_admin_token');
-            const height = parseInt(document.getElementById('height-' + key).value) || 0;
+            const height = parseInt(document.getElementById('height-' + key).value) || 400;
+            const heightMobile = parseInt(document.getElementById('height-mobile-' + key).value) || 220;
             const image = bannerImages[key] || undefined;
-            const body = { height };
+            const body = { height, heightMobile };
             if (image) body.image = image;
             const res = await fetch('/api/banners/' + key, {
                 method: 'PUT',

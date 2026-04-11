@@ -292,17 +292,7 @@ app.post('/api/categories/reorder', requireAdmin, async (req, res) => {
     const { orderedIds } = req.body;
     if (!Array.isArray(orderedIds)) return res.status(400).json({ error: 'orderedIds required' });
     const b = db.batch();
-    for (const item of orderedIds) {
-      // Try Firestore doc ID first, then custom id field
-      let docRef = db.collection('categories').doc(item.id);
-      let doc = await docRef.get();
-      if (!doc.exists) {
-        const snap = await db.collection('categories').where('id', '==', item.id).get();
-        if (!snap.empty) docRef = snap.docs[0].ref;
-        else continue;
-      }
-      b.update(docRef, { sortOrder: Number(item.sortOrder) });
-    }
+    orderedIds.forEach(item => b.update(db.collection('categories').doc(item.id), { sortOrder: Number(item.sortOrder) }));
     await b.commit();
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -646,14 +636,14 @@ app.put('/api/banners/:key', requireAdmin, async (req, res) => {
     const { key } = req.params;
     const allowed = ['banner_hero', 'banner_2', 'banner_3', 'banner_4'];
     if (!allowed.includes(key)) return res.status(400).json({ error: 'Invalid banner key' });
-    const { image, height, active } = req.body;
+    const { image, height, heightMobile, active } = req.body;
     const s = await db.collection('settings').where('key', '==', key).get();
     const oldImg = s.empty ? '' : ((s.docs[0].data().value && s.docs[0].data().value.image) || '');
     let newImg;
     if (image === '__DELETE__') { await deleteFromCloudinary(oldImg); newImg = ''; }
     else if (image && image.startsWith('data:')) { newImg = await uploadToCloudinary(image, 'antika/banners'); }
     else { newImg = image || oldImg; }
-    const value = { image: newImg, height: height !== undefined ? height : 400, active: active !== false };
+    const value = { image: newImg, height: height !== undefined ? height : 400, heightMobile: heightMobile !== undefined ? heightMobile : 220, active: active !== false };
     if (s.empty) await db.collection('settings').add({ key, value }); else await s.docs[0].ref.update({ value });
     res.json({ success: true, banner: value });
   } catch (err) { res.status(500).json({ error: err.message }); }

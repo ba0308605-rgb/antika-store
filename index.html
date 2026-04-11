@@ -584,6 +584,7 @@
             };
 
             function applyBanners(banners) {
+                const isMobile = window.innerWidth <= 768;
                 Object.entries(map).forEach(([key, elId]) => {
                     const b = banners[key];
                     const el = document.getElementById(elId);
@@ -594,7 +595,8 @@
                         return;
                     }
                     if (section) section.style.display = '';
-                    el.style.height = (b.height || 400) + 'px';
+                    const height = isMobile ? (b.heightMobile || 220) : (b.height || 400);
+                    el.style.height = height + 'px';
                     el.querySelectorAll('.banner-placeholder').forEach(p => p.style.display = 'none');
                     el.style.backgroundImage = `url('${b.image}')`;
                     el.style.backgroundSize = 'cover';
@@ -602,6 +604,14 @@
                     el.style.backgroundRepeat = 'no-repeat';
                 });
             }
+
+            // إعادة تطبيق البنرات عند تغيير حجم الشاشة
+            window.addEventListener('resize', () => {
+                try {
+                    const cached = JSON.parse(localStorage.getItem('antika_banners_cache') || 'null');
+                    if (cached) applyBanners(cached.data);
+                } catch(e) {}
+            });
 
             // اعرض من الـ Cache فوراً
             try {
