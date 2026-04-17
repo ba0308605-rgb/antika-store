@@ -1016,14 +1016,14 @@ async function populateCategorySelects() {
                     const children = subCats.filter(s => s.parentId === main.id);
                     return '<div class="mb-2">'
                         + '<div class="flex items-center gap-1 text-xs font-bold text-gray-500 uppercase tracking-wide py-1 px-1 select-none">'
-                        + '<span>' + (main.icon || '📦') + '</span>'
+                        + '<span>' + (main.icon && (main.icon.startsWith('http') || main.icon.startsWith('data:')) ? '<img src="' + main.icon + '" style="width:20px;height:20px;object-fit:contain;display:inline">' : (main.icon || '📦')) + '</span>'
                         + '<span>' + safeText(main.name) + '</span>'
                         + '</div>'
                         + (children.length > 0
                             ? children.map(sub =>
                                 '<label class="flex items-center gap-2 py-1 pr-4 cursor-pointer hover:bg-gray-50 rounded">'
                                 + '<input type="checkbox" value="' + sub.id + '" class="category-checkbox w-4 h-4 accent-pink-400 rounded">'
-                                + '<span class="text-sm">' + (sub.icon || '') + ' ' + safeText(sub.name) + '</span>'
+                                + '<span class="text-sm">' + (sub.icon && (sub.icon.startsWith('http') || sub.icon.startsWith('data:')) ? '<img src="' + sub.icon + '" style="width:18px;height:18px;object-fit:contain;display:inline">' : (sub.icon || '')) + ' ' + safeText(sub.name) + '</span>'
                                 + '</label>'
                               ).join('')
                             : '<label class="flex items-center gap-2 py-1 pr-4 cursor-pointer hover:bg-gray-50 rounded">'
