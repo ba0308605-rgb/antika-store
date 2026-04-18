@@ -1049,10 +1049,10 @@ async function populateCategorySelects() {
                     options += '<option value="' + main.id + '" disabled style="font-weight:bold;color:#888;">— ' + safeText(main.name) + '</option>';
                     if (children.length > 0) {
                         children.forEach(sub => {
-                            options += '<option value="' + sub.id + '">　' + (sub.icon || '') + ' ' + safeText(sub.name) + '</option>';
+                            options += '<option value="' + sub.id + '">　' + safeText(sub.name) + '</option>';
                         });
                     } else {
-                        options += '<option value="' + main.id + '_sel">　' + (main.icon || '') + ' ' + safeText(main.name) + '</option>';
+                        options += '<option value="' + main.id + '_sel">　' + safeText(main.name) + '</option>';
                     }
                 });
             } else {
