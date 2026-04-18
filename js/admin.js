@@ -387,11 +387,64 @@ async function deleteOrder(orderId) {
 // PRODUCTS MANAGEMENT
 // ============================================
 
+let _adminAllProducts = [];
+
 async function loadAdminProducts() {
     try {
-        const products = await API.getProducts();
+        _adminAllProducts = await API.getProducts();
         const categories = await API.getCategories();
-        const container = document.getElementById('admin-products-grid');
+        
+        // Setup filter listener once
+        const filter = document.getElementById('product-category-filter');
+        if (filter && !filter._filterBound) {
+            filter._filterBound = true;
+            filter.addEventListener('change', () => filterAdminProducts(categories));
+        }
+        // Setup search listener once
+        const searchInput = document.getElementById('admin-product-search');
+        if (searchInput && !searchInput._searchBound) {
+            searchInput._searchBound = true;
+            searchInput.addEventListener('input', () => filterAdminProducts(categories));
+        }
+        
+        renderAdminProducts(_adminAllProducts, categories);
+    } catch (error) {
+        console.error('Error loading admin products:', error);
+        showNotification('حدث خطأ أثناء تحميل المنتجات', 'error');
+    }
+}
+
+function filterAdminProducts(categories) {
+    const filter = document.getElementById('product-category-filter');
+    const searchInput = document.getElementById('admin-product-search');
+    const selectedCat = filter ? filter.value : '';
+    const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
+    
+    let filtered = _adminAllProducts;
+    
+    if (selectedCat && selectedCat !== '') {
+        const cleanCat = selectedCat.replace('_sel', '');
+        filtered = filtered.filter(p => {
+            const cats = p.categories || (p.category ? [p.category] : []);
+            return cats.includes(cleanCat) || cats.some(c => {
+                const cat = categories.find(x => x.id === c);
+                return cat && cat.parentId === cleanCat;
+            });
+        });
+    }
+    
+    if (searchTerm) {
+        filtered = filtered.filter(p => 
+            (p.name || '').toLowerCase().includes(searchTerm) ||
+            (p.description || '').toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    renderAdminProducts(filtered, categories);
+}
+
+function renderAdminProducts(products, categories) {
+    const container = document.getElementById('admin-products-grid');
 
         if (!container) return;
 
@@ -442,10 +495,7 @@ async function loadAdminProducts() {
             </div>
             `;
         }).join('');
-    } catch (error) {
-        console.error('Error loading admin products:', error);
-        showNotification('حدث خطأ أثناء تحميل المنتجات', 'error');
-    }
+
 }
 
 // ============================================
