@@ -509,7 +509,7 @@ class AntikaHeader extends HTMLElement {
                           + '<i class="fas fa-th text-xs"></i> عرض الكل</a>'
                           + children.map(sub =>
                               '<a href="products.html?category=' + sub.id + '" class="flex items-center gap-2 py-1.5 text-sm text-gray-600 hover:text-antika-pink transition" onclick="toggleMenu()">'
-                              + '<span>' + (sub.icon || '•') + '</span>'
+                              + '<span>' + (sub.icon && (sub.icon.startsWith('http') || sub.icon.startsWith('data:')) ? '<img src="' + sub.icon + '" style="width:22px;height:22px;object-fit:contain;vertical-align:middle">' : (sub.icon || '•')) + '</span>'
                               + '<span>' + sub.name + '</span></a>'
                             ).join('')
                           + '</div>'
