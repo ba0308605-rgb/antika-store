@@ -497,7 +497,7 @@
             renderProducts(filtered);
         }
 
-        function applyPageMode(isOffersView, searchQuery) {
+        function applyPageMode(isOffersView, isNewView, searchQuery) {
             const heading = document.getElementById('page-heading-label');
             const breadcrumb = document.getElementById('page-breadcrumb-label');
 
@@ -506,9 +506,13 @@
                 if (breadcrumb) breadcrumb.textContent = 'البحث';
                 document.title = 'البحث عن ' + searchQuery + ' | أنتيكا ستور';
             } else if (isOffersView) {
-                if (heading) heading.textContent = 'العروض';
+                if (heading) heading.innerHTML = '🔥 عروض خاصة';
                 if (breadcrumb) breadcrumb.textContent = 'العروض';
-                document.title = 'العروض | أنتيكا ستور';
+                document.title = 'العروض الخاصة | أنتيكا ستور';
+            } else if (isNewView) {
+                if (heading) heading.innerHTML = '✨ وصل حديثاً';
+                if (breadcrumb) breadcrumb.textContent = 'وصل حديثاً';
+                document.title = 'وصل حديثاً | أنتيكا ستور';
             } else {
                 if (heading) heading.textContent = 'المنتجات';
                 if (breadcrumb) breadcrumb.textContent = 'المنتجات';
@@ -522,14 +526,26 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const search = urlParams.get('search');
                 const isOffersView = urlParams.get('discount') === 'true';
+                const isNewView = urlParams.get('new') === 'true';
 
-                applyPageMode(isOffersView, search);
+                applyPageMode(isOffersView, isNewView, search);
 
-                const products = await API.getProducts(
+                // Hide categories in special views
+                const catBrowser = document.getElementById('category-browser');
+                if (catBrowser && (isOffersView || isNewView)) {
+                    catBrowser.style.display = 'none';
+                }
+
+                let products = await API.getProducts(
                     null,
                     search || null,
                     isOffersView ? true : null
                 );
+
+                // Filter new products client-side
+                if (isNewView) {
+                    products = products.filter(p => p.isNew && p.newExpiryDate && new Date(p.newExpiryDate) > new Date());
+                }
 
                 allProducts = products;
                 filterAndRender();
