@@ -345,6 +345,14 @@
                                 <label class="block text-gray-700 font-bold mb-2">رابط سناب شات:</label>
                                 <input type="url" id="footer-snapchat" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="https://snapchat.com/add/antika.store">
                             </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">رابط تيك توك:</label>
+                                <input type="url" id="footer-tiktok" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="https://tiktok.com/@antika.store">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-bold mb-2">رابط تويتر / X:</label>
+                                <input type="url" id="footer-twitter" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="https://x.com/antika_store">
+                            </div>
                         </div>
 
                         <button onclick="saveFooterSettings()" class="w-full bg-antika-gold text-white py-4 rounded-lg font-bold hover:bg-antika-gold-dark transition text-lg mt-6">
@@ -1720,7 +1728,7 @@
             const banners = await res.json();
             const container = document.getElementById('banners-container');
             container.innerHTML = Object.entries(bannerLabels).map(([key, label]) => {
-                const b = banners[key] || { image: '', height: 400, heightMobile: 220, active: true };
+                const b = banners[key] || { image: '', height: 400, active: true };
                 return `
                 <div class="bg-white rounded-2xl shadow p-6 space-y-4">
                     <h3 class="font-bold text-gray-800">${label}</h3>
@@ -1734,18 +1742,12 @@
                         <label class="text-sm text-gray-600 mb-1 block">رفع صورة</label>
                         <input type="file" accept="image/*" onchange="previewBanner(this, '${key}')" class="w-full text-sm border rounded-lg p-2">
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="text-sm text-gray-600 mb-1 block">🖥️ ارتفاع الكمبيوتر (px)</label>
-                            <input type="number" id="height-${key}" value="${b.height || 400}" min="100" max="1000" class="w-full border rounded-lg p-2 text-sm">
-                        </div>
-                        <div>
-                            <label class="text-sm text-gray-600 mb-1 block">📱 ارتفاع الجوال (px)</label>
-                            <input type="number" id="height-mobile-${key}" value="${b.heightMobile || 220}" min="100" max="600" class="w-full border rounded-lg p-2 text-sm">
-                        </div>
+                    <div>
+                        <label class="text-sm text-gray-600 mb-1 block">الارتفاع (px)</label>
+                        <input type="number" id="height-${key}" value="${b.height}" min="0" max="800" class="w-full border rounded-lg p-2 text-sm">
                     </div>
-                    <button id="save-btn-${key}" onclick="saveBanner('${key}')" class="w-full bg-antika-gold text-white py-2 rounded-lg font-semibold hover:bg-antika-gold-dark transition flex items-center justify-center gap-2">
-                        <span>حفظ</span>
+                    <button onclick="saveBanner('${key}')" class="w-full bg-antika-gold text-white py-2 rounded-lg font-semibold hover:bg-antika-gold-dark transition">
+                        حفظ
                     </button>
                 </div>`;
             }).join('');
@@ -1778,17 +1780,11 @@
     }
 
     async function saveBanner(key) {
-        const btn = document.getElementById('save-btn-' + key);
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
-        }
         try {
             const token = localStorage.getItem('antika_admin_token');
-            const height = parseInt(document.getElementById('height-' + key).value) || 400;
-            const heightMobile = parseInt(document.getElementById('height-mobile-' + key).value) || 220;
+            const height = parseInt(document.getElementById('height-' + key).value) || 0;
             const image = bannerImages[key] || undefined;
-            const body = { height, heightMobile };
+            const body = { height };
             if (image) body.image = image;
             const res = await fetch('/api/banners/' + key, {
                 method: 'PUT',
@@ -1799,13 +1795,8 @@
                 localStorage.removeItem('antika_banners_cache');
                 if (typeof showAdminNotif === 'function') showAdminNotif('تم حفظ البنر ✅', 'success');
                 loadBanners();
-            } else {
-                if (btn) { btn.disabled = false; btn.innerHTML = '<span>حفظ</span>'; }
             }
-        } catch(e) {
-            console.error(e);
-            if (btn) { btn.disabled = false; btn.innerHTML = '<span>حفظ</span>'; }
-        }
+        } catch(e) { console.error(e); }
     }
     </script>
 </body>

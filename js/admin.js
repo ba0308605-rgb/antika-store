@@ -387,64 +387,11 @@ async function deleteOrder(orderId) {
 // PRODUCTS MANAGEMENT
 // ============================================
 
-let _adminAllProducts = [];
-
 async function loadAdminProducts() {
     try {
-        _adminAllProducts = await API.getProducts();
+        const products = await API.getProducts();
         const categories = await API.getCategories();
-        
-        // Setup filter listener once
-        const filter = document.getElementById('product-category-filter');
-        if (filter && !filter._filterBound) {
-            filter._filterBound = true;
-            filter.addEventListener('change', () => filterAdminProducts(categories));
-        }
-        // Setup search listener once
-        const searchInput = document.getElementById('admin-product-search');
-        if (searchInput && !searchInput._searchBound) {
-            searchInput._searchBound = true;
-            searchInput.addEventListener('input', () => filterAdminProducts(categories));
-        }
-        
-        renderAdminProducts(_adminAllProducts, categories);
-    } catch (error) {
-        console.error('Error loading admin products:', error);
-        showNotification('حدث خطأ أثناء تحميل المنتجات', 'error');
-    }
-}
-
-function filterAdminProducts(categories) {
-    const filter = document.getElementById('product-category-filter');
-    const searchInput = document.getElementById('admin-product-search');
-    const selectedCat = filter ? filter.value : '';
-    const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
-    
-    let filtered = _adminAllProducts;
-    
-    if (selectedCat && selectedCat !== '') {
-        const cleanCat = selectedCat.replace('_sel', '');
-        filtered = filtered.filter(p => {
-            const cats = p.categories || (p.category ? [p.category] : []);
-            return cats.includes(cleanCat) || cats.some(c => {
-                const cat = categories.find(x => x.id === c);
-                return cat && cat.parentId === cleanCat;
-            });
-        });
-    }
-    
-    if (searchTerm) {
-        filtered = filtered.filter(p => 
-            (p.name || '').toLowerCase().includes(searchTerm) ||
-            (p.description || '').toLowerCase().includes(searchTerm)
-        );
-    }
-    
-    renderAdminProducts(filtered, categories);
-}
-
-function renderAdminProducts(products, categories) {
-    const container = document.getElementById('admin-products-grid');
+        const container = document.getElementById('admin-products-grid');
 
         if (!container) return;
 
@@ -495,7 +442,10 @@ function renderAdminProducts(products, categories) {
             </div>
             `;
         }).join('');
-
+    } catch (error) {
+        console.error('Error loading admin products:', error);
+        showNotification('حدث خطأ أثناء تحميل المنتجات', 'error');
+    }
 }
 
 // ============================================
@@ -1216,12 +1166,16 @@ async function loadSettings() {
             const footerInstagram = document.getElementById('footer-instagram');
             const footerWhatsapp = document.getElementById('footer-whatsapp');
             const footerSnapchat = document.getElementById('footer-snapchat');
-            
+            const footerTiktok = document.getElementById('footer-tiktok');
+            const footerTwitter = document.getElementById('footer-twitter');
+
             if (footerPhone) footerPhone.value = settings.footer.phone || '';
             if (footerEmail) footerEmail.value = settings.footer.email || '';
             if (footerInstagram) footerInstagram.value = settings.footer.instagram || '';
-            if (footerWhatsapp) footerWhatsap.value = settings.footer.whatsapp || '';
+            if (footerWhatsapp) footerWhatsapp.value = settings.footer.whatsapp || '';
             if (footerSnapchat) footerSnapchat.value = settings.footer.snapchat || '';
+            if (footerTiktok) footerTiktok.value = settings.footer.tiktok || '';
+            if (footerTwitter) footerTwitter.value = settings.footer.twitter || '';
         }
     } catch (error) {
         console.error('Error loading settings:', error);
@@ -1271,7 +1225,9 @@ async function saveFooterSettings() {
             email: document.getElementById('footer-email')?.value || '',
             instagram: document.getElementById('footer-instagram')?.value || '',
             whatsapp: document.getElementById('footer-whatsapp')?.value || '',
-            snapchat: document.getElementById('footer-snapchat')?.value || ''
+            snapchat: document.getElementById('footer-snapchat')?.value || '',
+            tiktok: document.getElementById('footer-tiktok')?.value || '',
+            twitter: document.getElementById('footer-twitter')?.value || ''
         }
     };
 
