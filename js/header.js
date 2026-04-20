@@ -409,7 +409,8 @@ class AntikaHeader extends HTMLElement {
                     <nav class="space-y-4">
                         <a href="index.html" class="block py-3 border-b border-gray-100 text-gray-800 hover:text-antika-gold font-semibold">الرئيسية</a>
                         <a href="products.html" class="block py-3 border-b border-gray-100 text-gray-800 hover:text-antika-gold">المنتجات</a>
-                        <a href="products.html?discount=true" class="block py-3 border-b border-gray-100 text-gray-800 hover:text-antika-gold">العروض</a>
+                        <a href="products.html?discount=true" class="block py-3 border-b border-gray-100 text-gray-800 hover:text-antika-gold">🔥 العروض</a>
+                        <a href="products.html?new=true" class="block py-3 border-b border-gray-100 text-gray-800 hover:text-antika-gold">✨ وصل حديثاً</a>
                     </nav>
                     <div class="mt-8">
                         <h4 class="font-bold text-gray-700 mb-4">التصنيفات</h4>
