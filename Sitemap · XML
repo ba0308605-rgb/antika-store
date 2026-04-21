@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <!-- الصفحة الرئيسية -->
+  <url>
+    <loc>https://antika-store.shop/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- صفحة المنتجات -->
+  <url>
+    <loc>https://antika-store.shop/products.html</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- سلة التسوق -->
+  <url>
+    <loc>https://antika-store.shop/cart.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- تسجيل الدخول -->
+  <url>
+    <loc>https://antika-store.shop/login.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- إنشاء حساب -->
+  <url>
+    <loc>https://antika-store.shop/register.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- حسابي -->
+  <url>
+    <loc>https://antika-store.shop/account.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+  <!-- الطلبات -->
+  <url>
+    <loc>https://antika-store.shop/orders.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- المفضلة -->
+  <url>
+    <loc>https://antika-store.shop/wishlist.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- العناوين -->
+  <url>
+    <loc>https://antika-store.shop/addresses.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+  <!-- الإشعارات -->
+  <url>
+    <loc>https://antika-store.shop/notifications.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+  <!-- الإعدادات -->
+  <url>
+    <loc>https://antika-store.shop/settings.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+  <!-- الصفحات القانونية -->
+  <url>
+    <loc>https://antika-store.shop/pages.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+</urlset>
