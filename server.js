@@ -851,6 +851,46 @@ async function cleanupOldCarts() {
 setInterval(cleanupOldCarts, 14 * 24 * 60 * 60 * 1000);
 setTimeout(cleanupOldCarts, 60 * 1000);
 
+// SITEMAP & ROBOTS
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const snapshot = await db.collection('products').get();
+    const products = docsToArr(snapshot);
+    let urls = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://antika-store.shop/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://antika-store.shop/products.html</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>`;
+    for (const product of products) {
+      const lastmod = product.updatedAt && product.updatedAt.toDate
+        ? product.updatedAt.toDate().toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
+      urls += `
+  <url>
+    <loc>https://antika-store.shop/product.html?id=${product.id}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+    }
+    urls += `\n</urlset>`;
+    res.header('Content-Type', 'application/xml');
+    res.send(urls);
+  } catch (err) { res.status(500).send('Error generating sitemap'); }
+});
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.send(`User-agent: *\nAllow: /\nSitemap: https://antika-store.shop/sitemap.xml`);
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log('\uD83D\uDE80 Server running on port ' + PORT);
