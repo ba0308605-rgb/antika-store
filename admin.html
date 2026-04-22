@@ -361,6 +361,19 @@
                     </div>
                 </section>
 
+                <!-- Rich Text Editor Styles -->
+                <style>
+                .editor-toolbar { display:flex; flex-wrap:wrap; gap:6px; padding:8px; background:#f9f9f9; border:2px solid #e5e7eb; border-bottom:none; border-radius:8px 8px 0 0; }
+                .editor-toolbar button { padding:5px 12px; border:1px solid #d1d5db; border-radius:6px; background:white; cursor:pointer; font-family:'Tajawal',sans-serif; font-size:13px; color:#374151; transition:all 0.2s; }
+                .editor-toolbar button:hover { background:#FFB6C1; color:white; border-color:#FFB6C1; }
+                .editor-area { border-radius:0 0 8px 8px !important; border-top:none !important; }
+                .preview-box { border:2px dashed #e5e7eb; border-radius:8px; padding:12px; min-height:60px; background:#fafafa; font-family:'Tajawal',sans-serif; line-height:1.8; color:#4B5563; margin-top:8px; font-size:14px; }
+                .preview-box h2 { font-size:1.3rem; font-weight:700; color:#1F2937; margin-bottom:8px; }
+                .preview-box h3 { font-size:1.1rem; font-weight:600; color:#374151; margin-bottom:6px; }
+                .preview-box strong { font-weight:700; }
+                .preview-box hr { border:none; border-top:2px solid #FFB6C1; margin:10px 0; }
+                </style>
+
                 <!-- Footer Pages Section -->
                 <section id="footer-pages-section" class="hidden space-y-6">
                     <h2 class="text-2xl font-bold text-antika-gold">📄 تخصيص صفحات الفوتر</h2>
@@ -375,7 +388,16 @@
                             </div>
                             <div>
                                 <label class="block text-gray-700 font-bold mb-2">المحتوى:</label>
-                                <textarea id="page-about-content" rows="6" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="اكتب محتوى الصفحة هنا..."></textarea>
+                                <div class="editor-toolbar">
+                                    <button type="button" onclick="insertTag('page-about-content','h2')">H1 عنوان</button>
+                                    <button type="button" onclick="insertTag('page-about-content','h3')">H2 فرعي</button>
+                                    <button type="button" onclick="insertTag('page-about-content','strong')"><b>عريض</b></button>
+                                    <button type="button" onclick="insertTag('page-about-content','p')">¶ فقرة</button>
+                                    <button type="button" onclick="insertHr('page-about-content')">— فاصل</button>
+                                    <button type="button" onclick="togglePreview('page-about-content')">👁 معاينة</button>
+                                </div>
+                                <textarea id="page-about-content" rows="8" class="editor-area w-full border-2 border-gray-200 px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="اكتب محتوى الصفحة هنا..."></textarea>
+                                <div id="page-about-content-preview" class="preview-box hidden"></div>
                             </div>
                             <button onclick="savePageSettings('about')" class="w-full bg-antika-pink text-white py-3 rounded-lg font-bold hover:bg-antika-pink-dark transition">
                                 💾 حفظ صفحة "من نحن"
@@ -393,7 +415,16 @@
                             </div>
                             <div>
                                 <label class="block text-gray-700 font-bold mb-2">المحتوى:</label>
-                                <textarea id="page-returns-content" rows="6" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="اكتب محتوى الصفحة هنا..."></textarea>
+                                <div class="editor-toolbar">
+                                    <button type="button" onclick="insertTag('page-returns-content','h2')">H1 عنوان</button>
+                                    <button type="button" onclick="insertTag('page-returns-content','h3')">H2 فرعي</button>
+                                    <button type="button" onclick="insertTag('page-returns-content','strong')"><b>عريض</b></button>
+                                    <button type="button" onclick="insertTag('page-returns-content','p')">¶ فقرة</button>
+                                    <button type="button" onclick="insertHr('page-returns-content')">— فاصل</button>
+                                    <button type="button" onclick="togglePreview('page-returns-content')">👁 معاينة</button>
+                                </div>
+                                <textarea id="page-returns-content" rows="8" class="editor-area w-full border-2 border-gray-200 px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="اكتب محتوى الصفحة هنا..."></textarea>
+                                <div id="page-returns-content-preview" class="preview-box hidden"></div>
                             </div>
                             <button onclick="savePageSettings('returns')" class="w-full bg-antika-pink text-white py-3 rounded-lg font-bold hover:bg-antika-pink-dark transition">
                                 💾 حفظ صفحة "سياسة الإرجاع"
@@ -411,7 +442,16 @@
                             </div>
                             <div>
                                 <label class="block text-gray-700 font-bold mb-2">المحتوى:</label>
-                                <textarea id="page-terms-content" rows="6" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="اكتب محتوى الصفحة هنا..."></textarea>
+                                <div class="editor-toolbar">
+                                    <button type="button" onclick="insertTag('page-terms-content','h2')">H1 عنوان</button>
+                                    <button type="button" onclick="insertTag('page-terms-content','h3')">H2 فرعي</button>
+                                    <button type="button" onclick="insertTag('page-terms-content','strong')"><b>عريض</b></button>
+                                    <button type="button" onclick="insertTag('page-terms-content','p')">¶ فقرة</button>
+                                    <button type="button" onclick="insertHr('page-terms-content')">— فاصل</button>
+                                    <button type="button" onclick="togglePreview('page-terms-content')">👁 معاينة</button>
+                                </div>
+                                <textarea id="page-terms-content" rows="8" class="editor-area w-full border-2 border-gray-200 px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="اكتب محتوى الصفحة هنا..."></textarea>
+                                <div id="page-terms-content-preview" class="preview-box hidden"></div>
                             </div>
                             <button onclick="savePageSettings('terms')" class="w-full bg-antika-pink text-white py-3 rounded-lg font-bold hover:bg-antika-pink-dark transition">
                                 💾 حفظ صفحة "الشروط والأحكام"
@@ -429,7 +469,16 @@
                             </div>
                             <div>
                                 <label class="block text-gray-700 font-bold mb-2">المحتوى:</label>
-                                <textarea id="page-faq-content" rows="6" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="اكتب محتوى الصفحة هنا..."></textarea>
+                                <div class="editor-toolbar">
+                                    <button type="button" onclick="insertTag('page-faq-content','h2')">H1 عنوان</button>
+                                    <button type="button" onclick="insertTag('page-faq-content','h3')">H2 فرعي</button>
+                                    <button type="button" onclick="insertTag('page-faq-content','strong')"><b>عريض</b></button>
+                                    <button type="button" onclick="insertTag('page-faq-content','p')">¶ فقرة</button>
+                                    <button type="button" onclick="insertHr('page-faq-content')">— فاصل</button>
+                                    <button type="button" onclick="togglePreview('page-faq-content')">👁 معاينة</button>
+                                </div>
+                                <textarea id="page-faq-content" rows="8" class="editor-area w-full border-2 border-gray-200 px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="اكتب محتوى الصفحة هنا..."></textarea>
+                                <div id="page-faq-content-preview" class="preview-box hidden"></div>
                             </div>
                             <button onclick="savePageSettings('faq')" class="w-full bg-antika-pink text-white py-3 rounded-lg font-bold hover:bg-antika-pink-dark transition">
                                 💾 حفظ صفحة "الأسئلة الشائعة"
@@ -1799,5 +1848,38 @@
         } catch(e) { console.error(e); }
     }
     </script>
+
+<script>
+function insertTag(id, tag) {
+    const ta = document.getElementById(id);
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = ta.value.substring(start, end) || 'النص هنا';
+    const inserted = `<${tag}>${selected}</${tag}>`;
+    ta.value = ta.value.substring(0, start) + inserted + ta.value.substring(end);
+    ta.focus();
+    ta.selectionStart = start + inserted.length;
+    ta.selectionEnd = start + inserted.length;
+}
+
+function insertHr(id) {
+    const ta = document.getElementById(id);
+    const pos = ta.selectionStart;
+    const hr = '\n<hr>\n';
+    ta.value = ta.value.substring(0, pos) + hr + ta.value.substring(pos);
+    ta.focus();
+}
+
+function togglePreview(id) {
+    const ta = document.getElementById(id);
+    const preview = document.getElementById(id + '-preview');
+    if (preview.classList.contains('hidden')) {
+        preview.innerHTML = ta.value || '<i style="color:#999">لا يوجد محتوى</i>';
+        preview.classList.remove('hidden');
+    } else {
+        preview.classList.add('hidden');
+    }
+}
+</script>
 </body>
 </html>
