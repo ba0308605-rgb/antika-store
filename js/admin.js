@@ -1248,36 +1248,27 @@ async function loadFooterPagesSettings() {
     try {
         const pages = await API.getFooterPages();
 
-        // About page
+        function setContent(el, value) {
+            if (!el) return;
+            if (el.tagName === 'TEXTAREA') el.value = value || '';
+            else el.innerHTML = value || '';
+        }
+
         if (pages.about) {
-            const aboutTitle = document.getElementById('page-about-title');
-            const aboutContent = document.getElementById('page-about-content');
-            if (aboutTitle) aboutTitle.value = pages.about.title || '';
-            if (aboutContent) aboutContent.value = pages.about.content || '';
+            setContent(document.getElementById('page-about-title'), pages.about.title);
+            setContent(document.getElementById('page-about-content'), pages.about.content);
         }
-
-        // Returns page
         if (pages.returns) {
-            const returnsTitle = document.getElementById('page-returns-title');
-            const returnsContent = document.getElementById('page-returns-content');
-            if (returnsTitle) returnsTitle.value = pages.returns.title || '';
-            if (returnsContent) returnsContent.value = pages.returns.content || '';
+            setContent(document.getElementById('page-returns-title'), pages.returns.title);
+            setContent(document.getElementById('page-returns-content'), pages.returns.content);
         }
-
-        // Terms page
         if (pages.terms) {
-            const termsTitle = document.getElementById('page-terms-title');
-            const termsContent = document.getElementById('page-terms-content');
-            if (termsTitle) termsTitle.value = pages.terms.title || '';
-            if (termsContent) termsContent.value = pages.terms.content || '';
+            setContent(document.getElementById('page-terms-title'), pages.terms.title);
+            setContent(document.getElementById('page-terms-content'), pages.terms.content);
         }
-
-        // FAQ page
         if (pages.faq) {
-            const faqTitle = document.getElementById('page-faq-title');
-            const faqContent = document.getElementById('page-faq-content');
-            if (faqTitle) faqTitle.value = pages.faq.title || '';
-            if (faqContent) faqContent.value = pages.faq.content || '';
+            setContent(document.getElementById('page-faq-title'), pages.faq.title);
+            setContent(document.getElementById('page-faq-content'), pages.faq.content);
         }
     } catch (error) {
         console.error('Error loading footer pages settings:', error);
@@ -1293,9 +1284,10 @@ async function savePageSettings(pageId) {
         return;
     }
 
+    // contenteditable div يستخدم innerHTML، textarea يستخدم value
     const pageData = {
         title: titleInput.value.trim(),
-        content: contentInput.value.trim()
+        content: (contentInput.tagName === 'TEXTAREA' ? contentInput.value : contentInput.innerHTML).trim()
     };
 
     if (!pageData.title) {
