@@ -1250,7 +1250,7 @@ async function loadFooterPagesSettings() {
 
         function setContent(el, value) {
             if (!el) return;
-            if (el.tagName === 'TEXTAREA') el.value = value || '';
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.value = value || '';
             else el.innerHTML = value || '';
         }
 
@@ -1269,6 +1269,18 @@ async function loadFooterPagesSettings() {
         if (pages.faq) {
             setContent(document.getElementById('page-faq-title'), pages.faq.title);
             setContent(document.getElementById('page-faq-content'), pages.faq.content);
+        }
+        if (pages.shipping) {
+            setContent(document.getElementById('page-shipping-title'), pages.shipping.title);
+            setContent(document.getElementById('page-shipping-content'), pages.shipping.content);
+        }
+        if (pages.cancellation) {
+            setContent(document.getElementById('page-cancellation-title'), pages.cancellation.title);
+            setContent(document.getElementById('page-cancellation-content'), pages.cancellation.content);
+        }
+        if (pages.privacy) {
+            setContent(document.getElementById('page-privacy-title'), pages.privacy.title);
+            setContent(document.getElementById('page-privacy-content'), pages.privacy.content);
         }
     } catch (error) {
         console.error('Error loading footer pages settings:', error);

@@ -651,7 +651,7 @@ app.put('/api/banners/:key', requireAdmin, async (req, res) => {
 
 // PAGES
 app.get('/api/pages', async (req, res) => {
-  try { const keys = ['about', 'returns', 'terms', 'faq']; const s = await db.collection('settings').where('key', 'in', keys).get(); const r = {}; s.docs.forEach(d => { r[d.data().key] = d.data().value; }); res.json(r); }
+  try { const keys = ['about', 'returns', 'terms', 'faq', 'shipping', 'cancellation', 'privacy']; const s = await db.collection('settings').where('key', 'in', keys).get(); const r = {}; s.docs.forEach(d => { r[d.data().key] = d.data().value; }); res.json(r); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/pages/:pageId', requireAdmin, async (req, res) => {
