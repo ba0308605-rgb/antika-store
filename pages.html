@@ -298,8 +298,11 @@
         <nav class="flex items-center gap-2 text-sm text-gray-500 mb-6">
             <a href="index.html" class="hover:text-antika-pink transition">الرئيسية</a>
             <i class="fas fa-chevron-left text-xs"></i>
-            <span id="pageTitle">الصفحة</span>
+            <span id="breadcrumbTitle">الصفحة</span>
         </nav>
+
+        <!-- Page Title -->
+        <h1 id="pageMainTitle" class="text-3xl font-bold text-gray-800 mb-6" style="display:none;"></h1>
 
         <!-- Content -->
         <div id="pageContent" class="page-content p-8">
@@ -374,13 +377,24 @@
                 const data = pages[page];
 
                 if (data && data.title && data.content) {
-                    // محتوى من قاعدة البيانات
-                    document.getElementById('pageTitle').textContent = data.title;
-                    // نحوّل السطور الجديدة لـ <br> إذا كان النص عادي (بدون HTML)
+                    // breadcrumb ثابت حسب نوع الصفحة
+                    const breadcrumbNames = {
+                        about: 'من نحن', terms: 'الشروط والأحكام',
+                        returns: 'سياسة الإرجاع', faq: 'الأسئلة الشائعة',
+                        shipping: 'سياسة الشحن والتوصيل',
+                        cancellation: 'سياسة الإلغاء',
+                        privacy: 'سياسة الخصوصية'
+                    };
+                    document.getElementById('breadcrumbTitle').textContent = breadcrumbNames[page] || data.title;
+                    // عنوان كبير
+                    const mainTitle = document.getElementById('pageMainTitle');
+                    mainTitle.textContent = data.title;
+                    mainTitle.style.display = 'block';
+                    // المحتوى
                     const isHtml = /<[a-z][\s\S]*>/i.test(data.content);
                     document.getElementById('pageContent').innerHTML = isHtml
                         ? data.content
-                        : '<h2>' + data.title + '</h2><div style="white-space:pre-wrap;line-height:1.9;color:#4B5563;">' + data.content + '</div>';
+                        : '<div style="white-space:pre-wrap;line-height:1.9;color:#4B5563;">' + data.content + '</div>';
                     document.title = data.title + ' - انتيكا استور';
                 } else {
                     // fallback للمحتوى الافتراضي
@@ -394,7 +408,17 @@
         function showDefault() {
             const data = defaultPages[page];
             if (!data) return;
-            document.getElementById('pageTitle').textContent = data.title;
+            const breadcrumbNames = {
+                about: 'من نحن', terms: 'الشروط والأحكام',
+                returns: 'سياسة الإرجاع', faq: 'الأسئلة الشائعة',
+                shipping: 'سياسة الشحن والتوصيل',
+                cancellation: 'سياسة الإلغاء',
+                privacy: 'سياسة الخصوصية'
+            };
+            document.getElementById('breadcrumbTitle').textContent = breadcrumbNames[page] || data.title;
+            const mainTitle = document.getElementById('pageMainTitle');
+            mainTitle.textContent = data.title;
+            mainTitle.style.display = 'block';
             document.getElementById('pageContent').innerHTML = data.content;
             document.title = data.title + ' - انتيكا استور';
         }
