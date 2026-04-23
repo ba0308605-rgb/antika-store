@@ -153,6 +153,8 @@
         mapInitialized = false;
         map = null;
     }
+    window.closeAddressModal = closeAddressModal;
+    window.openAddressModal = openAddressModal;
 
     function resetForm() {
         selectedLat = null; selectedLng = null; selectedAddressText = '';
