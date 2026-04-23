@@ -134,11 +134,11 @@ class AntikaFooter extends HTMLElement {
                             <h4 class="font-bold mb-4 text-white">خدمة العملاء</h4>
                             <ul class="space-y-2 text-white/90 text-sm">
                                 <li><a href="pages.html?page=faq" class="hover:text-white transition">الأسئلة الشائعة</a></li>
-                                <li><a href="pages.html?page=returns" class="hover:text-white transition">سياسة الإرجاع</a></li>
+                                <li><a href="pages.html?page=returns" class="hover:text-white transition">سياسة الاسترجاع والاستبدال</a></li>
                                 <li><a href="pages.html?page=about" class="hover:text-white transition">من نحن</a></li>
                                 <li><a href="pages.html?page=terms" class="hover:text-white transition">الشروط والأحكام</a></li>
                                 <li><a href="pages.html?page=shipping" class="hover:text-white transition">سياسة الشحن والتوصيل</a></li>
-                                <li><a href="pages.html?page=cancellation" class="hover:text-white transition">سياسة الإلغاء</a></li>
+                                <li><a href="pages.html?page=cancellation" class="hover:text-white transition">سياسة إلغاء الطلب</a></li>
                                 <li><a href="pages.html?page=privacy" class="hover:text-white transition">سياسة الخصوصية</a></li>
                             </ul>
                         </div>
