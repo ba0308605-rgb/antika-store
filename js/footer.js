@@ -137,6 +137,9 @@ class AntikaFooter extends HTMLElement {
                                 <li><a href="pages.html?page=returns" class="hover:text-white transition">سياسة الإرجاع</a></li>
                                 <li><a href="pages.html?page=about" class="hover:text-white transition">من نحن</a></li>
                                 <li><a href="pages.html?page=terms" class="hover:text-white transition">الشروط والأحكام</a></li>
+                                <li><a href="pages.html?page=shipping" class="hover:text-white transition">سياسة الشحن والتوصيل</a></li>
+                                <li><a href="pages.html?page=cancellation" class="hover:text-white transition">سياسة الإلغاء</a></li>
+                                <li><a href="pages.html?page=privacy" class="hover:text-white transition">سياسة الخصوصية</a></li>
                             </ul>
                         </div>
 
