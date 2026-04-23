@@ -1,9 +1,9 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head>
+<head>`n    <link rel="icon" type="image/png" href="/favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ø§Ù„Ø·Ù„Ø¨Ø§Øª - Ø§Ù†ØªÙŠÙƒØ§ Ø³ØªÙˆØ±</title>
+    <title>ÇáØáÈÇÊ - ÇäÊíßÇ ÓÊæÑ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -57,11 +57,11 @@
         <nav class="bg-white border-b py-3">
             <div class="container mx-auto px-4">
                 <div class="flex items-center text-sm">
-                    <a href="index.html" class="text-antika-gold font-semibold">Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©</a>
+                    <a href="index.html" class="text-antika-gold font-semibold">ÇáÑÆíÓíÉ</a>
                     <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
-                    <a href="account.html" class="text-antika-gold font-semibold">Ø­Ø³Ø§Ø¨ÙŠ</a>
+                    <a href="account.html" class="text-antika-gold font-semibold">ÍÓÇÈí</a>
                     <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
-                    <span class="text-gray-600">Ø§Ù„Ø·Ù„Ø¨Ø§Øª</span>
+                    <span class="text-gray-600">ÇáØáÈÇÊ</span>
                 </div>
             </div>
         </nav>
@@ -72,32 +72,32 @@
                     <div class="bg-white rounded-xl shadow-sm border p-4">
                         <a href="notifications.html" class="sidebar-item">
                             <i class="fas fa-bell"></i>
-                            <span>Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±Ø§Øª</span>
+                            <span>ÇáÅÔÚÇÑÇÊ</span>
                         </a>
                         <a href="orders.html" class="sidebar-item active">
                             <i class="fas fa-shopping-bag"></i>
-                            <span>Ø§Ù„Ø·Ù„Ø¨Ø§Øª</span>
+                            <span>ÇáØáÈÇÊ</span>
                         </a>
                         <a href="wishlist.html" class="sidebar-item">
                             <i class="fas fa-heart"></i>
-                            <span>Ø§Ù„Ù…ÙØ¶Ù„Ø©</span>
+                            <span>ÇáãİÖáÉ</span>
                         </a>
                         <a href="account.html" class="sidebar-item">
                             <i class="fas fa-user-circle"></i>
-                            <span>Ø­Ø³Ø§Ø¨ÙŠ</span>
+                            <span>ÍÓÇÈí</span>
                         </a>
                         <a href="addresses.html" class="sidebar-item">
                             <i class="fas fa-map-marker-alt"></i>
-                            <span>Ø¹Ù†Ø§ÙˆÙŠÙ†ÙŠ</span>
+                            <span>ÚäÇæíäí</span>
                         </a>
                         <a href="settings.html" class="sidebar-item">
                             <i class="fas fa-cog"></i>
-                            <span>Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª</span>
+                            <span>ÇáÅÚÏÇÏÇÊ</span>
                         </a>
                         <div class="border-t my-3"></div>
                         <button onclick="logout()" class="sidebar-item w-full text-right text-red-500 hover:bg-red-50 hover:text-red-600">
                             <i class="fas fa-sign-out-alt"></i>
-                            <span>ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬</span>
+                            <span>ÊÓÌíá ÇáÎÑæÌ</span>
                         </button>
                     </div>
                 </aside>
@@ -107,8 +107,8 @@
                         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
                             <i class="fas fa-spinner fa-spin text-4xl text-gray-300"></i>
                         </div>
-                        <h2 class="text-xl font-bold text-gray-800 mb-2">Ø¬Ø§Ø±ÙŠ ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø·Ù„Ø¨Ø§Øª...</h2>
-                        <p class="text-gray-500 mb-6">ÙŠØ±Ø¬Ù‰ Ø§Ù„Ø§Ù†ØªØ¸Ø§Ø±</p>
+                        <h2 class="text-xl font-bold text-gray-800 mb-2">ÌÇÑí ÊÍãíá ÇáØáÈÇÊ...</h2>
+                        <p class="text-gray-500 mb-6">íÑÌì ÇáÇäÊÙÇÑ</p>
                     </div>
                 </div>
             </div>
@@ -145,13 +145,13 @@
         }
 
         function getStatusText(status) {
-            if (status === 'delivered') return 'ØªÙ… Ø§Ù„ØªØ³Ù„ÙŠÙ…';
-            if (status === 'out_for_delivery') return 'Ø®Ø±Ø¬ Ù„Ù„ØªÙˆØµÙŠÙ„';
-            if (status === 'shipped') return 'ØªÙ… Ø§Ù„Ø´Ø­Ù†';
-            if (status === 'processing') return 'Ù‚ÙŠØ¯ Ø§Ù„Ù…Ø¹Ø§Ù„Ø¬Ø©';
-            if (status === 'pending') return 'Ù‚ÙŠØ¯ Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©';
-            if (status === 'cancelled') return 'Ù…Ù„ØºÙŠ';
-            return status || 'Ù‚ÙŠØ¯ Ø§Ù„Ù…Ø¹Ø§Ù„Ø¬Ø©';
+            if (status === 'delivered') return 'Êã ÇáÊÓáíã';
+            if (status === 'out_for_delivery') return 'ÎÑÌ ááÊæÕíá';
+            if (status === 'shipped') return 'Êã ÇáÔÍä';
+            if (status === 'processing') return 'ŞíÏ ÇáãÚÇáÌÉ';
+            if (status === 'pending') return 'ŞíÏ ÇáãÑÇÌÚÉ';
+            if (status === 'cancelled') return 'ãáÛí';
+            return status || 'ŞíÏ ÇáãÚÇáÌÉ';
         }
 
         function getStatusClass(status) {
@@ -170,11 +170,11 @@
                 <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
                     <i class="fas fa-shopping-bag text-4xl text-gray-300"></i>
                 </div>
-                <h2 class="text-xl font-bold text-gray-800 mb-2">Ù„Ø§ ØªÙˆØ¬Ø¯ Ø·Ù„Ø¨Ø§Øª</h2>
-                <p class="text-gray-500 mb-6">Ù„Ù… ØªÙ‚Ù… Ø¨Ø£ÙŠ Ø·Ù„Ø¨Ø§Øª Ø­ØªÙ‰ Ø§Ù„Ø¢Ù†</p>
+                <h2 class="text-xl font-bold text-gray-800 mb-2">áÇ ÊæÌÏ ØáÈÇÊ</h2>
+                <p class="text-gray-500 mb-6">áã ÊŞã ÈÃí ØáÈÇÊ ÍÊì ÇáÂä</p>
                 <a href="products.html" class="inline-flex items-center gap-2 bg-antika-gold hover:bg-antika-gold-dark text-white font-semibold py-3 px-6 rounded-lg transition-colors">
                     <i class="fas fa-shopping-bag"></i>
-                    <span>ØªØ³ÙˆÙ‚ Ø§Ù„Ø¢Ù†</span>
+                    <span>ÊÓæŞ ÇáÂä</span>
                 </a>
             `;
         }
@@ -188,7 +188,7 @@
                         <div class="border border-gray-200 rounded-xl p-4">
                             <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
                                 <div>
-                                    <p class="font-bold text-gray-900">Ø·Ù„Ø¨ #${order.id}</p>
+                                    <p class="font-bold text-gray-900">ØáÈ #${order.id}</p>
                                     <p class="text-sm text-gray-500">${formatDate(order.date)}</p>
                                 </div>
                                 <span class="px-3 py-1 rounded-full text-sm font-semibold ${getStatusClass(order.status)}">${getStatusText(order.status)}</span>
@@ -196,17 +196,17 @@
                             <div class="space-y-2 mb-3">
                                 ${order.items.map(item => `
                                     <div class="flex items-center justify-between text-sm">
-                                        <span class="text-gray-700">${item.name || 'Ù…Ù†ØªØ¬'}</span>
+                                        <span class="text-gray-700">${item.name || 'ãäÊÌ'}</span>
                                         <span class="text-gray-600">x${item.quantity || 1}</span>
                                     </div>
                                 `).join('')}
                             </div>
                             <div class="border-t pt-3 flex items-center justify-between">
                                 <div class="text-gray-600 text-sm">
-                                    <div>Ø¹Ø¯Ø¯ Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª: ${order.items.length}</div>
-                                    <div>Ø§Ù„Ù…Ø¯ÙŠÙ†Ø©: ${order.shippingCity || 'ØºÙŠØ± Ù…Ø­Ø¯Ø¯Ø©'} - Ø§Ù„Ø´Ø­Ù†: ${Number(order.shippingCost || 0).toFixed(2)} Ø±.Ø³</div>
+                                    <div>ÚÏÏ ÇáãäÊÌÇÊ: ${order.items.length}</div>
+                                    <div>ÇáãÏíäÉ: ${order.shippingCity || 'ÛíÑ ãÍÏÏÉ'} - ÇáÔÍä: ${Number(order.shippingCost || 0).toFixed(2)} Ñ.Ó</div>
                                 </div>
-                                <span class="font-bold text-antika-gold">${order.total} Ø±.Ø³</span>
+                                <span class="font-bold text-antika-gold">${order.total} Ñ.Ó</span>
                             </div>
                         </div>
                     `).join('')}

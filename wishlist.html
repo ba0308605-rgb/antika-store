@@ -1,9 +1,9 @@
-๏ปฟ<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head>
+<head>`n    <link rel="icon" type="image/png" href="/favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ุงูู…ูุถูุฉ - ุงูุชููุง ุงุณุชูุฑ</title>
+    <title>วแใÝึแษ - วไสํ฿ว วำสๆั</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -362,14 +362,14 @@
             <div class="container mx-auto px-4">
                 <div class="flex items-center text-sm">
                     <a href="index.html" class="text-antika-gold hover:text-antika-pink-dark transition font-semibold">
-                        ุงูุฑุฆูุณูุฉ
+                        วแัฦํำํษ
                     </a>
                     <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
                     <a href="account.html" class="text-antika-gold hover:text-antika-pink-dark transition font-semibold">
-                        ุญุณุงุจู
+                        อำวศํ
                     </a>
                     <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
-                    <span class="text-gray-600">ุงูู…ูุถูุฉ</span>
+                    <span class="text-gray-600">วแใÝึแษ</span>
                 </div>
             </div>
         </nav>
@@ -384,39 +384,39 @@
                         <!-- Menu Items -->
                         <a href="notifications.html" class="sidebar-item">
                             <i class="fas fa-bell"></i>
-                            <span>ุงูุฅุดุนุงุฑุงุช</span>
+                            <span>วแลิฺวัวส</span>
                         </a>
                         
                         <a href="orders.html" class="sidebar-item">
                             <i class="fas fa-shopping-bag"></i>
-                            <span>ุงูุทูุจุงุช</span>
+                            <span>วแุแศวส</span>
                         </a>
                         
                         <a href="wishlist.html" class="sidebar-item active">
                             <i class="fas fa-heart"></i>
-                            <span>ุงูู…ูุถูุฉ</span>
+                            <span>วแใÝึแษ</span>
                         </a>
                         
                         <a href="account.html" class="sidebar-item">
                             <i class="fas fa-user-circle"></i>
-                            <span>ุญุณุงุจู</span>
+                            <span>อำวศํ</span>
                         </a>
                         
                         <a href="addresses.html" class="sidebar-item">
                             <i class="fas fa-map-marker-alt"></i>
-                            <span>ุนูุงูููู</span>
+                            <span>ฺไวๆํไํ</span>
                         </a>
                         
                         <a href="settings.html" class="sidebar-item">
                             <i class="fas fa-cog"></i>
-                            <span>ุงูุฅุนุฏุงุฏุงุช</span>
+                            <span>วแลฺฯวฯวส</span>
                         </a>
                         
                         <div class="border-t my-3"></div>
                         
                         <button onclick="logout()" class="sidebar-item w-full text-right text-red-500 hover:bg-red-50 hover:text-red-600">
                             <i class="fas fa-sign-out-alt"></i>
-                            <span>ุชุณุฌูู ุงูุฎุฑูุฌ</span>
+                            <span>สำฬํแ วแฮัๆฬ</span>
                         </button>
                     </div>
                 </aside>
@@ -427,9 +427,9 @@
                     <div class="mb-6">
                         <h1 class="text-2xl font-bold text-gray-800">
                             <i class="fas fa-heart text-antika-pink ml-2"></i>
-                            ูุงุฆู…ุฉ ุงูู…ูุถูุฉ
+                            Þวฦใษ วแใÝึแษ
                         </h1>
-                        <p class="text-gray-500 mt-1">ุงูู…ูุชุฌุงุช ุงูุชู ุฃุนุฌุจุชู</p>
+                        <p class="text-gray-500 mt-1">วแใไสฬวส วแสํ รฺฬศส฿</p>
                     </div>
 
                     <!-- Wishlist Grid -->
@@ -495,9 +495,9 @@
             }
         });
 
-        // Show account menu - ููุณ ุชุตู…ูู… index.html
+        // Show account menu - ไÝำ สีใํใ index.html
         function showAccountMenu(user) {
-            // ุฅุบูุงู ุงููุงุฆู…ุฉ ุงูู…ูุชูุญุฉ ุฅุฐุง ูุฌุฏุช
+            // ลÛแวÞ วแÞวฦใษ วแใÝสๆอษ ละว ๆฬฯส
             const existingMenu = document.getElementById('account-menu');
             if (existingMenu) {
                 existingMenu.remove();
@@ -514,10 +514,10 @@
                 <div class="p-4 border-b border-gray-100">
                     <div class="flex items-center gap-3">
                         <div class="w-12 h-12 rounded-full bg-gradient-to-br from-antika-gold to-antika-pink flex items-center justify-center text-white text-xl font-bold">
-                            ${user.name ? user.name.charAt(0).toUpperCase() : '๐‘ค'}
+                            ${user.name ? user.name.charAt(0).toUpperCase() : '??'}
                         </div>
                         <div class="flex-1">
-                            <p class="font-bold text-gray-800 text-sm">${user.name || 'ุงูู…ุณุชุฎุฏู…'}</p>
+                            <p class="font-bold text-gray-800 text-sm">${user.name || 'วแใำสฮฯใ'}</p>
                             <p class="text-xs text-gray-500">${user.email || ''}</p>
                         </div>
                         <button onclick="document.getElementById('account-menu').remove()" class="text-gray-400 hover:text-gray-600">
@@ -528,53 +528,53 @@
                 
                 <!-- Menu Items -->
                 <div class="py-2">
-                    <!-- ุงูุฅุดุนุงุฑุงุช -->
+                    <!-- วแลิฺวัวส -->
                     <a href="notifications.html" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
                         <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
                             <i class="fas fa-bell"></i>
                         </div>
                         <div class="flex-1">
-                            <p class="font-semibold text-gray-800 text-sm">ุงูุฅุดุนุงุฑุงุช</p>
+                            <p class="font-semibold text-gray-800 text-sm">วแลิฺวัวส</p>
                         </div>
                     </a>
                     
-                    <!-- ุงูุทูุจุงุช -->
+                    <!-- วแุแศวส -->
                     <a href="orders.html" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
                         <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-500">
                             <i class="fas fa-shopping-bag"></i>
                         </div>
                         <div class="flex-1">
-                            <p class="font-semibold text-gray-800 text-sm">ุงูุทูุจุงุช</p>
+                            <p class="font-semibold text-gray-800 text-sm">วแุแศวส</p>
                         </div>
                     </a>
                     
-                    <!-- ุงูู…ูุถูุฉ -->
+                    <!-- วแใÝึแษ -->
                     <a href="wishlist.html" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
                         <div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500">
                             <i class="fas fa-heart"></i>
                         </div>
                         <div class="flex-1">
-                            <p class="font-semibold text-gray-800 text-sm">ุงูู…ูุถูุฉ</p>
+                            <p class="font-semibold text-gray-800 text-sm">วแใÝึแษ</p>
                         </div>
                     </a>
                     
-                    <!-- ุญุณุงุจู -->
+                    <!-- อำวศํ -->
                     <a href="account.html" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
                         <div class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-500">
                             <i class="fas fa-user-circle"></i>
                         </div>
                         <div class="flex-1">
-                            <p class="font-semibold text-gray-800 text-sm">ุญุณุงุจู</p>
+                            <p class="font-semibold text-gray-800 text-sm">อำวศํ</p>
                         </div>
                     </a>
                     
-                    <!-- ุงูุฅุนุฏุงุฏุงุช -->
+                    <!-- วแลฺฯวฯวส -->
                     <a href="settings.html" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
                         <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
                             <i class="fas fa-cog"></i>
                         </div>
                         <div class="flex-1">
-                            <p class="font-semibold text-gray-800 text-sm">ุงูุฅุนุฏุงุฏุงุช</p>
+                            <p class="font-semibold text-gray-800 text-sm">วแลฺฯวฯวส</p>
                         </div>
                     </a>
                 </div>
@@ -583,14 +583,14 @@
                 <div class="border-t border-gray-100 p-3">
                     <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-lg transition">
                         <i class="fas fa-sign-out-alt"></i>
-                        <span class="font-semibold">ุชุณุฌูู ุงูุฎุฑูุฌ</span>
+                        <span class="font-semibold">สำฬํแ วแฮัๆฬ</span>
                     </button>
                 </div>
             `;
 
             document.body.appendChild(menu);
 
-            // ุฅุบูุงู ุงููุงุฆู…ุฉ ุนูุฏ ุงูููุฑ ุฎุงุฑุฌูุง
+            // ลÛแวÞ วแÞวฦใษ ฺไฯ วแไÞั ฮวัฬๅว
             setTimeout(() => {
                 document.addEventListener('click', function closeMenu(e) {
                     if (!menu.contains(e.target) && e.target !== document.getElementById('login-btn')) {
@@ -641,13 +641,13 @@
                     <div class="bg-white rounded-2xl w-full max-w-md p-8 text-center">
                         <div class="mb-6">
                             <i class="fas fa-lock-open text-6xl text-antika-gold mb-4"></i>
-                            <h3 class="text-2xl font-bold text-gray-800 mb-2">ุงูู…ูุถูุฉ ู…ุญููุธุฉ ูุนู…ูุงุฆูุง</h3>
-                            <p class="text-gray-600">ุณุฌู‘ู ุฏุฎููู ุฃู ุฃูุดุฆ ุญุณุงุจูุง ูููุตูู ุฅูู ุงูู…ูุถูุฉ</p>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-2">วแใÝึแษ ใอÝๆูษ แฺใแวฦไว</h3>
+                            <p class="text-gray-600">ำฬ๘แ ฯฮๆแ฿ รๆ รไิฦ อำวศ๐ว แแๆีๆแ ลแ์ วแใÝึแษ</p>
                         </div>
                         <div class="space-y-3">
-                            <button onclick="window.location.href='register.html'" class="w-full bg-antika-gold text-white font-bold py-3 rounded-lg hover:bg-antika-gold-dark transition">ุฅูุดุงุก ุญุณุงุจ ุฌุฏูุฏ</button>
-                            <button onclick="window.location.href='login.html'" class="w-full border-2 border-antika-gold text-antika-gold font-bold py-3 rounded-lg hover:bg-antika-beige transition">ุชุณุฌูู ุงูุฏุฎูู</button>
-                            <button onclick="window.location.href='index.html'" class="w-full text-gray-600 py-2 hover:bg-gray-100 rounded-lg">ุงูุนูุฏุฉ ููุฑุฆูุณูุฉ</button>
+                            <button onclick="window.location.href='register.html'" class="w-full bg-antika-gold text-white font-bold py-3 rounded-lg hover:bg-antika-gold-dark transition">ลไิวม อำวศ ฬฯํฯ</button>
+                            <button onclick="window.location.href='login.html'" class="w-full border-2 border-antika-gold text-antika-gold font-bold py-3 rounded-lg hover:bg-antika-beige transition">สำฬํแ วแฯฮๆแ</button>
+                            <button onclick="window.location.href='index.html'" class="w-full text-gray-600 py-2 hover:bg-gray-100 rounded-lg">วแฺๆฯษ แแัฦํำํษ</button>
                         </div>
                     </div>
                 </div>
@@ -684,7 +684,7 @@
                 }
 
                 if (ids.length === 0) {
-                    showEmptyWishlist('ูุงุฆู…ุฉ ุงูู…ูุถูุฉ ูุงุฑุบุฉ');
+                    showEmptyWishlist('Þวฦใษ วแใÝึแษ ÝวัÛษ');
                     return;
                 }
 
@@ -693,14 +693,14 @@
                 const wishlistProducts = products.filter(p => idSet.has(String(p._id || p.id)));
 
                 if (!wishlistProducts.length) {
-                    showEmptyWishlist('ูุง ุชูุฌุฏ ู…ูุชุฌุงุช ู…ุชุงุญุฉ ุญุงููุงู ูู ุงูู…ูุถูุฉ');
+                    showEmptyWishlist('แว สๆฬฯ ใไสฬวส ใสวอษ อวแํว๐ Ýํ วแใÝึแษ');
                     return;
                 }
 
                 renderWishlist(wishlistProducts);
             } catch (error) {
                 console.error('Error loading wishlist:', error);
-                showEmptyWishlist('ุญุฏุซ ุฎุทุฃ ุฃุซูุงุก ุชุญู…ูู ุงูู…ูุถูุฉ');
+                showEmptyWishlist('อฯห ฮุร รหไวม สอใํแ วแใÝึแษ');
             }
         }
 
@@ -718,18 +718,18 @@
                         return `
                             <div class="wishlist-item">
                                 <a href="product.html?id=${encodeURIComponent(productId)}" class="product-image-container block">
-                                    <img src="${image}" alt="${product.name || 'ู…ูุชุฌ'}" class="w-full h-full object-cover">
-                                    ${discountPercent > 0 ? `<span class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">ุฎุตู… ${discountPercent}%</span>` : ''}
+                                    <img src="${image}" alt="${product.name || 'ใไสฬ'}" class="w-full h-full object-cover">
+                                    ${discountPercent > 0 ? `<span class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">ฮีใ ${discountPercent}%</span>` : ''}
                                 </a>
                                 <div class="p-4">
-                                    <h3 class="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm">${product.name || 'ู…ูุชุฌ ุจุฏูู ุงุณู…'}</h3>
+                                    <h3 class="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm">${product.name || 'ใไสฬ ศฯๆไ วำใ'}</h3>
                                     <div class="flex items-center gap-2 mb-3">
-                                        <span class="text-antika-gold-dark font-bold">${displayPrice} ุฑ.ุณ</span>
-                                        ${discountPrice ? `<span class="text-gray-400 line-through text-sm">${price} ุฑ.ุณ</span>` : ''}
+                                        <span class="text-antika-gold-dark font-bold">${displayPrice} ั.ำ</span>
+                                        ${discountPrice ? `<span class="text-gray-400 line-through text-sm">${price} ั.ำ</span>` : ''}
                                     </div>
                                     <div class="flex gap-2">
                                         <button onclick="addToCart('${productId}')" class="add-to-cart-btn flex-1 py-2 rounded-full font-medium text-sm">
-                                            <i class="fas fa-shopping-cart ml-1"></i>ุฃุถู ููุณูุฉ
+                                            <i class="fas fa-shopping-cart ml-1"></i>รึÝ แแำแษ
                                         </button>
                                         <button onclick="removeFromWishlist('${productId}')" class="remove-btn w-10 h-10 border border-gray-200 rounded-full flex items-center justify-center text-gray-400">
                                             <i class="fas fa-trash"></i>
@@ -750,7 +750,7 @@
                     <i class="far fa-heart"></i>
                     <h3 class="text-xl font-semibold text-gray-600 mb-2">${message}</h3>
                     <a href="products.html" class="inline-block mt-4 bg-antika-gold text-white px-6 py-3 rounded-full hover:bg-antika-gold-dark transition-colors">
-                        ุชุตูุญ ุงูู…ูุชุฌุงุช
+                        สีÝอ วแใไสฬวส
                     </a>
                 </div>
             `;
@@ -759,12 +759,12 @@
         window.addToCart = async (productId) => {
             try {
                 if (!((window.Auth && typeof Auth.getCurrentUser === 'function' && Auth.getCurrentUser()) || (window.Auth && Auth.currentUser))) {
-                    showNotification('ูุฑุฌู ุชุณุฌูู ุงูุฏุฎูู ุฃูููุง ูุฅุถุงูุฉ ุงูู…ูุชุฌ ููุณูุฉ', 'error');
+                    showNotification('ํัฬ์ สำฬํแ วแฯฮๆแ รๆแ๐ว แลึวÝษ วแใไสฬ แแำแษ', 'error');
                     return;
                 }
                 const product = await API.getProduct(productId);
                 if (!product) {
-                    showNotification('ุงูู…ูุชุฌ ุบูุฑ ู…ุชุงุญ ุญุงููุงู', 'error');
+                    showNotification('วแใไสฬ Ûํั ใสวอ อวแํว๐', 'error');
                     return;
                 }
 
@@ -775,11 +775,11 @@
                     image: (product.images && product.images[0]) ? product.images[0] : product.image,
                     quantity: 1
                 });
-                showNotification('ุชู…ุช ุงูุฅุถุงูุฉ ููุณูุฉ ุจูุฌุงุญ', 'success');
+                showNotification('สใส วแลึวÝษ แแำแษ ศไฬวอ', 'success');
                 await updateCartCount();
             } catch (error) {
                 console.error('Add to cart error:', error);
-                showNotification('ุญุฏุซ ุฎุทุฃ ุฃุซูุงุก ุงูุฅุถุงูุฉ ููุณูุฉ', 'error');
+                showNotification('อฯห ฮุร รหไวม วแลึวÝษ แแำแษ', 'error');
             }
         };
 
@@ -806,7 +806,7 @@
                 console.warn('Could not sync wishlist removal:', e);
             }
             await loadWishlist();
-            showNotification('ุชู…ุช ุงูุฅุฒุงูุฉ ู…ู ุงูู…ูุถูุฉ', 'success');
+            showNotification('สใส วแลาวแษ ใไ วแใÝึแษ', 'success');
         };
 
         async function updateCartCount() {
