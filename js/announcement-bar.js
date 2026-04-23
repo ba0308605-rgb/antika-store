@@ -2,9 +2,9 @@
 class AntikaAnnouncementBar extends HTMLElement {
     constructor() {
         super();
-        this.defaultText = 'ÊÎİíÖÇÊ æÎÕæãÇÊ ÊÕá Åáì 50% æÊæÕíá ãÌÇäí áÌãíÚ ãÏä ÇáããáßÉ';
+        this.defaultText = 'ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ 50% ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½';
         this.text = this.defaultText;
-        this.isVisible = true;
+        this.isVisible = false; // disabled
     }
 
     getApiBase() {
@@ -46,11 +46,11 @@ class AntikaAnnouncementBar extends HTMLElement {
             const data = await res.json();
 
             this.text = (typeof data.text === 'string' && data.text.trim()) ? data.text.trim() : this.defaultText;
-            this.isVisible = data.isVisible !== false;
+            this.isVisible = false; // disabled
         } catch (e) {
             // Keep safe fallback so the store does not break.
             this.text = this.defaultText;
-            this.isVisible = true;
+            this.isVisible = false; // disabled
             console.error('Announcement bar fallback mode:', e.message);
         }
     }
