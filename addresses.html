@@ -339,5 +339,15 @@
     <script src="js/header.js"></script>
     <script src="js/footer.js"></script>
     <script src="js/addresses.js"></script>
+<script>
+function closeAddressModal() {
+    var modal = document.getElementById('address-modal');
+    if (modal) modal.classList.add('hidden');
+}
+function openAddressModal(editIdx) {
+    var modal = document.getElementById('address-modal');
+    if (modal) modal.classList.remove('hidden');
+}
+</script>
 </body>
 </html>
