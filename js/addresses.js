@@ -262,20 +262,54 @@
 
                 // Auto-fill fields from geocode
                 const comps = results[0].address_components;
+                
+                let detectedCity = '';
+                let detectedRegion = '';
+                
                 comps.forEach(c => {
                     if (c.types.includes('route')) {
                         const el = document.getElementById('addr-street');
-                        if (el && !el.value) el.value = c.long_name;
+                        if (el) el.value = c.long_name;
                     }
-                    if (c.types.includes('sublocality') || c.types.includes('neighborhood')) {
+                    if (c.types.includes('sublocality') || c.types.includes('neighborhood') || c.types.includes('sublocality_level_1')) {
                         const el = document.getElementById('addr-district');
-                        if (el && !el.value) el.value = c.long_name;
+                        if (el) el.value = c.long_name;
                     }
                     if (c.types.includes('postal_code')) {
                         const el = document.getElementById('addr-postal');
-                        if (el && !el.value) el.value = c.long_name;
+                        if (el) el.value = c.long_name;
+                    }
+                    if (c.types.includes('locality') || c.types.includes('administrative_area_level_2')) {
+                        detectedCity = c.long_name;
+                    }
+                    if (c.types.includes('administrative_area_level_1')) {
+                        detectedRegion = c.long_name;
                     }
                 });
+
+                // محاولة تعبئة المنطقة والمدينة
+                if (detectedRegion) {
+                    const regionSelect = document.getElementById('addr-region');
+                    if (regionSelect) {
+                        const options = Array.from(regionSelect.options);
+                        const match = options.find(o => detectedRegion.includes(o.text) || o.text.includes(detectedRegion));
+                        if (match) {
+                            regionSelect.value = match.value;
+                            loadCities(match.value);
+                            // بعد تحميل المدن نختار المدينة
+                            setTimeout(() => {
+                                if (detectedCity) {
+                                    const citySelect = document.getElementById('addr-city');
+                                    if (citySelect) {
+                                        const cityOptions = Array.from(citySelect.options);
+                                        const cityMatch = cityOptions.find(o => detectedCity.includes(o.text) || o.text.includes(detectedCity));
+                                        if (cityMatch) citySelect.value = cityMatch.value;
+                                    }
+                                }
+                            }, 500);
+                        }
+                    }
+                }
             } else {
                 selectedAddressText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
                 document.getElementById('selected-address-text').textContent = selectedAddressText;
