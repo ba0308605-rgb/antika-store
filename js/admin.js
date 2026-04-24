@@ -157,7 +157,6 @@ function showSection(sectionName) {
     if (sectionName === 'categories') loadCategoriesTable();
     if (sectionName === 'bulk-discount') loadBulkDiscountProducts();
     if (sectionName === 'footer-pages') loadFooterPagesSettings();
-    if (sectionName === 'announcing') loadAnnouncingSettings();
     if (sectionName === 'orders') loadOrders();
 }
 
@@ -1318,45 +1317,6 @@ async function savePageSettings(pageId) {
 
 // ============================================
 // ANNOUNCING BAR
-// ============================================
-
-async function loadAnnouncingSettings() {
-    try {
-        const settings = await API.getAnnouncingSettings();
-        const textInput = document.getElementById('announcing-text');
-        const visibleInput = document.getElementById('announcing-visible');
-        
-        if (textInput && settings.text) {
-            textInput.value = settings.text;
-        }
-        if (visibleInput) {
-            visibleInput.checked = settings.isVisible !== false; // default true
-        }
-    } catch (error) {
-        console.error('Error loading announcing settings:', error);
-    }
-}
-
-async function saveAnnouncingSettings() {
-    const textInput = document.getElementById('announcing-text');
-    const visibleInput = document.getElementById('announcing-visible');
-    
-    if (!textInput) return;
-
-    const text = textInput.value.trim();
-    const isVisible = visibleInput ? visibleInput.checked : true;
-    
-    try {
-        await API.updateAnnouncingSettings({ text, isVisible });
-        showNotification('تم حفظ إعدادات الشريط المتحرك بنجاح! 📢');
-    } catch (error) {
-        console.error('Error saving announcing settings:', error);
-        showNotification('حدث خطأ أثناء الحفظ', 'error');
-    }
-}
-
-// ============================================
-// NOTIFICATION
 // ============================================
 
 function showNotification(message, type = 'success') {

@@ -148,10 +148,6 @@
                         <i class="fas fa-file-alt w-6"></i>
                         <span>صفحات الفوتر</span>
                     </button>
-                    <button onclick="showSection('announcing')" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
-                        <i class="fas fa-bullhorn w-6"></i>
-                        <span>الشريط المتحرك</span>
-                    </button>
                     <button onclick="showSection('coupons'); loadCoupons();" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
                         <i class="fas fa-ticket-alt w-5 text-center"></i>
                         <span>الكوبونات</span>
@@ -584,31 +580,6 @@
                 </section>
 
                 <!-- Announcing Bar Section -->
-                <section id="announcing-section" class="hidden space-y-6">
-                    <h2 class="text-2xl font-bold text-antika-gold">📢 الشريط المتحرك</h2>
-                    <p class="text-gray-600">تحكم في النص الظاهر في الشريط المتحرك أعلى الصفحة</p>
-
-                    <div class="bg-white rounded-2xl shadow-lg p-6">
-                        <div class="space-y-4">
-                            <!-- Show/Hide Toggle -->
-                            <div class="flex items-center gap-3 bg-gray-50 p-4 rounded-lg">
-                                <input type="checkbox" id="announcing-visible" class="w-5 h-5 text-antika-pink rounded accent-antika-pink cursor-pointer">
-                                <label for="announcing-visible" class="text-gray-700 font-bold cursor-pointer select-none">
-                                    إظهار الشريط المتحرك
-                                </label>
-                            </div>
-                            
-                            <div>
-                                <label class="block text-gray-700 font-bold mb-2">نص الشريط المتحرك:</label>
-                                <textarea id="announcing-text" rows="3" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="مثال: 🚚 توصيل مجاني لجميع مدن المملكة - خصومات تصل إلى 50%"></textarea>
-                                <p class="text-sm text-gray-500 mt-1">💡 هذا النص سيظهر في الشريط المتحرك في أعلى جميع صفحات المتجر</p>
-                            </div>
-                        </div>
-                        <button onclick="saveAnnouncingSettings()" class="w-full bg-antika-gold text-white py-4 rounded-lg font-bold hover:bg-antika-gold-dark transition text-lg mt-6">
-                            💾 حفظ إعدادات الشريط المتحرك
-                        </button>
-                    </div>
-                </section>
 
                 <!-- Banners Section -->
                 <section id="banners-section" class="hidden space-y-6">
