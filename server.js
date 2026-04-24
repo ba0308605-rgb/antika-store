@@ -65,6 +65,7 @@ const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'BDR-FIRST';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'B1-a2d3e4r5';
 const ADMIN_TOKEN_TTL = process.env.ADMIN_TOKEN_TTL || '8h';
 const GOOGLE_MAPS_API_KEY = (process.env.GOOGLE_MAPS_API_KEY || '').trim();
+const GOOGLE_GEOCODING_KEY = (process.env.GOOGLE_GEOCODING_KEY || '').trim();
 const OTO_API_BASE_URL = (process.env.OTO_API_BASE_URL || 'https://api.tryoto.com/rest/v2').trim();
 const OTO_API_TOKEN = (process.env.OTO_API_TOKEN || '').trim();
 const OTO_PICKUP_LOCATION_CODE = (process.env.OTO_PICKUP_LOCATION_CODE || '').trim();
