@@ -155,6 +155,12 @@
     }
     window.closeAddressModal = closeAddressModal;
     window.openAddressModal = openAddressModal;
+    window.editAddress = editAddress;
+    window.deleteAddress = deleteAddress;
+
+    // ربط زر X مباشرة
+    const closeBtn = document.getElementById('modal-close-btn');
+    if (closeBtn) closeBtn.addEventListener('click', closeAddressModal);
 
     function resetForm() {
         selectedLat = null; selectedLng = null; selectedAddressText = '';
