@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head>`n    <link rel="icon" type="image/png" href="/favicon.png">
+<head>
+    <link rel="icon" type="image/png" href="/favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ÇáØáÈÇÊ - ÇäÊíßÇ ÓÊæÑ</title>
+    <title>Ø·Ù„Ø¨Ø§ØªÙŠ - Ø§Ù†ØªÙŠÙƒØ§ Ø³ØªÙˆØ±</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -57,11 +58,11 @@
         <nav class="bg-white border-b py-3">
             <div class="container mx-auto px-4">
                 <div class="flex items-center text-sm">
-                    <a href="index.html" class="text-antika-gold font-semibold">ÇáÑÆíÓíÉ</a>
+                    <a href="index.html" class="text-antika-gold font-semibold">Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©</a>
                     <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
-                    <a href="account.html" class="text-antika-gold font-semibold">ÍÓÇÈí</a>
+                    <a href="account.html" class="text-antika-gold font-semibold">Ø­Ø³Ø§Ø¨ÙŠ</a>
                     <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
-                    <span class="text-gray-600">ÇáØáÈÇÊ</span>
+                    <span class="text-gray-600">Ø·Ù„Ø¨Ø§ØªÙŠ</span>
                 </div>
             </div>
         </nav>
@@ -72,32 +73,32 @@
                     <div class="bg-white rounded-xl shadow-sm border p-4">
                         <a href="notifications.html" class="sidebar-item">
                             <i class="fas fa-bell"></i>
-                            <span>ÇáÅÔÚÇÑÇÊ</span>
+                            <span>Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±Ø§Øª</span>
                         </a>
                         <a href="orders.html" class="sidebar-item active">
                             <i class="fas fa-shopping-bag"></i>
-                            <span>ÇáØáÈÇÊ</span>
+                            <span>Ø·Ù„Ø¨Ø§ØªÙŠ</span>
                         </a>
                         <a href="wishlist.html" class="sidebar-item">
                             <i class="fas fa-heart"></i>
-                            <span>ÇáãİÖáÉ</span>
+                            <span>Ø§Ù„Ù…ÙØ¶Ù„Ø©</span>
                         </a>
                         <a href="account.html" class="sidebar-item">
                             <i class="fas fa-user-circle"></i>
-                            <span>ÍÓÇÈí</span>
+                            <span>Ø­Ø³Ø§Ø¨ÙŠ</span>
                         </a>
                         <a href="addresses.html" class="sidebar-item">
                             <i class="fas fa-map-marker-alt"></i>
-                            <span>ÚäÇæíäí</span>
+                            <span>Ø¹Ù†Ø§ÙˆÙŠÙ†ÙŠ</span>
                         </a>
                         <a href="settings.html" class="sidebar-item">
                             <i class="fas fa-cog"></i>
-                            <span>ÇáÅÚÏÇÏÇÊ</span>
+                            <span>Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª</span>
                         </a>
                         <div class="border-t my-3"></div>
                         <button onclick="logout()" class="sidebar-item w-full text-right text-red-500 hover:bg-red-50 hover:text-red-600">
                             <i class="fas fa-sign-out-alt"></i>
-                            <span>ÊÓÌíá ÇáÎÑæÌ</span>
+                            <span>ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬</span>
                         </button>
                     </div>
                 </aside>
@@ -107,8 +108,8 @@
                         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
                             <i class="fas fa-spinner fa-spin text-4xl text-gray-300"></i>
                         </div>
-                        <h2 class="text-xl font-bold text-gray-800 mb-2">ÌÇÑí ÊÍãíá ÇáØáÈÇÊ...</h2>
-                        <p class="text-gray-500 mb-6">íÑÌì ÇáÇäÊÙÇÑ</p>
+                        <h2 class="text-xl font-bold text-gray-800 mb-2">Ø¬Ø§Ø±ÙŠ ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø·Ù„Ø¨Ø§Øª...</h2>
+                        <p class="text-gray-500 mb-6">Ù„Ø­Ø¸Ø© Ù…Ù† ÙØ¶Ù„Ùƒ</p>
                     </div>
                 </div>
             </div>
@@ -140,18 +141,20 @@
                 status: order.status || 'processing',
                 total: Number(order.total || 0),
                 items: Array.isArray(order.items) ? order.items : [],
-                customerEmail: (order.customerEmail || '').toLowerCase()
+                customerEmail: (order.customerEmail || '').toLowerCase(),
+                shippingCity: order.shippingCity || '',
+                shippingCost: order.shippingCost || 0
             };
         }
 
         function getStatusText(status) {
-            if (status === 'delivered') return 'Êã ÇáÊÓáíã';
-            if (status === 'out_for_delivery') return 'ÎÑÌ ááÊæÕíá';
-            if (status === 'shipped') return 'Êã ÇáÔÍä';
-            if (status === 'processing') return 'ŞíÏ ÇáãÚÇáÌÉ';
-            if (status === 'pending') return 'ŞíÏ ÇáãÑÇÌÚÉ';
-            if (status === 'cancelled') return 'ãáÛí';
-            return status || 'ŞíÏ ÇáãÚÇáÌÉ';
+            if (status === 'delivered') return 'ØªÙ… Ø§Ù„ØªÙˆØµÙŠÙ„';
+            if (status === 'out_for_delivery') return 'Ø¬Ø§Ø±ÙŠ Ø§Ù„ØªÙˆØµÙŠÙ„';
+            if (status === 'shipped') return 'ØªÙ… Ø§Ù„Ø´Ø­Ù†';
+            if (status === 'processing') return 'Ù‚ÙŠØ¯ Ø§Ù„Ù…Ø¹Ø§Ù„Ø¬Ø©';
+            if (status === 'pending') return 'Ù‚ÙŠØ¯ Ø§Ù„Ø§Ù†ØªØ¸Ø§Ø±';
+            if (status === 'cancelled') return 'Ù…Ù„ØºÙŠ';
+            return status || 'Ù‚ÙŠØ¯ Ø§Ù„Ù…Ø¹Ø§Ù„Ø¬Ø©';
         }
 
         function getStatusClass(status) {
@@ -170,11 +173,11 @@
                 <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
                     <i class="fas fa-shopping-bag text-4xl text-gray-300"></i>
                 </div>
-                <h2 class="text-xl font-bold text-gray-800 mb-2">áÇ ÊæÌÏ ØáÈÇÊ</h2>
-                <p class="text-gray-500 mb-6">áã ÊŞã ÈÃí ØáÈÇÊ ÍÊì ÇáÂä</p>
+                <h2 class="text-xl font-bold text-gray-800 mb-2">Ù„Ø§ ØªÙˆØ¬Ø¯ Ø·Ù„Ø¨Ø§Øª</h2>
+                <p class="text-gray-500 mb-6">Ù„Ù… ØªÙ‚Ù… Ø¨Ø£ÙŠ Ø·Ù„Ø¨ Ø­ØªÙ‰ Ø§Ù„Ø¢Ù†</p>
                 <a href="products.html" class="inline-flex items-center gap-2 bg-antika-gold hover:bg-antika-gold-dark text-white font-semibold py-3 px-6 rounded-lg transition-colors">
                     <i class="fas fa-shopping-bag"></i>
-                    <span>ÊÓæŞ ÇáÂä</span>
+                    <span>ØªØ³ÙˆÙ‚ Ø§Ù„Ø¢Ù†</span>
                 </a>
             `;
         }
@@ -188,7 +191,7 @@
                         <div class="border border-gray-200 rounded-xl p-4">
                             <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
                                 <div>
-                                    <p class="font-bold text-gray-900">ØáÈ #${order.id}</p>
+                                    <p class="font-bold text-gray-900">Ø·Ù„Ø¨ #${order.id}</p>
                                     <p class="text-sm text-gray-500">${formatDate(order.date)}</p>
                                 </div>
                                 <span class="px-3 py-1 rounded-full text-sm font-semibold ${getStatusClass(order.status)}">${getStatusText(order.status)}</span>
@@ -196,17 +199,17 @@
                             <div class="space-y-2 mb-3">
                                 ${order.items.map(item => `
                                     <div class="flex items-center justify-between text-sm">
-                                        <span class="text-gray-700">${item.name || 'ãäÊÌ'}</span>
+                                        <span class="text-gray-700">${item.name || 'Ù…Ù†ØªØ¬'}</span>
                                         <span class="text-gray-600">x${item.quantity || 1}</span>
                                     </div>
                                 `).join('')}
                             </div>
                             <div class="border-t pt-3 flex items-center justify-between">
                                 <div class="text-gray-600 text-sm">
-                                    <div>ÚÏÏ ÇáãäÊÌÇÊ: ${order.items.length}</div>
-                                    <div>ÇáãÏíäÉ: ${order.shippingCity || 'ÛíÑ ãÍÏÏÉ'} - ÇáÔÍä: ${Number(order.shippingCost || 0).toFixed(2)} Ñ.Ó</div>
+                                    <div>Ø¹Ø¯Ø¯ Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª: ${order.items.length}</div>
+                                    <div>Ø§Ù„Ù…Ø¯ÙŠÙ†Ø©: ${order.shippingCity || 'ØºÙŠØ± Ù…Ø­Ø¯Ø¯'} - Ø§Ù„Ø´Ø­Ù†: ${Number(order.shippingCost || 0).toFixed(2)} Ø±.Ø³</div>
                                 </div>
-                                <span class="font-bold text-antika-gold">${order.total} Ñ.Ó</span>
+                                <span class="font-bold text-antika-gold">${order.total} Ø±.Ø³</span>
                             </div>
                         </div>
                     `).join('')}
@@ -216,10 +219,7 @@
 
         async function loadOrdersPage() {
             const userRaw = localStorage.getItem('antika_user');
-            if (!userRaw) {
-                renderEmptyState();
-                return;
-            }
+            if (!userRaw) { renderEmptyState(); return; }
 
             const user = JSON.parse(userRaw);
             const email = (user.email || '').toLowerCase();
@@ -229,39 +229,19 @@
                 const fromApi = (Array.isArray(allOrders) ? allOrders : [])
                     .map(normalizeOrder)
                     .filter(o => !email || o.customerEmail === email);
-
-                if (fromApi.length > 0) {
-                    renderOrders(fromApi);
-                    return;
-                }
-            } catch (e) {
-                console.warn('Could not load orders from API:', e);
-            }
+                if (fromApi.length > 0) { renderOrders(fromApi); return; }
+            } catch (e) { console.warn('Could not load orders from API:', e); }
 
             try {
                 const localOrders = JSON.parse(localStorage.getItem('antika_orders') || '[]')
                     .map(normalizeOrder)
                     .filter(o => !email || o.customerEmail === email);
-
-                if (localOrders.length > 0) {
-                    renderOrders(localOrders);
-                } else {
-                    renderEmptyState();
-                }
-            } catch (e) {
-                console.warn('Could not load local orders:', e);
-                renderEmptyState();
-            }
+                if (localOrders.length > 0) { renderOrders(localOrders); } else { renderEmptyState(); }
+            } catch (e) { renderEmptyState(); }
         }
 
         async function logout() {
-            try {
-                if (window.Auth && typeof Auth.logout === 'function') {
-                    await Auth.logout();
-                }
-            } catch (e) {
-                console.warn('Logout error:', e);
-            }
+            try { if (window.Auth && typeof Auth.logout === 'function') await Auth.logout(); } catch (e) {}
             localStorage.removeItem('antika_user');
             localStorage.removeItem('antika_token');
             window.location.href = 'index.html';
@@ -269,4 +249,3 @@
     </script>
 </body>
 </html>
-

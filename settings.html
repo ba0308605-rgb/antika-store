@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head>`n    <link rel="icon" type="image/png" href="/favicon.png">
+<head>
+    <link rel="icon" type="image/png" href="/favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ÇáÅÚÏÇÏÇÊ - ÇäÊíßÇ ÓÊæÑ</title>
+    <title>Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª - Ø§Ù†ØªÙŠÙƒØ§ Ø³ØªÙˆØ±</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -20,9 +21,7 @@
                         'antika-beige': '#FAF0E6',
                         'antika-lavender': '#FFF0F5'
                     },
-                    fontFamily: {
-                        'tajawal': ['Tajawal', 'sans-serif']
-                    }
+                    fontFamily: { 'tajawal': ['Tajawal', 'sans-serif'] }
                 }
             }
         }
@@ -30,55 +29,22 @@
     <style>
         html { overflow-y: scroll; }
         body { font-family: 'Tajawal', sans-serif; }
-
         .sidebar-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 14px 16px;
-            color: #4b5563;
-            transition: all 0.2s;
-            border-radius: 8px;
-            margin-bottom: 4px;
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 16px; color: #4b5563;
+            transition: all 0.2s; border-radius: 8px; margin-bottom: 4px;
         }
-        .sidebar-item:hover {
-            background-color: #f9fafb;
-            color: #D6C1A6;
-        }
-        .sidebar-item.active {
-            background-color: #f3f4f6;
-            color: #D6C1A6;
-            font-weight: 600;
-        }
-        .sidebar-item i {
-            width: 20px;
-            text-align: center;
-        }
-
+        .sidebar-item:hover { background-color: #f9fafb; color: #D6C1A6; }
+        .sidebar-item.active { background-color: #f3f4f6; color: #D6C1A6; font-weight: 600; }
+        .sidebar-item i { width: 20px; text-align: center; }
         .settings-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 20px;
-            border-bottom: 1px solid #f3f4f6;
-            transition: background-color 0.2s;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 20px; border-bottom: 1px solid #f3f4f6; transition: background-color 0.2s;
         }
-        .settings-item:hover {
-            background-color: #f9fafb;
-        }
-        .settings-item:last-child {
-            border-bottom: none;
-        }
-
-        .night-mode {
-            background-color: #111827 !important;
-            color: #e5e7eb !important;
-        }
-        .night-mode main,
-        .night-mode .bg-white {
-            background-color: #1f2937 !important;
-            color: #e5e7eb !important;
-        }
+        .settings-item:hover { background-color: #f9fafb; }
+        .settings-item:last-child { border-bottom: none; }
+        .night-mode { background-color: #111827 !important; color: #e5e7eb !important; }
+        .night-mode main, .night-mode .bg-white { background-color: #1f2937 !important; color: #e5e7eb !important; }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
@@ -89,11 +55,11 @@
         <nav class="bg-white border-b py-3">
             <div class="container mx-auto px-4">
                 <div class="flex items-center text-sm">
-                    <a href="index.html" class="text-antika-gold hover:text-antika-pink-dark transition font-semibold">ÇáÑÆíÓíÉ</a>
+                    <a href="index.html" class="text-antika-gold font-semibold">Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©</a>
                     <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
-                    <a href="account.html" class="text-antika-gold hover:text-antika-pink-dark transition font-semibold">ÍÓÇÈí</a>
+                    <a href="account.html" class="text-antika-gold font-semibold">Ø­Ø³Ø§Ø¨ÙŠ</a>
                     <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
-                    <span class="text-gray-600">ÇáÅÚÏÇÏÇÊ</span>
+                    <span class="text-gray-600">Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª</span>
                 </div>
             </div>
         </nav>
@@ -103,33 +69,26 @@
                 <aside class="w-full lg:w-64 flex-shrink-0">
                     <div class="bg-white rounded-xl shadow-sm border p-4">
                         <a href="notifications.html" class="sidebar-item">
-                            <i class="fas fa-bell"></i>
-                            <span>ÇáÅÔÚÇÑÇÊ</span>
+                            <i class="fas fa-bell"></i><span>Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±Ø§Øª</span>
                         </a>
                         <a href="orders.html" class="sidebar-item">
-                            <i class="fas fa-shopping-bag"></i>
-                            <span>ÇáØáÈÇÊ</span>
+                            <i class="fas fa-shopping-bag"></i><span>Ø·Ù„Ø¨Ø§ØªÙŠ</span>
                         </a>
                         <a href="wishlist.html" class="sidebar-item">
-                            <i class="fas fa-heart"></i>
-                            <span>ÇáãİÖáÉ</span>
+                            <i class="fas fa-heart"></i><span>Ø§Ù„Ù…ÙØ¶Ù„Ø©</span>
                         </a>
                         <a href="account.html" class="sidebar-item">
-                            <i class="fas fa-user-circle"></i>
-                            <span>ÍÓÇÈí</span>
+                            <i class="fas fa-user-circle"></i><span>Ø­Ø³Ø§Ø¨ÙŠ</span>
                         </a>
                         <a href="addresses.html" class="sidebar-item">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <span>ÚäÇæíäí</span>
+                            <i class="fas fa-map-marker-alt"></i><span>Ø¹Ù†Ø§ÙˆÙŠÙ†ÙŠ</span>
                         </a>
                         <a href="settings.html" class="sidebar-item active">
-                            <i class="fas fa-cog"></i>
-                            <span>ÇáÅÚÏÇÏÇÊ</span>
+                            <i class="fas fa-cog"></i><span>Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª</span>
                         </a>
                         <div class="border-t my-3"></div>
                         <button onclick="logout()" class="sidebar-item w-full text-right text-red-500 hover:bg-red-50 hover:text-red-600">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span>ÊÓÌíá ÇáÎÑæÌ</span>
+                            <i class="fas fa-sign-out-alt"></i><span>ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬</span>
                         </button>
                     </div>
                 </aside>
@@ -142,8 +101,8 @@
                                     <i class="fas fa-bell"></i>
                                 </div>
                                 <div>
-                                    <h3 class="font-semibold text-gray-800">ÇáÅÔÚÇÑÇÊ</h3>
-                                    <p class="text-sm text-gray-500">ÅÏÇÑÉ ÅÚÏÇÏÇÊ ÇáÅÔÚÇÑÇÊ</p>
+                                    <h3 class="font-semibold text-gray-800">Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±Ø§Øª</h3>
+                                    <p class="text-sm text-gray-500">Ø¥Ø¯Ø§Ø±Ø© Ø¥Ø´Ø¹Ø§Ø±Ø§Øª Ø§Ù„ØªØ·Ø¨ÙŠÙ‚</p>
                                 </div>
                             </div>
                             <i class="fas fa-chevron-left text-gray-400"></i>
@@ -155,8 +114,8 @@
                                     <i class="fas fa-lock"></i>
                                 </div>
                                 <div>
-                                    <h3 class="font-semibold text-gray-800">ÇáÎÕæÕíÉ æÇáÃãÇä</h3>
-                                    <p class="text-sm text-gray-500">ÅÑÓÇá ÑÇÈØ ÊÛííÑ ßáãÉ ÇáãÑæÑ</p>
+                                    <h3 class="font-semibold text-gray-800">Ø§Ù„Ø£Ù…Ø§Ù† ÙˆØ§Ù„Ø®ØµÙˆØµÙŠØ©</h3>
+                                    <p class="text-sm text-gray-500">ØªØºÙŠÙŠØ± ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± ÙˆØ¥Ø¹Ø¯Ø§Ø¯Ø§Øª Ø§Ù„Ø£Ù…Ø§Ù†</p>
                                 </div>
                             </div>
                             <i class="fas fa-chevron-left text-gray-400"></i>
@@ -168,8 +127,8 @@
                                     <i class="fas fa-language"></i>
                                 </div>
                                 <div>
-                                    <h3 class="font-semibold text-gray-800">ÇááÛÉ</h3>
-                                    <p id="language-current" class="text-sm text-gray-500">ÇáÚÑÈíÉ</p>
+                                    <h3 class="font-semibold text-gray-800">Ø§Ù„Ù„ØºØ©</h3>
+                                    <p id="language-current" class="text-sm text-gray-500">Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©</p>
                                 </div>
                             </div>
                             <i class="fas fa-chevron-left text-gray-400"></i>
@@ -181,8 +140,8 @@
                                     <i class="fas fa-moon"></i>
                                 </div>
                                 <div>
-                                    <h3 class="font-semibold text-gray-800">ÇáæÖÚ Çááíáí</h3>
-                                    <p class="text-sm text-gray-500">ÊİÚíá ÇáæÖÚ Çááíáí áåĞå ÇáÕİÍÉ</p>
+                                    <h3 class="font-semibold text-gray-800">Ø§Ù„ÙˆØ¶Ø¹ Ø§Ù„Ù„ÙŠÙ„ÙŠ</h3>
+                                    <p class="text-sm text-gray-500">ØªÙØ¹ÙŠÙ„ Ø§Ù„ÙˆØ¶Ø¹ Ø§Ù„Ø¯Ø§ÙƒÙ† Ù„Ø±Ø§Ø­Ø© Ø§Ù„Ø¹ÙŠÙ†ÙŠÙ†</p>
                                 </div>
                             </div>
                             <div id="dark-mode-track" class="w-12 h-6 bg-gray-200 rounded-full relative transition-colors">
@@ -206,18 +165,8 @@
     <script src="js/footer.js"></script>
     <script>
         const SETTINGS_KEY = 'antika_user_settings';
-
-        function readSettings() {
-            try {
-                return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
-            } catch (e) {
-                return {};
-            }
-        }
-
-        function saveSettings(next) {
-            localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
-        }
+        function readSettings() { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch (e) { return {}; } }
+        function saveSettings(next) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(next)); }
 
         function applyDarkMode(enabled) {
             document.body.classList.toggle('night-mode', !!enabled);
@@ -241,9 +190,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const settings = readSettings();
             const languageCurrent = document.getElementById('language-current');
-            if (languageCurrent) {
-                languageCurrent.textContent = (settings.language || 'ar') === 'ar' ? 'ÇáÚÑÈíÉ' : 'English';
-            }
+            if (languageCurrent) languageCurrent.textContent = (settings.language || 'ar') === 'ar' ? 'Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©' : 'English';
             applyDarkMode(!!settings.darkMode);
 
             document.getElementById('settings-notifications')?.addEventListener('click', () => {
@@ -252,27 +199,19 @@
 
             document.getElementById('settings-privacy')?.addEventListener('click', async () => {
                 const user = JSON.parse(localStorage.getItem('antika_user') || '{}');
-                if (!user.email) {
-                    showToast('íÑÌì ÊÓÌíá ÇáÏÎæá ÃæáÇğ');
-                    return;
-                }
-
+                if (!user.email) { showToast('ÙŠØ¬Ø¨ ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ø£ÙˆÙ„Ø§Ù‹'); return; }
                 if (window.Auth && typeof Auth.resetPassword === 'function') {
                     const result = await Auth.resetPassword(user.email);
-                    showToast(result.success ? 'Êã ÅÑÓÇá ÑÇÈØ ÊÛííÑ ßáãÉ ÇáãÑæÑ' : (result.error || 'ÊÚĞÑ ÅÑÓÇá ÇáÑÇÈØ'));
-                } else {
-                    showToast('ÇáãíÒÉ ÛíÑ ãÊÇÍÉ ÍÇáíÇğ');
-                }
+                    showToast(result.success ? 'ØªÙ… Ø¥Ø±Ø³Ø§Ù„ Ø±Ø§Ø¨Ø· Ø¥Ø¹Ø§Ø¯Ø© ØªØ¹ÙŠÙŠÙ† ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ±' : (result.error || 'Ø­Ø¯Ø« Ø®Ø·Ø£ Ø£Ø«Ù†Ø§Ø¡ Ø§Ù„Ø¥Ø±Ø³Ø§Ù„'));
+                } else { showToast('Ø§Ù„Ø®Ø§ØµÙŠØ© ØºÙŠØ± Ù…ØªØ§Ø­Ø© Ø­Ø§Ù„ÙŠØ§Ù‹'); }
             });
 
             document.getElementById('settings-language')?.addEventListener('click', () => {
                 const now = readSettings();
                 const nextLanguage = (now.language || 'ar') === 'ar' ? 'en' : 'ar';
                 saveSettings({ ...now, language: nextLanguage });
-                if (languageCurrent) {
-                    languageCurrent.textContent = nextLanguage === 'ar' ? 'ÇáÚÑÈíÉ' : 'English';
-                }
-                showToast(nextLanguage === 'ar' ? 'Êã ÍİÙ ÇááÛÉ: ÇáÚÑÈíÉ' : 'Language set to English');
+                if (languageCurrent) languageCurrent.textContent = nextLanguage === 'ar' ? 'Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©' : 'English';
+                showToast(nextLanguage === 'ar' ? 'ØªÙ… Ø¶Ø¨Ø· Ø§Ù„Ù„ØºØ©: Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©' : 'Language set to English');
             });
 
             document.getElementById('settings-dark-mode')?.addEventListener('click', () => {
@@ -280,18 +219,12 @@
                 const nextEnabled = !now.darkMode;
                 saveSettings({ ...now, darkMode: nextEnabled });
                 applyDarkMode(nextEnabled);
-                showToast(nextEnabled ? 'Êã ÊİÚíá ÇáæÖÚ Çááíáí' : 'Êã ÅíŞÇİ ÇáæÖÚ Çááíáí');
+                showToast(nextEnabled ? 'ØªÙ… ØªÙØ¹ÙŠÙ„ Ø§Ù„ÙˆØ¶Ø¹ Ø§Ù„Ù„ÙŠÙ„ÙŠ' : 'ØªÙ… Ø¥ÙŠÙ‚Ø§Ù Ø§Ù„ÙˆØ¶Ø¹ Ø§Ù„Ù„ÙŠÙ„ÙŠ');
             });
         });
 
         async function logout() {
-            try {
-                if (window.Auth && typeof Auth.logout === 'function') {
-                    await Auth.logout();
-                }
-            } catch (e) {
-                console.warn('Logout error:', e);
-            }
+            try { if (window.Auth && typeof Auth.logout === 'function') await Auth.logout(); } catch (e) {}
             localStorage.removeItem('antika_user');
             localStorage.removeItem('antika_token');
             window.location.href = 'index.html';
