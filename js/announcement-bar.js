@@ -24,12 +24,12 @@ class AntikaAnnouncementBar extends HTMLElement {
 
     async connectedCallback() {
         // Avoid visual flicker while fetching settings.
-        this.style.display = 'none';
+        this.style.cssText = 'display:none!important;height:0;overflow:hidden;margin:0;padding:0;';
         await this.loadSettings();
 
         if (!this.isVisible) {
             this.innerHTML = '';
-            this.style.display = 'none';
+            this.style.cssText = 'display:none!important;height:0;overflow:hidden;margin:0;padding:0;';
             return;
         }
 
