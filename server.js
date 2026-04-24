@@ -806,9 +806,10 @@ app.get('/api/maps/config', (req, res) => { const e = Boolean(GOOGLE_MAPS_API_KE
 app.get('/api/maps/geocode', async (req, res) => {
     const { lat, lng } = req.query;
     if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
-    if (!GOOGLE_MAPS_API_KEY) return res.status(503).json({ error: 'Maps API not configured' });
+    const geocodeKey = GOOGLE_GEOCODING_KEY || GOOGLE_MAPS_API_KEY;
+    if (!geocodeKey) return res.status(503).json({ error: 'Maps API not configured' });
     try {
-        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&language=ar&region=SA&key=${GOOGLE_MAPS_API_KEY}`;
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&language=ar&region=SA&key=${geocodeKey}`;
         const response = await fetch(url);
         const data = await response.json();
         res.json(data);
