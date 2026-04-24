@@ -801,6 +801,20 @@ app.put('/api/notifications/read-all', async (req, res) => {
 
 // MAPS & PAYMENT
 app.get('/api/maps/config', (req, res) => { const e = Boolean(GOOGLE_MAPS_API_KEY); res.json({ provider: e ? 'google' : 'leaflet', googleMapsEnabled: e, googleMapsApiKey: e ? GOOGLE_MAPS_API_KEY : '' }); });
+
+app.get('/api/maps/geocode', async (req, res) => {
+    const { lat, lng } = req.query;
+    if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
+    if (!GOOGLE_MAPS_API_KEY) return res.status(503).json({ error: 'Maps API not configured' });
+    try {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&language=ar&region=SA&key=${GOOGLE_MAPS_API_KEY}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: 'Geocoding failed' });
+    }
+});
 app.get('/api/payment/config', (req, res) => { res.json({ publishableKey: MOYASAR_PUBLISHABLE_KEY || '', enabled: Boolean(MOYASAR_PUBLISHABLE_KEY) }); });
 app.post('/api/payment/verify', async (req, res) => {
   try {

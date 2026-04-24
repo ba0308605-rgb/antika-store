@@ -250,22 +250,21 @@
         }
     }
 
-    function reverseGeocode(lat, lng) {
+    async function reverseGeocode(lat, lng) {
         selectedLat = lat;
         selectedLng = lng;
-        if (!geocoder) { enableNextBtn(); return; }
-        geocoder.geocode({ location: { lat, lng }, language: 'ar' }, (results, status) => {
-            if (status === 'OK' && results[0]) {
-                selectedAddressText = results[0].formatted_address;
+        try {
+            const res = await fetch(`/api/maps/geocode?lat=${lat}&lng=${lng}`);
+            const data = await res.json();
+            if (data.status === 'OK' && data.results[0]) {
+                selectedAddressText = data.results[0].formatted_address;
                 document.getElementById('selected-address-text').textContent = selectedAddressText;
                 document.getElementById('selected-address-box').classList.remove('hidden');
 
-                // Auto-fill fields from geocode
-                const comps = results[0].address_components;
-                
+                const comps = data.results[0].address_components;
                 let detectedCity = '';
                 let detectedRegion = '';
-                
+
                 comps.forEach(c => {
                     if (c.types.includes('route')) {
                         const el = document.getElementById('addr-street');
@@ -287,7 +286,6 @@
                     }
                 });
 
-                // محاولة تعبئة المنطقة والمدينة
                 if (detectedRegion) {
                     const regionSelect = document.getElementById('addr-region');
                     if (regionSelect) {
@@ -296,7 +294,6 @@
                         if (match) {
                             regionSelect.value = match.value;
                             loadCities(match.value);
-                            // بعد تحميل المدن نختار المدينة
                             setTimeout(() => {
                                 if (detectedCity) {
                                     const citySelect = document.getElementById('addr-city');
@@ -316,7 +313,13 @@
                 document.getElementById('selected-address-box').classList.remove('hidden');
             }
             enableNextBtn();
-        });
+        } catch (err) {
+            console.error('Geocoding error:', err);
+            selectedAddressText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            document.getElementById('selected-address-text').textContent = selectedAddressText;
+            document.getElementById('selected-address-box').classList.remove('hidden');
+            enableNextBtn();
+        }
     }
 
     function useCurrentLocation() {
