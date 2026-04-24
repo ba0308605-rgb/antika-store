@@ -405,29 +405,6 @@
         }
 
         /* Wishlist Button */
-        .wishlist-floating {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            width: 45px;
-            height: 45px;
-            background: white;
-            border: none;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ccc;
-            font-size: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            transition: all 0.3s;
-            z-index: 10;
-        }
-        .wishlist-floating:hover, .wishlist-floating.active {
-            color: #ef4444;
-            transform: scale(1.1);
-        }
         .share-btn.active-heart {
             border-color: #FF69B4;
             color: #ef4444;
@@ -851,9 +828,6 @@
                         <!-- Out of Stock Ribbon -->
                         <div id="outOfStockRibbon" class="out-of-stock-ribbon hidden">نفدت الكمية</div>
                         <img id="mainImage" src="" alt="" class="main-image" onerror="handleImageError(this)">
-                        <button class="wishlist-floating" id="wishlistBtn" onclick="toggleWishlist(this)">
-                            <i class="far fa-heart"></i>
-                        </button>
                         <button class="gallery-nav prev" onclick="prevImage()">
                             <i class="fas fa-chevron-left"></i>
                         </button>
@@ -1356,7 +1330,6 @@
 
         // Wishlist
         function setWishlistVisual(active) {
-            const floatingBtn = document.getElementById('wishlistBtn');
             const shareBtn = document.getElementById('wishlistShareBtn');
             const buttons = [floatingBtn, shareBtn].filter(Boolean);
 
@@ -1373,7 +1346,6 @@
         }
 
         function animateWishlistHeart(triggerBtn, isAdding = true) {
-            const floatingBtn = document.getElementById('wishlistBtn');
             const shareBtn = document.getElementById('wishlistShareBtn');
             const targetBtn = triggerBtn || floatingBtn || shareBtn;
             const targets = [floatingBtn, shareBtn].filter(Boolean);
@@ -1454,7 +1426,6 @@
         async function toggleWishlist(triggerBtn = null) {
             if (!currentProduct) return;
 
-            const btn = document.getElementById('wishlistBtn');
             const id = String(currentProduct._id || currentProduct.id);
 
             const getWishlistStorageKey = () => {
