@@ -129,7 +129,7 @@ async function initAdmin() {
         await populateCategorySelects();
         await loadSettings();
         await loadFooterPagesSettings();
-        await loadAnnouncingSettings();
+        if (typeof loadAnnouncingSettings === 'function') await loadAnnouncingSettings();
         await loadOrders(); // تحميل الطلبات
         console.log('✅ Admin panel initialized');
     } catch (error) {
