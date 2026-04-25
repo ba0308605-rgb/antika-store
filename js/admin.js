@@ -3,6 +3,19 @@
 let currentEditingProduct = null;
 let currentEditingCategory = null;
 const ADMIN_TOKEN_KEY = 'antika_admin_token';
+
+// تجديد تلقائي للـ session كل 30 دقيقة
+setInterval(async () => {
+    try {
+        const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+        if (!token) return;
+        const session = await API.verifyAdminSession();
+        if (!session?.ok) {
+            console.warn('Session expired, redirecting to login');
+            window.location.reload();
+        }
+    } catch(e) {}
+}, 30 * 60 * 1000);
 const ADMIN_USER_KEY = 'antika_admin_user';
 
 function safeText(value) {
@@ -2140,3 +2153,110 @@ async function confirmDeleteReviewInProduct(reviewId, productId, productName) {
         showNotification('حدث خطأ أثناء الحذف', 'error');
     }
 }
+// ====================================================
+// AUTO-SAVE لنموذج المنتج
+// ====================================================
+(function() {
+    const DRAFT_KEY = 'antika_product_draft';
+    
+    function saveDraft() {
+        const fields = ['product-name', 'product-description', 'product-price', 
+                       'product-original-price', 'product-stock', 'product-sku'];
+        const draft = {};
+        fields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) draft[id] = el.value;
+        });
+        // حفظ التصنيفات المختارة
+        const cats = document.querySelectorAll('input[name="category"]:checked');
+        draft['categories'] = Array.from(cats).map(c => c.value);
+        
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    }
+    
+    function restoreDraft() {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if (!raw) return;
+        try {
+            const draft = JSON.parse(raw);
+            Object.keys(draft).forEach(id => {
+                if (id === 'categories') return;
+                const el = document.getElementById(id);
+                if (el && draft[id]) el.value = draft[id];
+            });
+            if (draft.categories && draft.categories.length > 0) {
+                setTimeout(() => {
+                    draft.categories.forEach(val => {
+                        const cb = document.querySelector(`input[name="category"][value="${val}"]`);
+                        if (cb) cb.checked = true;
+                    });
+                }, 1000);
+            }
+            showToast('✅ تم استعادة المسودة المحفوظة');
+        } catch(e) {}
+    }
+    
+    function clearDraft() {
+        localStorage.removeItem(DRAFT_KEY);
+    }
+
+    // بدء الـ auto-save كل 30 ثانية
+    let autoSaveInterval = null;
+    
+    function startAutoSave() {
+        if (autoSaveInterval) return;
+        autoSaveInterval = setInterval(() => {
+            const nameEl = document.getElementById('product-name');
+            if (nameEl && nameEl.value.trim()) {
+                saveDraft();
+            }
+        }, 30000);
+    }
+    
+    function stopAutoSave() {
+        if (autoSaveInterval) { clearInterval(autoSaveInterval); autoSaveInterval = null; }
+        clearDraft();
+    }
+
+    // مراقبة فتح قسم المنتجات
+    const observer = new MutationObserver(() => {
+        const section = document.getElementById('products-section');
+        const form = document.getElementById('product-form');
+        if (section && !section.classList.contains('hidden') && form) {
+            startAutoSave();
+            // استعادة المسودة لو موجودة
+            if (localStorage.getItem(DRAFT_KEY)) {
+                restoreDraft();
+            }
+        }
+    });
+    
+    observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+
+    // امسح المسودة بعد الحفظ الناجح
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.textContent && 
+            (e.target.textContent.includes('حفظ المنتج') || e.target.textContent.includes('إضافة المنتج'))) {
+            setTimeout(() => {
+                const successToast = document.querySelector('.toast');
+                if (successToast && successToast.textContent.includes('تم')) {
+                    stopAutoSave();
+                }
+            }, 2000);
+        }
+    });
+
+    // مكّن استعادة المسودة عند تحميل الصفحة
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            if (localStorage.getItem(DRAFT_KEY)) {
+                const section = document.getElementById('products-section');
+                if (section && !section.classList.contains('hidden')) {
+                    restoreDraft();
+                }
+            }
+        }, 1500);
+    });
+    
+    window.clearProductDraft = clearDraft;
+})();
