@@ -657,15 +657,82 @@ async function previewMultipleImages(input) {
 function renderImagePreviews(images) {
     const container = document.getElementById('images-preview-container');
     if (!container) return;
-    
+
     container.innerHTML = images.map((img, idx) => `
-        <div class="relative">
-            <img src="${img}" class="w-20 h-20 rounded-lg object-cover border-2 border-gray-200">
-            <button type="button" onclick="removeImage(${idx})" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs hover:bg-red-600">
+        <div class="relative image-drag-item" 
+             draggable="true" 
+             data-idx="${idx}"
+             style="cursor:grab; transition: transform 0.2s, opacity 0.2s;">
+            <img src="${img}" class="w-20 h-20 rounded-lg object-cover border-2 border-gray-200 pointer-events-none">
+            <button type="button" onclick="removeImage(${idx})" 
+                    class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
+                    style="cursor:pointer;">
                 <i class="fas fa-times"></i>
             </button>
+            <div class="absolute bottom-0 left-0 right-0 bg-black/40 text-white text-center rounded-b-lg" 
+                 style="font-size:10px; padding:2px;">
+                ${idx === 0 ? 'رئيسية' : idx + 1}
+            </div>
         </div>
     `).join('');
+
+    // تفعيل Drag & Drop
+    initImageDragDrop(container);
+}
+
+function initImageDragDrop(container) {
+    const items = container.querySelectorAll('.image-drag-item');
+    let dragSrc = null;
+
+    items.forEach(item => {
+        item.addEventListener('dragstart', function(e) {
+            dragSrc = this;
+            this.style.opacity = '0.4';
+            this.style.transform = 'scale(0.95)';
+            e.dataTransfer.effectAllowed = 'move';
+        });
+
+        item.addEventListener('dragend', function() {
+            this.style.opacity = '1';
+            this.style.transform = 'scale(1)';
+            items.forEach(i => i.style.border = '');
+        });
+
+        item.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            if (this !== dragSrc) {
+                this.style.border = '2px dashed #D6C1A6';
+                this.style.transform = 'scale(1.05)';
+            }
+        });
+
+        item.addEventListener('dragleave', function() {
+            this.style.border = '';
+            this.style.transform = 'scale(1)';
+        });
+
+        item.addEventListener('drop', function(e) {
+            e.preventDefault();
+            if (this === dragSrc) return;
+
+            this.style.border = '';
+            this.style.transform = 'scale(1)';
+
+            const fromIdx = parseInt(dragSrc.dataset.idx);
+            const toIdx = parseInt(this.dataset.idx);
+
+            const dataInput = document.getElementById('product-images-data');
+            if (!dataInput) return;
+
+            let imgs = JSON.parse(dataInput.value || '[]');
+            const moved = imgs.splice(fromIdx, 1)[0];
+            imgs.splice(toIdx, 0, moved);
+
+            dataInput.value = JSON.stringify(imgs);
+            renderImagePreviews(imgs);
+        });
+    });
 }
 
 function removeImage(index) {
