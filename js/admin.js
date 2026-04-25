@@ -820,7 +820,8 @@ function addCustomFeature(value = '') {
     div.className = 'custom-feature-row flex gap-2 items-center';
     div.innerHTML = `
         <input type="text" value="${value}" placeholder="مثال: جودة عالية ومتانة" 
-            class="custom-feature-input flex-1 border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none text-sm">
+            class="custom-feature-input flex-1 border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none text-sm"
+            dir="auto" inputmode="text">
         <button type="button" onclick="this.closest('.custom-feature-row').remove()" class="text-red-500 hover:text-red-700 p-2">
             <i class="fas fa-trash"></i>
         </button>
