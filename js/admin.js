@@ -1,38 +1,5 @@
 // 🌸 Antika Store Admin JavaScript - Fixed Version
 
-// ====================================================
-// LOADING OVERLAY
-// ====================================================
-function showSaveLoading(text = 'جاري الحفظ...') {
-    let overlay = document.getElementById('save-loading-overlay');
-    if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'save-loading-overlay';
-        overlay.style.cssText = `
-            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-            z-index: 99999; display: flex; align-items: center; justify-content: center;
-            backdrop-filter: blur(4px);
-        `;
-        overlay.innerHTML = `
-            <div style="background: white; border-radius: 20px; padding: 40px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-                <div style="width: 60px; height: 60px; border: 5px solid #E8D9C5; border-top-color: #D6C1A6; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px;"></div>
-                <p style="font-family: Tajawal, sans-serif; color: #4B5563; font-size: 16px; font-weight: 600;" id="save-loading-text">${text}</p>
-            </div>
-            <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
-        `;
-        document.body.appendChild(overlay);
-    } else {
-        document.getElementById('save-loading-text').textContent = text;
-        overlay.style.display = 'flex';
-    }
-}
-
-function hideSaveLoading() {
-    const overlay = document.getElementById('save-loading-overlay');
-    if (overlay) overlay.style.display = 'none';
-}
-
-
 let currentEditingProduct = null;
 let currentEditingCategory = null;
 const ADMIN_TOKEN_KEY = 'antika_admin_token';
@@ -534,6 +501,9 @@ function openProductModal(productId = null) {
 
     currentEditingProduct = null;
 
+    // امسح المسودة عند فتح منتج جديد
+    if (!productId) localStorage.removeItem('antika_product_draft');
+
     if (productId) {
         if (title) title.textContent = 'تعديل منتج';
         modal.classList.remove('hidden');
@@ -960,15 +930,12 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
     const customFeatures = getCustomFeatures();
     productData.customFeatures = customFeatures; // Always send customFeatures (even if empty)
 
-    showSaveLoading('جاري حفظ المنتج...');
     try {
         if (currentEditingProduct) {
             await API.updateProduct(currentEditingProduct, productData);
-            hideSaveLoading();
             showNotification('تم تحديث المنتج بنجاح! 🎉');
         } else {
             await API.addProduct(productData);
-            hideSaveLoading();
             showNotification('تم إضافة المنتج بنجاح! 🎉');
         }
 
@@ -977,7 +944,6 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
         await updateStats();
         await loadRecentProducts();
     } catch (error) {
-        hideSaveLoading();
         console.error('Error saving product:', error);
         showNotification('حدث خطأ أثناء حفظ المنتج', 'error');
     }
