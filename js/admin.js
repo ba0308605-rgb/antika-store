@@ -603,7 +603,32 @@ function closeProductModal() {
 }
 
 // Image preview functions
-function previewMultipleImages(input) {
+function compressImage(file, maxWidth, quality) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                if (width > maxWidth) {
+                    height = Math.round(height * maxWidth / width);
+                    width = maxWidth;
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+async function previewMultipleImages(input) {
     const container = document.getElementById('images-preview-container');
     const dataInput = document.getElementById('product-images-data');
     
@@ -612,15 +637,20 @@ function previewMultipleImages(input) {
     let currentImages = JSON.parse(dataInput.value || '[]');
     
     if (input.files && input.files.length > 0) {
-        Array.from(input.files).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                currentImages.push(e.target.result);
+        const isMobile = window.innerWidth < 768;
+        const maxWidth = isMobile ? 1200 : 1600;
+        const quality = isMobile ? 0.75 : 0.85;
+
+        for (const file of Array.from(input.files)) {
+            try {
+                const compressed = await compressImage(file, maxWidth, quality);
+                currentImages.push(compressed);
                 dataInput.value = JSON.stringify(currentImages);
                 renderImagePreviews(currentImages);
-            };
-            reader.readAsDataURL(file);
-        });
+            } catch(e) {
+                console.error('Error compressing image:', e);
+            }
+        }
     }
 }
 
