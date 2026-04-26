@@ -69,23 +69,7 @@
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; }
     </style>
-    <script>
-    function showSaveLoading(text) {
-        let toast = document.getElementById('save-toast');
-        if (!toast) {
-            toast = document.createElement('div');
-            toast.id = 'save-toast';
-            toast.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#D6C1A6;color:white;padding:10px 24px;border-radius:50px;font-family:Tajawal,sans-serif;font-size:15px;font-weight:600;z-index:99999;box-shadow:0 4px 15px rgba(0,0,0,0.2);';
-            document.body.appendChild(toast);
-        }
-        toast.textContent = text || 'جاري الحفظ...';
-        toast.style.display = 'block';
-    }
-    function hideSaveLoading() {
-        const t = document.getElementById('save-toast');
-        if (t) t.style.display = 'none';
-    }
-    </script>
+    
 </head>
 <body class="bg-gray-50">
 
@@ -1084,7 +1068,7 @@
                 </div>
 
                 <div class="flex gap-4 pt-4">
-                    <button type="submit" onclick="showSaveLoading('جاري حفظ المنتج...')" class="flex-1 bg-antika-gold text-white py-3 rounded-lg font-bold hover:bg-antika-gold-dark transition">
+                    <button type="submit" class="flex-1 bg-antika-gold text-white py-3 rounded-lg font-bold hover:bg-antika-gold-dark transition">
                         💾 حفظ
                     </button>
                     <button type="button" onclick="closeProductModal()" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300 transition">
