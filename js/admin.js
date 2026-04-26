@@ -933,10 +933,10 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
     try {
         if (currentEditingProduct) {
             await API.updateProduct(currentEditingProduct, productData);
-            showNotification('تم تحديث المنتج بنجاح! 🎉');
+            hideWaitToast(); showNotification('تم تحديث المنتج بنجاح! 🎉');
         } else {
             await API.addProduct(productData);
-            showNotification('تم إضافة المنتج بنجاح! 🎉');
+            hideWaitToast(); showNotification('تم إضافة المنتج بنجاح! 🎉');
         }
 
         closeProductModal();
@@ -945,7 +945,7 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
         await loadRecentProducts();
     } catch (error) {
         console.error('Error saving product:', error);
-        showNotification('حدث خطأ أثناء حفظ المنتج', 'error');
+        hideWaitToast(); showNotification('حدث خطأ أثناء حفظ المنتج', 'error');
     }
 });
 
@@ -1809,10 +1809,10 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
         try {
             if (currentEditingProduct) {
                 await API.updateProduct(currentEditingProduct, productData);
-                showNotification('تم تحديث المنتج بنجاح! 🎉');
+                hideWaitToast(); showNotification('تم تحديث المنتج بنجاح! 🎉');
             } else {
                 await API.addProduct(productData);
-                showNotification('تم إضافة المنتج بنجاح! 🎉');
+                hideWaitToast(); showNotification('تم إضافة المنتج بنجاح! 🎉');
             }
 
             closeProductModal();
@@ -1821,7 +1821,7 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
             await loadRecentProducts();
         } catch (error) {
             console.error('Error saving product:', error);
-            showNotification('حدث خطأ أثناء حفظ المنتج', 'error');
+            hideWaitToast(); showNotification('حدث خطأ أثناء حفظ المنتج', 'error');
         }
     });
 })();

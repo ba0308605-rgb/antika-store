@@ -71,6 +71,10 @@
     </style>
     
     <script>
+    function hideWaitToast() {
+        const t = document.getElementById('wait-toast');
+        if (t) t.style.display = 'none';
+    }
     function showWaitToast() {
         let t = document.getElementById('wait-toast');
         if (!t) {
