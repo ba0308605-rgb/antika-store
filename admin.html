@@ -1082,7 +1082,7 @@
                 </div>
 
                 <div class="flex gap-4 pt-4">
-                    <button type="submit" onclick="showWaitToast()" class="flex-1 bg-antika-gold text-white py-3 rounded-lg font-bold hover:bg-antika-gold-dark transition">
+                    <button type="submit" onclick="if(this.form && this.form.checkValidity()) showWaitToast()" class="flex-1 bg-antika-gold text-white py-3 rounded-lg font-bold hover:bg-antika-gold-dark transition">
                         💾 حفظ
                     </button>
                     <button type="button" onclick="closeProductModal()" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300 transition">
