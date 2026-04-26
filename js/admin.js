@@ -829,6 +829,23 @@ function addCustomFeature(value = '') {
             <i class="fas fa-trash"></i>
         </button>
     `;
+    
+    // Smart Paste — توزيع الأسطر على مربعات
+    const input = div.querySelector('.custom-feature-input');
+    input.addEventListener('paste', function(e) {
+        const text = (e.clipboardData || window.clipboardData).getData('text');
+        const lines = text.split(/\n/).map(l => l.replace(/^[\s•\-\*\.\d]+/, '').trim()).filter(Boolean);
+        if (lines.length > 1) {
+            e.preventDefault();
+            lines.forEach((line, i) => {
+                if (i === 0) {
+                    this.value = line;
+                } else {
+                    addCustomFeature(line);
+                }
+            });
+        }
+    });
     container.appendChild(div);
 }
 
