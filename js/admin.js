@@ -131,6 +131,7 @@ async function initAdmin() {
         await loadFooterPagesSettings();
         if (typeof loadAnnouncingSettings === 'function') await loadAnnouncingSettings();
         await loadOrders(); // تحميل الطلبات
+        await loadDashboard(); // تحميل الداشبورد الجديد
         console.log('✅ Admin panel initialized');
     } catch (error) {
         console.error('Error initializing admin:', error);
@@ -174,57 +175,267 @@ function showSection(sectionName) {
 }
 
 // ============================================
-// DASHBOARD STATS
+// DASHBOARD - النسخة الجديدة
 // ============================================
 
+let salesChartInstance = null;
+
 async function updateStats() {
-    try {
-        const products = await API.getProducts();
-        const discounted = products.filter(p => p.discountPrice && p.discountPrice < p.price);
-        const orders = await API.getOrders ? await API.getOrders() : [];
-        
-        const statProducts = document.getElementById('stat-products');
-        const statDiscounted = document.getElementById('stat-discounted');
-        const statOrders = document.getElementById('stat-orders');
-        
-        if (statProducts) statProducts.textContent = products.length;
-        if (statDiscounted) statDiscounted.textContent = discounted.length;
-        if (statOrders) statOrders.textContent = orders.length;
-    } catch (error) {
-        console.error('Error updating stats:', error);
-    }
+    await loadDashboard();
 }
 
 async function loadRecentProducts() {
+    // kept for compatibility - now handled by loadDashboard
+}
+
+async function refreshDashboard() {
+    const icon = document.getElementById('refresh-icon');
+    if (icon) icon.classList.add('fa-spin');
+    await loadDashboard();
+    setTimeout(() => { if (icon) icon.classList.remove('fa-spin'); }, 800);
+}
+
+async function loadDashboard() {
     try {
-        const products = await API.getProducts();
-        const recent = products.slice(-5).reverse();
-        const container = document.getElementById('recent-products-list');
+        // Greeting
+        const hour = new Date().getHours();
+        const greet = hour < 12 ? 'صباح الخير' : hour < 17 ? 'مساء الخير' : 'مساء النور';
+        const el = document.getElementById('dashboard-greeting');
+        if (el) el.textContent = `${greet} 👋 — ${new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
 
-        if (!container) return;
+        const [products, orders] = await Promise.all([
+            API.getProducts(),
+            API.getOrders ? API.getOrders() : []
+        ]);
 
-        if (recent.length === 0) {
-            container.innerHTML = '<p class="text-gray-500 text-center">لا توجد منتجات</p>';
-            return;
-        }
+        // ---- إحصائيات ----
+        const discounted = products.filter(p => p.discountPrice && p.discountPrice < p.price);
+        const revenue = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+        const pendingOrders = orders.filter(o => ['pending','processing'].includes(o.status)).length;
 
-        container.innerHTML = recent.map(p => `
-            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div class="flex items-center gap-3">
-                    <img src="${p.images && p.images[0] ? p.images[0] : 'https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store'}" class="w-12 h-12 rounded-lg object-cover">
-                    <div>
-                        <div class="font-bold text-gray-800">${safeText(p.name)}</div>
-                        <div class="text-sm text-gray-500">${p.price} ر.س</div>
-                    </div>
-                </div>
-                <span class="text-xs ${p.stock < 5 ? 'text-red-500' : 'text-green-500'}">
-                    مخزون: ${p.stock}
-                </span>
-            </div>
-        `).join('');
-    } catch (error) {
-        console.error('Error loading recent products:', error);
+        // عدد العملاء الفريدين
+        const uniqueCustomers = new Set(orders.map(o => o.customerEmail).filter(Boolean)).size;
+
+        _setEl('stat-revenue', revenue.toLocaleString('ar-SA', { minimumFractionDigits: 0, maximumFractionDigits: 0 }));
+        _setEl('stat-orders', orders.length);
+        _setEl('stat-orders-sub', `${pendingOrders} قيد المعالجة`);
+        _setEl('stat-products', products.length);
+        _setEl('stat-discounted-sub', `${discounted.length} منتج مخفض`);
+        _setEl('stat-customers', uniqueCustomers || '—');
+
+        // ---- تنبيهات ذكية ----
+        renderAlerts(products, orders);
+
+        // ---- رسم بياني ----
+        renderSalesChart(orders);
+
+        // ---- أكثر المنتجات مبيعاً ----
+        renderTopProducts(orders, products);
+
+        // ---- آخر الطلبات ----
+        renderRecentOrders(orders);
+
+    } catch (err) {
+        console.error('Dashboard error:', err);
     }
+}
+
+function _setEl(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+}
+
+function renderAlerts(products, orders) {
+    const container = document.getElementById('dashboard-alerts');
+    if (!container) return;
+    const alerts = [];
+
+    // منتجات على وشك النفاد
+    const lowStock = products.filter(p => p.stock !== undefined && p.stock <= 3 && p.stock >= 0);
+    if (lowStock.length > 0) {
+        alerts.push(`
+            <div class="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm">
+                <i class="fas fa-exclamation-triangle text-red-500"></i>
+                <span class="text-red-700 font-medium">تنبيه مخزون:</span>
+                <span class="text-red-600">${lowStock.length} منتج على وشك النفاد — ${lowStock.slice(0,3).map(p => safeText(p.name)).join('، ')}</span>
+                <button onclick="showSection('products')" class="mr-auto text-red-500 hover:text-red-700 text-xs underline">عرض المنتجات</button>
+            </div>
+        `);
+    }
+
+    // طلبات جديدة بانتظار المعالجة
+    const newOrders = orders.filter(o => o.status === 'pending').length;
+    if (newOrders > 0) {
+        alerts.push(`
+            <div class="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm">
+                <i class="fas fa-bell text-amber-500"></i>
+                <span class="text-amber-700 font-medium">طلبات جديدة:</span>
+                <span class="text-amber-600">${newOrders} طلب بانتظار المعالجة</span>
+                <button onclick="showSection('orders')" class="mr-auto text-amber-600 hover:text-amber-800 text-xs underline">عرض الطلبات</button>
+            </div>
+        `);
+    }
+
+    container.innerHTML = alerts.join('');
+}
+
+function renderSalesChart(orders) {
+    const canvas = document.getElementById('salesChart');
+    const emptyEl = document.getElementById('chart-empty');
+    if (!canvas) return;
+
+    // آخر 7 أيام
+    const days = [];
+    const labels = [];
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        days.push(d.toISOString().split('T')[0]);
+        labels.push(d.toLocaleDateString('ar-SA', { weekday: 'short', day: 'numeric' }));
+    }
+
+    const data = days.map(day => {
+        return orders
+            .filter(o => {
+                const od = new Date(o.createdAt || o.date || 0).toISOString().split('T')[0];
+                return od === day;
+            })
+            .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    });
+
+    const hasData = data.some(v => v > 0);
+    if (!hasData) {
+        canvas.style.display = 'none';
+        if (emptyEl) emptyEl.classList.remove('hidden');
+        return;
+    }
+    canvas.style.display = '';
+    if (emptyEl) emptyEl.classList.add('hidden');
+
+    if (salesChartInstance) salesChartInstance.destroy();
+
+    salesChartInstance = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'المبيعات',
+                data,
+                fill: true,
+                backgroundColor: 'rgba(214,193,166,0.15)',
+                borderColor: '#D6C1A6',
+                borderWidth: 2.5,
+                pointBackgroundColor: '#D6C1A6',
+                pointRadius: 4,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { family: 'Tahoma' }, color: '#9ca3af' } },
+                y: { grid: { color: '#f3f4f6' }, ticks: { font: { family: 'Tahoma' }, color: '#9ca3af' }, beginAtZero: true }
+            }
+        }
+    });
+}
+
+function renderTopProducts(orders, products) {
+    const container = document.getElementById('top-products-list');
+    if (!container) return;
+
+    // احتساب أكثر المنتجات مبيعاً
+    const salesMap = {};
+    orders.forEach(order => {
+        (order.items || []).forEach(item => {
+            const id = String(item.productId || item.id || item.name || '');
+            if (!id) return;
+            salesMap[id] = (salesMap[id] || 0) + (Number(item.quantity) || 1);
+        });
+    });
+
+    // دمج مع بيانات المنتجات
+    const ranked = products
+        .map(p => ({ ...p, sold: salesMap[String(p._id || p.id || p.name)] || 0 }))
+        .sort((a, b) => b.sold - a.sold)
+        .slice(0, 5);
+
+    if (ranked.every(p => p.sold === 0)) {
+        container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">لا توجد بيانات مبيعات بعد</p>';
+        return;
+    }
+
+    const maxSold = Math.max(...ranked.map(p => p.sold), 1);
+
+    container.innerHTML = ranked.map((p, i) => `
+        <div class="flex items-center gap-3">
+            <span class="text-xs font-bold text-gray-300 w-4">${i + 1}</span>
+            <img src="${p.images?.[0] || 'https://via.placeholder.com/40x40/D6C1A6/fff?text=A'}"
+                 class="w-9 h-9 rounded-lg object-cover flex-shrink-0" onerror="this.src='https://via.placeholder.com/40x40/D6C1A6/fff?text=A'">
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-700 truncate">${safeText(p.name)}</p>
+                <div class="h-1.5 bg-gray-100 rounded-full mt-1">
+                    <div class="h-1.5 bg-antika-gold rounded-full" style="width:${Math.round((p.sold / maxSold) * 100)}%"></div>
+                </div>
+            </div>
+            <span class="text-xs text-gray-400 flex-shrink-0">${p.sold > 0 ? p.sold + ' مبيع' : '—'}</span>
+        </div>
+    `).join('');
+}
+
+function renderRecentOrders(orders) {
+    const container = document.getElementById('recent-orders-list');
+    if (!container) return;
+
+    const recent = [...orders].reverse().slice(0, 5);
+
+    if (recent.length === 0) {
+        container.innerHTML = '<p class="text-gray-400 text-sm text-center py-6">لا توجد طلبات بعد</p>';
+        return;
+    }
+
+    const statusMap = {
+        pending: ['قيد الانتظار', 'bg-amber-100 text-amber-700'],
+        processing: ['قيد المعالجة', 'bg-blue-100 text-blue-700'],
+        shipped: ['تم الشحن', 'bg-purple-100 text-purple-700'],
+        out_for_delivery: ['جاري التوصيل', 'bg-orange-100 text-orange-700'],
+        delivered: ['تم التوصيل', 'bg-green-100 text-green-700'],
+        cancelled: ['ملغي', 'bg-red-100 text-red-700'],
+    };
+
+    container.innerHTML = `
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-gray-400 text-xs border-b">
+                    <th class="text-right pb-3 font-medium">رقم الطلب</th>
+                    <th class="text-right pb-3 font-medium">العميل</th>
+                    <th class="text-right pb-3 font-medium hidden md:table-cell">التاريخ</th>
+                    <th class="text-right pb-3 font-medium">المبلغ</th>
+                    <th class="text-right pb-3 font-medium">الحالة</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                ${recent.map(o => {
+                    const [statusText, statusClass] = statusMap[o.status] || ['غير معروف', 'bg-gray-100 text-gray-500'];
+                    const date = new Date(o.createdAt || o.date || Date.now()).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' });
+                    const customer = o.customerName || o.customerEmail?.split('@')[0] || 'عميل';
+                    const orderId = String(o.id || o._id || '').slice(-6) || '——';
+                    return `
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="py-3 font-mono text-gray-500 text-xs">#${orderId}</td>
+                            <td class="py-3 text-gray-700 font-medium">${customer}</td>
+                            <td class="py-3 text-gray-400 hidden md:table-cell">${date}</td>
+                            <td class="py-3 text-antika-gold font-bold">${Number(o.total || 0).toLocaleString('ar-SA')} ر.س</td>
+                            <td class="py-3"><span class="px-2 py-1 rounded-full text-xs font-medium ${statusClass}">${statusText}</span></td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
 }
 
 // ============================================
