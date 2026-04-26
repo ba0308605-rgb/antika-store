@@ -188,6 +188,14 @@ app.get('/api/products/:id', async (req, res) => {
 });
 app.post('/api/products', requireAdmin, async (req, res) => {
   try {
+    // تحقق من تكرار رقم الموديل SKU
+    const sku = (req.body.sku || '').trim();
+    if (sku) {
+      const existing = await db.collection('products').where('sku', '==', sku).limit(1).get();
+      if (!existing.empty) {
+        return res.status(409).json({ error: 'رقم الموديل (SKU) مستخدم مسبقاً، يرجى اختيار رقم آخر' });
+      }
+    }
     if (req.body.images && req.body.images.length > 0) req.body.images = await Promise.all(req.body.images.map(img => uploadToCloudinary(img, 'antika/products')));
     const ref = await db.collection('products').add(Object.assign({}, req.body, { createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
     const doc = await ref.get();

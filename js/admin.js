@@ -962,7 +962,9 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
         await loadRecentProducts();
     } catch (error) {
         console.error('Error saving product:', error);
-        hideWaitToast(); showNotification('حدث خطأ أثناء حفظ المنتج', 'error');
+        hideWaitToast();
+        const errMsg = error?.message || 'حدث خطأ أثناء حفظ المنتج';
+        showNotification(errMsg, 'error');
     }
 });
 
@@ -1838,7 +1840,9 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
             await loadRecentProducts();
         } catch (error) {
             console.error('Error saving product:', error);
-            hideWaitToast(); showNotification('حدث خطأ أثناء حفظ المنتج', 'error');
+            hideWaitToast();
+        const errMsg = error?.message || 'حدث خطأ أثناء حفظ المنتج';
+        showNotification(errMsg, 'error');
         }
     });
 })();
