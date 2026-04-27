@@ -610,20 +610,70 @@ async function deleteOrder(orderId) {
 // PRODUCTS MANAGEMENT
 // ============================================
 
+let _allAdminProducts = [];
+let _allAdminCategories = [];
+
 async function loadAdminProducts() {
     try {
-        const products = await API.getProducts();
-        const categories = await API.getCategories();
-        const container = document.getElementById('admin-products-grid');
+        const [products, categories] = await Promise.all([API.getProducts(), API.getCategories()]);
+        _allAdminProducts = products;
+        _allAdminCategories = categories;
 
-        if (!container) return;
-
-        if (products.length === 0) {
-            container.innerHTML = '<p class="text-gray-500 col-span-full text-center">لا توجد منتجات</p>';
-            return;
+        // ربط الفلتر والبحث (مرة وحدة فقط)
+        const filterEl = document.getElementById('product-category-filter');
+        const searchEl = document.getElementById('product-search');
+        if (filterEl && !filterEl._bound) {
+            filterEl._bound = true;
+            filterEl.addEventListener('change', renderAdminProducts);
+        }
+        if (searchEl && !searchEl._bound) {
+            searchEl._bound = true;
+            searchEl.addEventListener('input', renderAdminProducts);
         }
 
-        container.innerHTML = products.map(product => {
+        renderAdminProducts();
+    } catch (error) {
+        console.error('Error loading admin products:', error);
+        showNotification('حدث خطأ أثناء تحميل المنتجات', 'error');
+    }
+}
+
+function renderAdminProducts() {
+    const container = document.getElementById('admin-products-grid');
+    if (!container) return;
+
+    const filterVal = (document.getElementById('product-category-filter')?.value || '').trim();
+    const searchVal = (document.getElementById('product-search')?.value || '').trim().toLowerCase();
+
+    const products = _allAdminProducts;
+    const categories = _allAdminCategories;
+
+    let filtered = products;
+
+    // تصفية بالتصنيف
+    if (filterVal) {
+        filtered = filtered.filter(product => {
+            const productCategories = product.categories || (product.category ? [product.category] : []);
+            // دعم الـ _sel suffix اللي يضيفه الكود
+            const cleanFilter = filterVal.replace('_sel', '');
+            return productCategories.some(cid => String(cid) === cleanFilter);
+        });
+    }
+
+    // تصفية بالبحث
+    if (searchVal) {
+        filtered = filtered.filter(product =>
+            safeText(product.name).toLowerCase().includes(searchVal) ||
+            String(product.price || '').includes(searchVal)
+        );
+    }
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 col-span-full text-center py-8">لا توجد منتجات مطابقة</p>';
+        return;
+    }
+
+    container.innerHTML = filtered.map(product => {
             const productId = product._id || product.id;
             const productCategories = product.categories || (product.category ? [product.category] : []);
             const category = categories.find(c => c.id === productCategories[0]);
@@ -665,10 +715,6 @@ async function loadAdminProducts() {
             </div>
             `;
         }).join('');
-    } catch (error) {
-        console.error('Error loading admin products:', error);
-        showNotification('حدث خطأ أثناء تحميل المنتجات', 'error');
-    }
 }
 
 // ============================================
