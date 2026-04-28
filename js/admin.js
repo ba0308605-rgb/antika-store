@@ -1821,14 +1821,122 @@ function showNotification(message, type = 'success') {
 // 🎨 ADVANCED VARIANTS SYSTEM
 // ============================================
 
-function toggleVariantsSection() {
-    const checkbox = document.getElementById('product-has-variants');
-    const section = document.getElementById('variants-section');
-    if (checkbox && section) {
-        section.classList.toggle('hidden', !checkbox.checked);
+// ============================================
+// RELATED PRODUCTS (من نفس الموديل)
+// ============================================
+
+function toggleRelatedSection() {
+    const cb = document.getElementById('product-has-related');
+    const section = document.getElementById('related-section');
+    if (cb && section) section.classList.toggle('hidden', !cb.checked);
+}
+
+let _relatedSelectedIds = [];
+
+function searchRelatedProducts(query) {
+    const resultsEl = document.getElementById('related-search-results');
+    if (!resultsEl) return;
+
+    if (!query || query.length < 2) {
+        resultsEl.classList.add('hidden');
+        return;
+    }
+
+    const q = query.toLowerCase();
+    const matches = _allAdminProducts
+        .filter(p => {
+            const id = String(p._id || p.id);
+            // استثناء المنتج الحالي
+            if (currentEditingProduct && id === String(currentEditingProduct)) return false;
+            // استثناء المنتجات المختارة مسبقاً
+            if (_relatedSelectedIds.includes(id)) return false;
+            return safeText(p.name).toLowerCase().includes(q);
+        })
+        .slice(0, 8);
+
+    if (matches.length === 0) {
+        resultsEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">لا توجد نتائج</p>';
+    } else {
+        resultsEl.innerHTML = matches.map(p => {
+            const img = p.images?.[0] || '';
+            const id = String(p._id || p.id);
+            return `<div onclick="addRelatedProduct('${id}','${safeText(p.name).replace(/'/g,"\'")}','${img}','${p.price || 0}')"
+                class="flex items-center gap-2 p-2 hover:bg-antika-gold/10 rounded-lg cursor-pointer transition">
+                <img src="${img || 'https://via.placeholder.com/32'}" class="w-8 h-8 rounded object-cover flex-shrink-0" onerror="this.src='https://via.placeholder.com/32'">
+                <span class="text-sm text-gray-700 flex-1 truncate">${safeText(p.name)}</span>
+                <span class="text-xs text-antika-gold">${p.price} ر.س</span>
+            </div>`;
+        }).join('');
+    }
+    resultsEl.classList.remove('hidden');
+}
+
+function addRelatedProduct(id, name, img, price) {
+    if (_relatedSelectedIds.includes(id)) return;
+    _relatedSelectedIds.push(id);
+    updateRelatedIdsInput();
+
+    const emptyMsg = document.getElementById('related-empty-msg');
+    if (emptyMsg) emptyMsg.remove();
+
+    const list = document.getElementById('related-selected-list');
+    if (!list) return;
+
+    const item = document.createElement('div');
+    item.className = 'flex items-center gap-2 bg-antika-gold/10 rounded-lg p-2';
+    item.dataset.relatedId = id;
+    item.innerHTML = `
+        <img src="${img || 'https://via.placeholder.com/32'}" class="w-8 h-8 rounded object-cover flex-shrink-0" onerror="this.src='https://via.placeholder.com/32'">
+        <span class="text-sm text-gray-700 flex-1 truncate">${name}</span>
+        <span class="text-xs text-antika-gold ml-2">${price} ر.س</span>
+        <button onclick="removeRelatedProduct('${id}',this)" class="text-red-400 hover:text-red-600 flex-shrink-0">
+            <i class="fas fa-times text-xs"></i>
+        </button>`;
+    list.appendChild(item);
+
+    // مسح البحث
+    const input = document.getElementById('related-search-input');
+    if (input) input.value = '';
+    document.getElementById('related-search-results')?.classList.add('hidden');
+}
+
+function removeRelatedProduct(id, btn) {
+    _relatedSelectedIds = _relatedSelectedIds.filter(x => x !== id);
+    updateRelatedIdsInput();
+    btn.closest('[data-related-id]')?.remove();
+
+    const list = document.getElementById('related-selected-list');
+    if (list && list.children.length === 0) {
+        list.innerHTML = '<p class="text-xs text-gray-400 text-center py-2" id="related-empty-msg">لم يتم ربط أي منتج بعد</p>';
     }
 }
 
+function updateRelatedIdsInput() {
+    const input = document.getElementById('product-related-ids');
+    if (input) input.value = JSON.stringify(_relatedSelectedIds);
+}
+
+function loadRelatedData(product) {
+    _relatedSelectedIds = [];
+    const list = document.getElementById('related-selected-list');
+    if (list) list.innerHTML = '<p class="text-xs text-gray-400 text-center py-2" id="related-empty-msg">لم يتم ربط أي منتج بعد</p>';
+
+    if (!product.relatedProductIds || product.relatedProductIds.length === 0) return;
+
+    const cb = document.getElementById('product-has-related');
+    if (cb) { cb.checked = true; toggleRelatedSection(); }
+
+    product.relatedProductIds.forEach(rid => {
+        const p = _allAdminProducts.find(x => String(x._id || x.id) === String(rid));
+        if (p) {
+            const img = p.images?.[0] || '';
+            addRelatedProduct(String(rid), safeText(p.name), img, p.price || 0);
+        }
+    });
+}
+
+// دوال المتغيرات القديمة (kept for compatibility, no-ops)
+function toggleVariantsSection() {}
 function addVariantOption() {
     const container = document.getElementById('variant-options-container');
     if (!container) return;
@@ -2040,18 +2148,16 @@ function loadVariantsData(product) {
     }
 }
 
-// Extend loadProductForEdit to handle variants
+// Extend loadProductForEdit to handle related products
 const originalLoadProductForEdit = loadProductForEdit;
 loadProductForEdit = async function(productId) {
+    _relatedSelectedIds = [];
     await originalLoadProductForEdit(productId);
-    
     try {
         const product = await API.getProduct(productId);
-        if (product && product.hasVariants) {
-            loadVariantsData(product);
-        }
+        if (product) loadRelatedData(product);
     } catch (error) {
-        console.error('Error loading variants:', error);
+        console.error('Error loading related products:', error);
     }
 };
 
@@ -2157,16 +2263,12 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
         const customFeatures = getCustomFeatures();
         productData.customFeatures = customFeatures; // Always send customFeatures (even if empty)
 
-        // 🎨 Variants data
-        const hasVariants = document.getElementById('product-has-variants')?.checked;
-        if (hasVariants && window.variantsData) {
-            productData.hasVariants = true;
-            productData.variantOptions = window.variantsData.variantOptions;
-            productData.variants = window.variantsData.variants;
+        // 🔗 Related products (من نفس الموديل)
+        const hasRelated = document.getElementById('product-has-related')?.checked;
+        if (hasRelated && _relatedSelectedIds.length > 0) {
+            productData.relatedProductIds = _relatedSelectedIds;
         } else {
-            productData.hasVariants = false;
-            productData.variantOptions = [];
-            productData.variants = [];
+            productData.relatedProductIds = [];
         }
 
         try {

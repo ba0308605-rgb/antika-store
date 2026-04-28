@@ -1058,46 +1058,29 @@
                         </div>
                     </div>
 
-                    <!-- 🎨 Advanced Variants System -->
-                    <div class="md:col-span-2 bg-gradient-to-r from-antika-pink/10 to-antika-gold/10 p-4 rounded-lg border-2 border-antika-pink/20">
-                        <div class="flex items-center justify-between mb-4">
+                    <!-- 🔗 من نفس الموديل -->
+                    <div class="md:col-span-2 bg-gradient-to-r from-antika-gold/10 to-antika-gold/5 p-4 rounded-lg border-2 border-antika-gold/30">
+                        <div class="flex items-center justify-between mb-3">
                             <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" id="product-has-variants" class="w-5 h-5 text-antika-pink rounded" onchange="toggleVariantsSection()">
-                                <span class="font-bold text-antika-pink-dark">🎨 تفعيل نظام المتغيرات (ألوان/مقاسات)</span>
+                                <input type="checkbox" id="product-has-related" class="w-5 h-5 text-antika-gold rounded" onchange="toggleRelatedSection()">
+                                <span class="font-bold text-antika-gold-dark">🔗 ربط منتجات من نفس الموديل</span>
                             </label>
-                            <span class="text-xs text-gray-500">للمنتجات المتوفرة بعدة خيارات</span>
+                            <span class="text-xs text-gray-500">ستظهر في صفحة المنتج كاختصارات</span>
                         </div>
-                        
-                        <div id="variants-section" class="hidden space-y-4">
-                            <!-- Variant Options (Color, Size, etc.) -->
-                            <div class="bg-white p-4 rounded-lg">
-                                <div class="flex justify-between items-center mb-3">
-                                    <label class="font-bold text-gray-700">خصائص المتغيرات:</label>
-                                    <button type="button" onclick="addVariantOption()" class="text-sm bg-antika-gold text-white px-3 py-1 rounded-lg hover:bg-antika-gold-dark transition">
-                                        <i class="fas fa-plus"></i> إضافة خاصية
-                                    </button>
+
+                        <div id="related-section" class="hidden space-y-3">
+                            <div class="bg-white rounded-lg p-3">
+                                <div class="flex gap-2 mb-3">
+                                    <input type="text" id="related-search-input" placeholder="🔍 ابحث عن منتج للربط..." class="flex-1 border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-antika-gold focus:outline-none" oninput="searchRelatedProducts(this.value)">
                                 </div>
-                                <div id="variant-options-container" class="space-y-3">
-                                    <!-- Default: Color option -->
-                                    <div class="variant-option-row flex gap-2 items-center">
-                                        <input type="text" placeholder="اسم الخاصية (مثال: اللون)" class="variant-option-name flex-1 border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none">
-                                        <input type="text" placeholder="القيم (مثال: أحمر، أزرق، أسود)" class="variant-option-values flex-[2] border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none">
-                                        <button type="button" onclick="this.closest('.variant-option-row').remove()" class="text-red-500 hover:text-red-700 p-2">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
+                                <!-- نتائج البحث -->
+                                <div id="related-search-results" class="hidden max-h-48 overflow-y-auto space-y-1 border border-gray-100 rounded-lg p-2 mb-3"></div>
+                                <!-- المنتجات المرتبطة المختارة -->
+                                <div id="related-selected-list" class="space-y-2">
+                                    <p class="text-xs text-gray-400 text-center py-2" id="related-empty-msg">لم يتم ربط أي منتج بعد</p>
                                 </div>
                             </div>
-
-                            <!-- Generate Variants Button -->
-                            <button type="button" onclick="generateVariants()" class="w-full bg-antika-pink text-white py-2 rounded-lg font-bold hover:bg-antika-pink-dark transition">
-                                <i class="fas fa-magic"></i> إنشاء المتغيرات
-                            </button>
-
-                            <!-- Variants List -->
-                            <div id="variants-list-container" class="space-y-3 max-h-80 overflow-y-auto">
-                                <!-- Variants will be generated here -->
-                            </div>
+                            <input type="hidden" id="product-related-ids" value="[]">
                         </div>
                     </div>
 
