@@ -1846,9 +1846,7 @@ function searchRelatedProducts(query) {
     const matches = _allAdminProducts
         .filter(p => {
             const id = String(p._id || p.id);
-            // استثناء المنتج الحالي
             if (currentEditingProduct && id === String(currentEditingProduct)) return false;
-            // استثناء المنتجات المختارة مسبقاً
             if (_relatedSelectedIds.includes(id)) return false;
             return safeText(p.name).toLowerCase().includes(q);
         })
@@ -1857,16 +1855,24 @@ function searchRelatedProducts(query) {
     if (matches.length === 0) {
         resultsEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">لا توجد نتائج</p>';
     } else {
+        // نستخدم data-* بدل onclick لتجنب مشكلة الـ apostrophe في الأسماء
         resultsEl.innerHTML = matches.map(p => {
             const img = p.images?.[0] || '';
             const id = String(p._id || p.id);
-            return `<div onclick="addRelatedProduct('${id}','${safeText(p.name).replace(/'/g,"\'")}','${img}','${p.price || 0}')"
-                class="flex items-center gap-2 p-2 hover:bg-antika-gold/10 rounded-lg cursor-pointer transition">
+            return `<div data-rid="${id}" data-rimg="${img}" data-rprice="${p.price || 0}"
+                class="related-result-item flex items-center gap-2 p-2 hover:bg-antika-gold/10 rounded-lg cursor-pointer transition">
                 <img src="${img || 'https://via.placeholder.com/32'}" class="w-8 h-8 rounded object-cover flex-shrink-0" onerror="this.src='https://via.placeholder.com/32'">
                 <span class="text-sm text-gray-700 flex-1 truncate">${safeText(p.name)}</span>
                 <span class="text-xs text-antika-gold">${p.price} ر.س</span>
             </div>`;
         }).join('');
+
+        // ربط الكليك بعد الـ render
+        resultsEl.querySelectorAll('.related-result-item').forEach((el, i) => {
+            el.addEventListener('click', () => {
+                addRelatedProduct(el.dataset.rid, matches[i].name, el.dataset.rimg, el.dataset.rprice);
+            });
+        });
     }
     resultsEl.classList.remove('hidden');
 }
@@ -1885,16 +1891,22 @@ function addRelatedProduct(id, name, img, price) {
     const item = document.createElement('div');
     item.className = 'flex items-center gap-2 bg-antika-gold/10 rounded-lg p-2';
     item.dataset.relatedId = id;
+
+    const safeImg = img || 'https://via.placeholder.com/32';
     item.innerHTML = `
-        <img src="${img || 'https://via.placeholder.com/32'}" class="w-8 h-8 rounded object-cover flex-shrink-0" onerror="this.src='https://via.placeholder.com/32'">
-        <span class="text-sm text-gray-700 flex-1 truncate">${name}</span>
+        <img src="${safeImg}" class="w-8 h-8 rounded object-cover flex-shrink-0" onerror="this.src='https://via.placeholder.com/32'">
+        <span class="text-sm text-gray-700 flex-1 truncate"></span>
         <span class="text-xs text-antika-gold ml-2">${price} ر.س</span>
-        <button onclick="removeRelatedProduct('${id}',this)" class="text-red-400 hover:text-red-600 flex-shrink-0">
+        <button type="button" class="related-remove-btn text-red-400 hover:text-red-600 flex-shrink-0">
             <i class="fas fa-times text-xs"></i>
         </button>`;
+
+    // نضع الاسم بـ textContent لتجنب أي مشكلة XSS أو apostrophe
+    item.querySelector('span.flex-1').textContent = name;
+    item.querySelector('.related-remove-btn').addEventListener('click', () => removeRelatedProduct(id, item));
+
     list.appendChild(item);
 
-    // مسح البحث
     const input = document.getElementById('related-search-input');
     if (input) input.value = '';
     document.getElementById('related-search-results')?.classList.add('hidden');
