@@ -198,6 +198,24 @@ app.post('/api/products', requireAdmin, async (req, res) => {
     }
     if (req.body.images && req.body.images.length > 0) req.body.images = await Promise.all(req.body.images.map(img => uploadToCloudinary(img, 'antika/products')));
     const ref = await db.collection('products').add(Object.assign({}, req.body, { createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
+    const newId = ref.id;
+
+    // ربط تلقائي في الاتجاهين عند إضافة منتج جديد
+    const relatedIds = Array.isArray(req.body.relatedProductIds) ? req.body.relatedProductIds : [];
+    if (relatedIds.length > 0) {
+      await Promise.all(relatedIds.map(async (relId) => {
+        try {
+          const relDoc = await db.collection('products').doc(relId).get();
+          if (!relDoc.exists) return;
+          const relData = relDoc.data();
+          const relList = Array.isArray(relData.relatedProductIds) ? relData.relatedProductIds : [];
+          if (!relList.includes(newId)) {
+            await relDoc.ref.update({ relatedProductIds: [...relList, newId] });
+          }
+        } catch(e) {}
+      }));
+    }
+
     const doc = await ref.get();
     res.json(Object.assign({ id: ref.id }, doc.data()));
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -206,6 +224,24 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
   try {
     if (req.body.images && req.body.images.length > 0) req.body.images = await Promise.all(req.body.images.map(img => uploadToCloudinary(img, 'antika/products')));
     await db.collection('products').doc(req.params.id).update(Object.assign({}, req.body, { updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
+
+    // ربط تلقائي في الاتجاهين — كل منتج مرتبط يضاف هذا المنتج في قائمته
+    const currentId = req.params.id;
+    const newRelated = Array.isArray(req.body.relatedProductIds) ? req.body.relatedProductIds : [];
+    if (newRelated.length > 0) {
+      await Promise.all(newRelated.map(async (relId) => {
+        try {
+          const relDoc = await db.collection('products').doc(relId).get();
+          if (!relDoc.exists) return;
+          const relData = relDoc.data();
+          const relList = Array.isArray(relData.relatedProductIds) ? relData.relatedProductIds : [];
+          if (!relList.includes(currentId)) {
+            await relDoc.ref.update({ relatedProductIds: [...relList, currentId] });
+          }
+        } catch(e) { /* تجاهل الخطأ لو منتج مش موجود */ }
+      }));
+    }
+
     const doc = await db.collection('products').doc(req.params.id).get();
     res.json(Object.assign({ id: doc.id }, doc.data()));
   } catch (err) { res.status(500).json({ error: err.message }); }
