@@ -1341,6 +1341,7 @@
         // Wishlist
         function setWishlistVisual(active) {
             const shareBtn = document.getElementById('wishlistShareBtn');
+            const floatingBtn = null;
             const buttons = [floatingBtn, shareBtn].filter(Boolean);
 
             buttons.forEach((btn) => {
@@ -1357,7 +1358,7 @@
 
         function animateWishlistHeart(triggerBtn, isAdding = true) {
             const shareBtn = document.getElementById('wishlistShareBtn');
-            const targetBtn = triggerBtn || floatingBtn || shareBtn;
+            const targetBtn = triggerBtn || shareBtn;
             const targets = [floatingBtn, shareBtn].filter(Boolean);
 
             targets.forEach((btn) => {
