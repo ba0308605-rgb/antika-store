@@ -2843,13 +2843,15 @@ async function confirmDeleteReviewInProduct(reviewId, productId, productName) {
 // MAINTENANCE MODE
 async function loadMaintenanceSettings() {
   try {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem('antika_admin_token');
     const res = await fetch('/api/admin/maintenance', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (!res.ok) throw new Error('Unauthorized');
     const data = await res.json();
+    // enabled=true means maintenance is ON, toggle checked = ON
     document.getElementById('maintenance-toggle').checked = data.enabled;
-    document.getElementById('maintenance-key-input').placeholder = 'المفتاح الحالي: ' + data.key;
+    document.getElementById('maintenance-key-input').value = data.key || '';
     updateMaintenanceStatus(data.enabled, data.key);
-  } catch (e) {}
+  } catch (e) { console.error('loadMaintenanceSettings:', e); }
 }
 
 function updateMaintenanceStatus(enabled, key) {
@@ -2866,35 +2868,36 @@ function updateMaintenanceStatus(enabled, key) {
 async function toggleMaintenance() {
   const enabled = document.getElementById('maintenance-toggle').checked;
   try {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem('antika_admin_token');
     const res = await fetch('/api/admin/maintenance', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ enabled })
     });
+    if (!res.ok) throw new Error('Unauthorized');
     const data = await res.json();
     updateMaintenanceStatus(data.enabled, data.key);
     showNotification(data.enabled ? '✅ تم تفعيل وضع الصيانة' : '✅ تم إيقاف وضع الصيانة');
-  } catch (e) { showNotification('❌ حدث خطأ', 'error'); }
+  } catch (e) { showNotification('❌ حدث خطأ، حاول مرة ثانية', 'error'); }
 }
 
 async function saveMaintenanceKey() {
   const key = document.getElementById('maintenance-key-input').value.trim();
   if (key.length < 4) return showNotification('❌ المفتاح يجب أن يكون 4 أحرف على الأقل', 'error');
   try {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem('antika_admin_token');
     const enabled = document.getElementById('maintenance-toggle').checked;
     const res = await fetch('/api/admin/maintenance', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ enabled, key })
     });
+    if (!res.ok) throw new Error('Unauthorized');
     const data = await res.json();
-    document.getElementById('maintenance-key-input').value = '';
-    document.getElementById('maintenance-key-input').placeholder = 'المفتاح الحالي: ' + data.key;
+    document.getElementById('maintenance-key-input').value = data.key;
     updateMaintenanceStatus(data.enabled, data.key);
     showNotification('✅ تم حفظ المفتاح السري');
-  } catch (e) { showNotification('❌ حدث خطأ', 'error'); }
+  } catch (e) { showNotification('❌ حدث خطأ، حاول مرة ثانية', 'error'); }
 }
 
 function copyMaintenanceLink() {
