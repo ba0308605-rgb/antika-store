@@ -951,6 +951,16 @@ app.get('/robots.txt', (req, res) => {
   res.send(`User-agent: *\nAllow: /\nSitemap: https://antika-store.shop/sitemap.xml`);
 });
 
+
+// Clean URL routes
+const path = require('path');
+const pages = ['product', 'products', 'cart', 'account', 'login', 'register', 'orders', 'wishlist', 'settings', 'notifications', 'addresses', 'pages', 'admin', 'location', 'map'];
+pages.forEach(page => {
+  app.get('/' + page, (req, res) => {
+    res.sendFile(path.join(__dirname, page + '.html'));
+  });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log('\uD83D\uDE80 Server running on port ' + PORT);
