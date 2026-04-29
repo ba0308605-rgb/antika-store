@@ -156,6 +156,58 @@ async function callOTO(path, payload) {
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+// MAINTENANCE MODE
+let maintenanceMode = false;
+let maintenanceKey = process.env.MAINTENANCE_KEY || 'antika2024';
+
+// Load maintenance state from Firestore on startup
+(async () => {
+  try {
+    const doc = await db.collection('settings').doc('maintenance').get();
+    if (doc.exists) {
+      maintenanceMode = doc.data().enabled || false;
+      maintenanceKey = doc.data().key || maintenanceKey;
+    }
+  } catch (e) {}
+})();
+
+app.use((req, res, next) => {
+  // Skip for API calls, admin, and static assets
+  const isApi = req.path.startsWith('/api/');
+  const isAdmin = req.path.startsWith('/admin');
+  const isAsset = req.path.match(/\.(css|js|png|jpg|jpeg|webp|ico|svg|woff|woff2|ttf)$/);
+  if (!maintenanceMode || isApi || isAdmin || isAsset) return next();
+  // Allow access with secret key
+  if (req.query.key && req.query.key === maintenanceKey) return next();
+  // Show maintenance page
+  res.send(`<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>أنتيكا ستور - تحت الصيانة</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #fdf6f0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .container { text-align: center; padding: 40px 20px; max-width: 500px; }
+    .logo { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin-bottom: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+    h1 { color: #8B6F5E; font-size: 28px; margin-bottom: 16px; }
+    p { color: #999; font-size: 16px; line-height: 1.8; }
+    .icon { font-size: 60px; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="/images/logo.jpg" alt="أنتيكا ستور" class="logo" onerror="this.style.display='none'">
+    <div class="icon">🛠️</div>
+    <h1>المتجر تحت الصيانة</h1>
+    <p>نعمل على تحسين تجربتك<br>سنعود قريباً بشكل أفضل ✨</p>
+  </div>
+</body>
+</html>`);
+});
+
 app.use(express.static('.'));
 
 // ADMIN AUTH
@@ -167,6 +219,20 @@ app.post('/api/admin/login', (req, res) => {
   return res.json({ token, user: { name: 'Admin', username: ADMIN_USERNAME, isAdmin: true } });
 });
 app.get('/api/admin/session', requireAdmin, (req, res) => res.json({ ok: true, user: { username: req.admin.username, isAdmin: true } }));
+
+// MAINTENANCE API
+app.get('/api/admin/maintenance', requireAdmin, (req, res) => {
+  res.json({ enabled: maintenanceMode, key: maintenanceKey });
+});
+app.post('/api/admin/maintenance', requireAdmin, async (req, res) => {
+  const { enabled, key } = req.body;
+  if (typeof enabled === 'boolean') maintenanceMode = enabled;
+  if (key && key.trim().length >= 4) maintenanceKey = key.trim();
+  try {
+    await db.collection('settings').doc('maintenance').set({ enabled: maintenanceMode, key: maintenanceKey });
+  } catch (e) {}
+  res.json({ enabled: maintenanceMode, key: maintenanceKey });
+});
 
 // PRODUCTS
 app.get('/api/products', async (req, res) => {

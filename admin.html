@@ -186,6 +186,10 @@
                         <i class="fas fa-comments w-6"></i>
                         <span>التعليقات</span>
                     </button>
+                    <button onclick="showSection('maintenance'); loadMaintenanceSettings();" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
+                        <i class="fas fa-tools w-6"></i>
+                        <span>وضع الصيانة</span>
+                    </button>
                 </nav>
             </aside>
 
@@ -965,6 +969,40 @@
                                     <tr><td colspan="8" class="text-center py-8 text-gray-400">جاري التحميل...</td></tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- MAINTENANCE SECTION -->
+                <section id="maintenance-section" class="hidden space-y-6">
+                    <h2 class="text-2xl font-bold text-gray-800">🛠️ وضع الصيانة</h2>
+                    <div class="bg-white rounded-2xl p-6 shadow-sm space-y-6">
+                        <!-- Toggle -->
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-semibold text-gray-800 text-lg">تفعيل وضع الصيانة</h3>
+                                <p class="text-gray-500 text-sm mt-1">عند التفعيل، يشوف الزوار صفحة صيانة وأنت تدخل بالمفتاح السري</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="maintenance-toggle" class="sr-only peer" onchange="toggleMaintenance()">
+                                <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:right-0.5 after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-antika-gold"></div>
+                            </label>
+                        </div>
+                        <hr class="border-gray-100">
+                        <!-- Current status -->
+                        <div id="maintenance-status" class="p-4 rounded-xl bg-gray-50 text-sm text-gray-600 hidden">
+                            <p class="font-medium mb-2">🔗 رابط الدخول الخاص بك:</p>
+                            <code id="maintenance-link" class="bg-white px-3 py-2 rounded-lg block text-antika-gold font-mono text-xs break-all"></code>
+                            <button onclick="copyMaintenanceLink()" class="mt-2 text-xs text-gray-400 hover:text-gray-600">📋 نسخ الرابط</button>
+                        </div>
+                        <hr class="border-gray-100">
+                        <!-- Change key -->
+                        <div>
+                            <h3 class="font-semibold text-gray-800 mb-3">تغيير المفتاح السري</h3>
+                            <div class="flex gap-3">
+                                <input type="text" id="maintenance-key-input" placeholder="أدخل مفتاح جديد (4 أحرف على الأقل)" class="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-antika-gold">
+                                <button onclick="saveMaintenanceKey()" class="bg-antika-gold text-white px-5 py-2 rounded-xl text-sm font-medium hover:opacity-90 transition">حفظ</button>
+                            </div>
                         </div>
                     </div>
                 </section>
