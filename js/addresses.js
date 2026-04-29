@@ -141,7 +141,7 @@
         } else {
             title.innerHTML = '<i class="fas fa-map-marker-alt ml-2" style="color:var(--pink)"></i> إضافة عنوان جديد';
             resetForm();
-            goToStep1();
+            goToChoose();
         }
 
         setTimeout(() => initMap(), 300);
@@ -173,27 +173,82 @@
         disableNextBtn();
     }
 
+    function goToChoose() {
+        document.getElementById('step-choose').classList.remove('hidden');
+        document.getElementById('step-map').classList.add('hidden');
+        document.getElementById('step-details').classList.add('hidden');
+    }
+
+    function chooseMap() {
+        document.getElementById('step-choose').classList.add('hidden');
+        document.getElementById('step-map').classList.remove('hidden');
+        document.getElementById('step-details').classList.add('hidden');
+        setTimeout(() => initMap(), 200);
+    }
+
+    function chooseManual() {
+        document.getElementById('step-choose').classList.add('hidden');
+        document.getElementById('step-map').classList.add('hidden');
+        document.getElementById('step-details').classList.remove('hidden');
+    }
+
     function goToStep1() {
+        document.getElementById('step-choose').classList.add('hidden');
         document.getElementById('step-map').classList.remove('hidden');
         document.getElementById('step-details').classList.add('hidden');
         setTimeout(() => initMap(), 200);
     }
 
     function goToStep2() {
+        document.getElementById('step-choose').classList.add('hidden');
         document.getElementById('step-map').classList.add('hidden');
         document.getElementById('step-details').classList.remove('hidden');
     }
 
     function enableNextBtn() {
-        const btn = document.getElementById('next-btn');
-        btn.disabled = false;
-        btn.style.opacity = '1';
+        const btn = document.getElementById('save-map-btn');
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
     }
 
     function disableNextBtn() {
-        const btn = document.getElementById('next-btn');
-        btn.disabled = true;
-        btn.style.opacity = '0.5';
+        const btn = document.getElementById('save-map-btn');
+        if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+    }
+
+    async function saveMapAddress() {
+        if (!selectedLat || !selectedLng) { showToast('الرجاء تحديد موقعك على الخريطة', '⚠️'); return; }
+        const label = 'منزل';
+        const entry = {
+            label,
+            address: selectedAddressText || selectedLat.toFixed(5) + ', ' + selectedLng.toFixed(5),
+            lat: selectedLat, lng: selectedLng,
+            isDefault: false
+        };
+        currentUser.addresses = currentUser.addresses || [];
+        if (currentUser.addresses.length === 0) entry.isDefault = true;
+        try {
+            if (editingIndex !== null) {
+                if (currentUser.email) {
+                    const updated = await API.updateUserAddress(currentUser.email, editingIndex, entry);
+                    if (updated?.addresses) currentUser.addresses = updated.addresses;
+                    else currentUser.addresses[editingIndex] = entry;
+                } else { currentUser.addresses[editingIndex] = entry; }
+                showToast('تم تحديث العنوان', '✅');
+            } else {
+                if (currentUser.email) {
+                    const updated = await API.addUserAddress(currentUser.email, entry);
+                    if (updated?.addresses) currentUser.addresses = updated.addresses;
+                    else currentUser.addresses.push(entry);
+                } else { currentUser.addresses.push(entry); }
+                showToast('تم حفظ العنوان', '✅');
+            }
+            localStorage.setItem('antika_user', JSON.stringify(currentUser));
+            closeAddressModal();
+            renderAddresses();
+        } catch(err) {
+            console.error(err);
+            showToast('حدث خطأ أثناء الحفظ', '❌');
+        }
     }
 
     function setLabel(val) { document.getElementById('addr-label').value = val; }
