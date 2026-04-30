@@ -664,6 +664,7 @@ app.post('/api/users/:email/addresses', async (req, res) => {
 app.put('/api/users/:email/addresses/:idx', async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();
+    const idx = parseInt(req.params.idx);
     const allowed2 = ['label','address','location','lat','lng','city','district','street','building','postal','region','regionKey','isDefault'];
     const entry2 = {};
     allowed2.forEach(k => { if (req.body[k] !== undefined && req.body[k] !== null) entry2[k] = req.body[k]; });
