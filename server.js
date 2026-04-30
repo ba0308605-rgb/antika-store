@@ -652,22 +652,27 @@ app.delete('/api/users/:email', requireAdmin, async (req, res) => {
 app.post('/api/users/:email/addresses', async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();
-    const { label, address, location } = req.body;
+    const allowed = ['label','address','location','lat','lng','city','district','street','building','postal','region','regionKey','isDefault'];
+    const entry = {};
+    allowed.forEach(k => { if (req.body[k] !== undefined && req.body[k] !== null) entry[k] = req.body[k]; });
+    if (!entry.label) entry.label = 'عنوان';
     const s = await db.collection('mongo_users').where('email', '==', email).get();
-    if (s.empty) { const ref = await db.collection('mongo_users').add({ email, name: '', phone: '', addresses: [{ label, address, location }], createdAt: admin.firestore.FieldValue.serverTimestamp() }); const doc = await ref.get(); return res.json(Object.assign({ id: ref.id }, doc.data())); }
-    else { const u = s.docs[0]; const addrs = u.data().addresses || []; addrs.push({ label, address, location }); await u.ref.update({ addresses: addrs }); const doc = await u.ref.get(); return res.json(Object.assign({ id: doc.id }, doc.data())); }
+    if (s.empty) { const ref = await db.collection('mongo_users').add({ email, name: '', phone: '', addresses: [entry], createdAt: admin.firestore.FieldValue.serverTimestamp() }); const doc = await ref.get(); return res.json(Object.assign({ id: ref.id }, doc.data())); }
+    else { const u = s.docs[0]; const addrs = u.data().addresses || []; addrs.push(entry); await u.ref.update({ addresses: addrs }); const doc = await u.ref.get(); return res.json(Object.assign({ id: doc.id }, doc.data())); }
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/users/:email/addresses/:idx', async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();
-    const idx = parseInt(req.params.idx);
-    const { label, address, location } = req.body;
+    const allowed2 = ['label','address','location','lat','lng','city','district','street','building','postal','region','regionKey','isDefault'];
+    const entry2 = {};
+    allowed2.forEach(k => { if (req.body[k] !== undefined && req.body[k] !== null) entry2[k] = req.body[k]; });
+    if (!entry2.label) entry2.label = 'عنوان';
     const s = await db.collection('mongo_users').where('email', '==', email).get();
     if (s.empty) return res.status(404).json({ error: 'User not found' });
     const addrs = s.docs[0].data().addresses || [];
     if (!addrs[idx]) return res.status(404).json({ error: 'Address not found' });
-    addrs[idx] = { label, address, location };
+    addrs[idx] = entry2;
     await s.docs[0].ref.update({ addresses: addrs });
     const doc = await s.docs[0].ref.get();
     res.json(Object.assign({ id: doc.id }, doc.data()));
