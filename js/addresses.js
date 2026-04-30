@@ -65,8 +65,9 @@
             const card = document.createElement('div');
             card.className = 'address-card fade-in' + (addr.isDefault ? ' is-default' : '');
 
-            const fullAddr = [addr.district, addr.street, addr.city, addr.region]
-                .filter(Boolean).join('، ') || addr.address || 'لا توجد تفاصيل';
+            const fullAddr = addr.address && (!addr.district && !addr.street && !addr.city)
+                ? addr.address
+                : ([addr.district, addr.street, addr.city, addr.region].filter(Boolean).join('، ') || addr.address || 'لا توجد تفاصيل');
 
             card.innerHTML = `
                 <div class="flex items-start gap-4">
