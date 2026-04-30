@@ -306,69 +306,70 @@
         }
     }
 
-    async function reverseGeocode(lat, lng) {
+    function reverseGeocode(lat, lng) {
         selectedLat = lat;
         selectedLng = lng;
         try {
-            const res = await fetch(`/api/maps/geocode?lat=${lat}&lng=${lng}`);
-            const data = await res.json();
-            if (data.status === 'OK' && data.results[0]) {
-                selectedAddressText = data.results[0].formatted_address;
-                document.getElementById('selected-address-text').textContent = selectedAddressText;
-                document.getElementById('selected-address-box').classList.remove('hidden');
+            if (!geocoder) geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ location: { lat, lng }, language: 'ar', region: 'SA' }, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                    selectedAddressText = results[0].formatted_address;
+                    document.getElementById('selected-address-text').textContent = selectedAddressText;
+                    document.getElementById('selected-address-box').classList.remove('hidden');
 
-                const comps = data.results[0].address_components;
-                let detectedCity = '';
-                let detectedRegion = '';
+                    const comps = results[0].address_components;
+                    let detectedCity = '';
+                    let detectedRegion = '';
 
-                comps.forEach(c => {
-                    if (c.types.includes('route')) {
-                        const el = document.getElementById('addr-street');
-                        if (el) el.value = c.long_name;
-                    }
-                    if (c.types.includes('sublocality') || c.types.includes('neighborhood') || c.types.includes('sublocality_level_1')) {
-                        const el = document.getElementById('addr-district');
-                        if (el) el.value = c.long_name;
-                    }
-                    if (c.types.includes('postal_code')) {
-                        const el = document.getElementById('addr-postal');
-                        if (el) el.value = c.long_name;
-                    }
-                    if (c.types.includes('locality') || c.types.includes('administrative_area_level_2')) {
-                        detectedCity = c.long_name;
-                    }
-                    if (c.types.includes('administrative_area_level_1')) {
-                        detectedRegion = c.long_name;
-                    }
-                });
+                    comps.forEach(c => {
+                        if (c.types.includes('route')) {
+                            const el = document.getElementById('addr-street');
+                            if (el) el.value = c.long_name;
+                        }
+                        if (c.types.includes('sublocality') || c.types.includes('neighborhood') || c.types.includes('sublocality_level_1')) {
+                            const el = document.getElementById('addr-district');
+                            if (el) el.value = c.long_name;
+                        }
+                        if (c.types.includes('postal_code')) {
+                            const el = document.getElementById('addr-postal');
+                            if (el) el.value = c.long_name;
+                        }
+                        if (c.types.includes('locality') || c.types.includes('administrative_area_level_2')) {
+                            detectedCity = c.long_name;
+                        }
+                        if (c.types.includes('administrative_area_level_1')) {
+                            detectedRegion = c.long_name;
+                        }
+                    });
 
-                if (detectedRegion) {
-                    const regionSelect = document.getElementById('addr-region');
-                    if (regionSelect) {
-                        const options = Array.from(regionSelect.options);
-                        const match = options.find(o => detectedRegion.includes(o.text) || o.text.includes(detectedRegion));
-                        if (match) {
-                            regionSelect.value = match.value;
-                            loadCities(match.value);
-                            setTimeout(() => {
-                                if (detectedCity) {
-                                    const citySelect = document.getElementById('addr-city');
-                                    if (citySelect) {
-                                        const cityOptions = Array.from(citySelect.options);
-                                        const cityMatch = cityOptions.find(o => detectedCity.includes(o.text) || o.text.includes(detectedCity));
-                                        if (cityMatch) citySelect.value = cityMatch.value;
+                    if (detectedRegion) {
+                        const regionSelect = document.getElementById('addr-region');
+                        if (regionSelect) {
+                            const options = Array.from(regionSelect.options);
+                            const match = options.find(o => detectedRegion.includes(o.text) || o.text.includes(detectedRegion));
+                            if (match) {
+                                regionSelect.value = match.value;
+                                loadCities(match.value);
+                                setTimeout(() => {
+                                    if (detectedCity) {
+                                        const citySelect = document.getElementById('addr-city');
+                                        if (citySelect) {
+                                            const cityOptions = Array.from(citySelect.options);
+                                            const cityMatch = cityOptions.find(o => detectedCity.includes(o.text) || o.text.includes(detectedCity));
+                                            if (cityMatch) citySelect.value = cityMatch.value;
+                                        }
                                     }
-                                }
-                            }, 500);
+                                }, 500);
+                            }
                         }
                     }
+                } else {
+                    selectedAddressText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                    document.getElementById('selected-address-text').textContent = selectedAddressText;
+                    document.getElementById('selected-address-box').classList.remove('hidden');
                 }
-            } else {
-                selectedAddressText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-                document.getElementById('selected-address-text').textContent = selectedAddressText;
-                document.getElementById('selected-address-box').classList.remove('hidden');
-            }
-            enableNextBtn();
+                enableNextBtn();
+            });
         } catch (err) {
             console.error('Geocoding error:', err);
             selectedAddressText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
