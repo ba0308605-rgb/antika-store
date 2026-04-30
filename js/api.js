@@ -86,7 +86,10 @@ const API = {
                 headers: this.getAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify(productData)
             });
-            if (!response.ok) throw new Error('Failed to add product');
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error || errData.message || 'Failed to add product');
+            }
             return await response.json();
         } catch (error) {
             console.error('Error adding product:', error);
