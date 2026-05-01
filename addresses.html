@@ -221,8 +221,33 @@
                 <button class="modal-close" onclick="closeAddressModal()">×</button>
             </div>
 
+            <!-- Step 0: Choose method -->
+            <div class="modal-body hidden" id="step-choose">
+                <p class="text-sm mb-5 text-center font-semibold" style="color:var(--muted)">كيف تريد إضافة عنوانك؟</p>
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="chooseMap()" class="flex flex-col items-center justify-center gap-3 p-5 rounded-2xl border-2 transition hover:border-amber-400 hover:bg-amber-50" style="border-color:var(--gold-light);background:var(--bg)">
+                        <div class="w-14 h-14 rounded-full flex items-center justify-center" style="background:linear-gradient(135deg,var(--gold-light),var(--gold))">
+                            <i class="fas fa-map-location-dot text-2xl text-white"></i>
+                        </div>
+                        <div class="text-center">
+                            <p class="font-bold text-sm" style="color:var(--text)">تحديد من الخريطة</p>
+                            <p class="text-xs mt-1" style="color:var(--muted)">حدد موقعك بدقة</p>
+                        </div>
+                    </button>
+                    <button onclick="chooseManual()" class="flex flex-col items-center justify-center gap-3 p-5 rounded-2xl border-2 transition hover:border-amber-400 hover:bg-amber-50" style="border-color:var(--gold-light);background:var(--bg)">
+                        <div class="w-14 h-14 rounded-full flex items-center justify-center" style="background:linear-gradient(135deg,#c4b5fd,#8b5cf6)">
+                            <i class="fas fa-keyboard text-2xl text-white"></i>
+                        </div>
+                        <div class="text-center">
+                            <p class="font-bold text-sm" style="color:var(--text)">إدخال يدوي</p>
+                            <p class="text-xs mt-1" style="color:var(--muted)">اكتب عنوانك بنفسك</p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
             <!-- Step 1: Map -->
-            <div class="modal-body" id="step-map">
+            <div class="modal-body hidden" id="step-map">
                 <p class="text-sm mb-4 font-semibold" style="color:var(--muted)">
                     <i class="fas fa-info-circle ml-1" style="color:var(--gold)"></i>
                     حدد موقعك على الخريطة أو ابحث بالعنوان
@@ -269,7 +294,7 @@
 
             <!-- Step 2: Details -->
             <div class="modal-body hidden" id="step-details">
-                <button onclick="goToStep1()" class="flex items-center gap-2 text-sm mb-5 font-semibold" style="color:var(--gold-dark);background:none;border:none;cursor:pointer">
+                <button onclick="goToChoose()" class="flex items-center gap-2 text-sm mb-5 font-semibold" style="color:var(--gold-dark);background:none;border:none;cursor:pointer">
                     <i class="fas fa-arrow-right"></i> العودة للخريطة
                 </button>
 
