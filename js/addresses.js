@@ -218,7 +218,8 @@
 
     async function saveMapAddress() {
         if (!selectedLat || !selectedLng) { showToast('الرجاء تحديد موقعك على الخريطة', '⚠️'); return; }
-        const label = 'منزل';
+        const labelInput = document.getElementById('map-label-input');
+        const label = (labelInput && labelInput.value.trim()) ? labelInput.value.trim() : 'منزل';
         const entry = {
             label,
             address: selectedAddressText || selectedLat.toFixed(5) + ', ' + selectedLng.toFixed(5),
