@@ -975,6 +975,22 @@ function compressImage(file, maxWidth, quality) {
     });
 }
 
+function handleDroppedFiles(files) {
+    if (!files || !files.length) return;
+    const input = document.getElementById('product-images');
+    const dt = new DataTransfer();
+    // Add existing files
+    if (input.files) {
+        for (const f of input.files) dt.items.add(f);
+    }
+    // Add dropped files
+    for (const f of files) {
+        if (f.type.startsWith('image/')) dt.items.add(f);
+    }
+    input.files = dt.files;
+    previewMultipleImages(input);
+}
+
 async function previewMultipleImages(input) {
     const container = document.getElementById('images-preview-container');
     const dataInput = document.getElementById('product-images-data');

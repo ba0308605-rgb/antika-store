@@ -1035,12 +1035,19 @@
                     <!-- Multiple Images Upload -->
                     <div class="md:col-span-2">
                         <label class="block text-gray-700 font-bold mb-2">صور المنتج:</label>
-                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-antika-pink transition">
+                        <div id="image-drop-zone" class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-antika-pink transition cursor-pointer"
+                            onclick="document.getElementById('product-images').click()"
+                            ondragover="event.preventDefault(); this.classList.add('border-antika-pink','bg-pink-50')"
+                            ondragleave="this.classList.remove('border-antika-pink','bg-pink-50')"
+                            ondrop="event.preventDefault(); this.classList.remove('border-antika-pink','bg-pink-50'); handleDroppedFiles(event.dataTransfer.files)">
                             <input type="file" id="product-images" accept="image/*" multiple class="hidden" onchange="previewMultipleImages(this)">
-                            <button type="button" onclick="document.getElementById('product-images').click()" class="bg-antika-gold text-white px-4 py-2 rounded-lg mb-2">
-                                <i class="fas fa-images"></i> اختر الصور
+                            <i class="fas fa-cloud-upload-alt text-3xl text-gray-300 mb-2"></i>
+                            <p class="text-gray-600 font-medium mb-1">اسحب الصور وأفلتها هنا</p>
+                            <p class="text-gray-400 text-sm mb-3">أو</p>
+                            <button type="button" class="bg-antika-gold text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-images ml-1"></i> اختر الصور
                             </button>
-                            <p class="text-gray-500 text-sm">يمكنك اختيار أكثر من صورة</p>
+                            <p class="text-gray-400 text-xs mt-2">يمكنك اختيار أكثر من صورة</p>
                         </div>
                         <div id="images-preview-container" class="flex gap-2 mt-4 flex-wrap">
                         </div>
