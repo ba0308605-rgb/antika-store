@@ -1293,7 +1293,7 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
     const productData = {
         name: document.getElementById('product-name')?.value || '',
         sku: skuValue,
-        price: originalPrice,
+        price: salePrice,
         categories: selectedCategories,
         stock: parseInt(document.getElementById('product-stock')?.value) || 0,
         stockDisplay: document.getElementById('stock-display')?.value || 'number',
@@ -2286,7 +2286,7 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
         const productData = {
             name: document.getElementById('product-name')?.value || '',
             sku: skuValue,
-            price: originalPrice,
+            price: salePrice,
             categories: selectedCategories,
             stock: parseInt(document.getElementById('product-stock')?.value) || 0,
             stockDisplay: document.getElementById('stock-display')?.value || 'number',
