@@ -851,11 +851,13 @@ function openProductModal(productId = null) {
     if (productId) {
         if (title) title.textContent = 'تعديل منتج';
         modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
         // انتظر تحميل التصنيفات أولاً ثم حمّل بيانات المنتج
         populateCategorySelects().then(() => loadProductForEdit(productId));
     } else {
         if (title) title.textContent = 'إضافة منتج جديد';
         modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
         populateCategorySelects();
     }
 }
@@ -949,6 +951,7 @@ async function loadProductForEdit(productId) {
 function closeProductModal() {
     const modal = document.getElementById('product-modal');
     if (modal) modal.classList.add('hidden');
+    document.body.style.overflow = '';
 }
 
 // Image preview functions
@@ -975,6 +978,21 @@ function compressImage(file, maxWidth, quality) {
         };
         reader.readAsDataURL(file);
     });
+}
+
+function handleDroppedFiles(files) {
+    if (!files || !files.length) return;
+    const input = document.getElementById('product-images');
+    if (!input) return;
+    const dt = new DataTransfer();
+    if (input.files) {
+        for (const f of input.files) dt.items.add(f);
+    }
+    for (const f of files) {
+        if (f.type.startsWith('image/')) dt.items.add(f);
+    }
+    input.files = dt.files;
+    previewMultipleImages(input);
 }
 
 async function previewMultipleImages(input) {
