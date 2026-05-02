@@ -1060,14 +1060,26 @@
                     </div>
 
                     <div>
-                        <label class="block text-gray-700 font-bold mb-2">السعر الأصلي (ر.س):</label>
-                        <input type="number" id="product-original-price" required min="0" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" oninput="calculateSalePrice()">
+                        <label class="block text-gray-700 font-bold mb-2">
+                            سعر التكلفة (ر.س):
+                            <span class="text-xs text-gray-400 font-normal mr-1">اختياري — لا يظهر للعميل</span>
+                        </label>
+                        <input type="number" id="product-original-price" min="0" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="للحساب الداخلي فقط" oninput="calculateProfit()">
+                        <p id="profit-display" class="text-sm text-green-600 mt-1 font-bold"></p>
                     </div>
 
                     <div>
-                        <label class="block text-gray-700 font-bold mb-2">سعر البيع (ر.س):</label>
-                        <input type="number" id="product-sale-price" required min="0" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none bg-antika-lavender/30" oninput="calculateDiscount()">
-                        <p id="discount-display" class="text-sm text-antika-pink-dark mt-1 font-bold"></p>
+                        <label class="block text-gray-700 font-bold mb-2">سعر البيع (ر.س): <span class="text-antika-pink text-xs">*</span></label>
+                        <input type="number" id="product-sale-price" required min="0" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" oninput="calculateProfit()">
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-gray-700 font-bold mb-2">سعر قبل الخصم (ر.س):</label>
+                        <div class="flex items-center gap-3">
+                            <input type="number" id="product-before-discount" min="0" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="اتركه فارغاً إذا لا يوجد خصم">
+                            <div id="discount-badge-preview" class="hidden px-3 py-2 rounded-lg text-sm font-bold text-white" style="background:var(--pink, #e91e8c); white-space:nowrap"></div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">إذا أضفت سعراً هنا، يظهر للعميل مشطوباً ويحسب نسبة الخصم تلقائياً</p>
                     </div>
 
                     <div>

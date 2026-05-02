@@ -891,7 +891,9 @@ async function loadProductForEdit(productId) {
             console.log('📝 SKU loaded:', product.sku, 'Input value:', skuInput.value);
         }
         if (originalPriceInput) originalPriceInput.value = product.price || '';
-        if (salePriceInput) salePriceInput.value = product.discountPrice || product.price || '';
+        if (salePriceInput) salePriceInput.value = product.salePrice || product.discountPrice || product.price || '';
+        const beforeDiscountInput = document.getElementById('product-before-discount');
+        if (beforeDiscountInput) beforeDiscountInput.value = product.beforeDiscount || product.originalDisplayPrice || '';
         if (stockInput) stockInput.value = product.stock || 0;
         if (stockDisplayInput) stockDisplayInput.value = product.stockDisplay || 'number';
         if (descriptionInput) descriptionInput.value = product.description || '';
@@ -973,22 +975,6 @@ function compressImage(file, maxWidth, quality) {
         };
         reader.readAsDataURL(file);
     });
-}
-
-function handleDroppedFiles(files) {
-    if (!files || !files.length) return;
-    const input = document.getElementById('product-images');
-    const dt = new DataTransfer();
-    // Add existing files
-    if (input.files) {
-        for (const f of input.files) dt.items.add(f);
-    }
-    // Add dropped files
-    for (const f of files) {
-        if (f.type.startsWith('image/')) dt.items.add(f);
-    }
-    input.files = dt.files;
-    previewMultipleImages(input);
 }
 
 async function previewMultipleImages(input) {
@@ -1110,27 +1096,48 @@ function removeImage(index) {
 
 // Price calculations
 function calculateSalePrice() {
-    const originalPrice = parseFloat(document.getElementById('product-original-price')?.value) || 0;
-    const salePriceInput = document.getElementById('product-sale-price');
-    
-    if (salePriceInput && !salePriceInput.value) {
-        salePriceInput.value = originalPrice;
-    }
-    calculateDiscount();
+    calculateProfit();
 }
 
 function calculateDiscount() {
-    const originalPrice = parseFloat(document.getElementById('product-original-price')?.value) || 0;
+    calculateProfit();
+}
+
+function calculateProfit() {
+    const costPrice = parseFloat(document.getElementById('product-original-price')?.value) || 0;
     const salePrice = parseFloat(document.getElementById('product-sale-price')?.value) || 0;
-    const display = document.getElementById('discount-display');
-    
-    if (!display) return;
-    
-    if (originalPrice > 0 && salePrice > 0 && salePrice < originalPrice) {
-        const discount = Math.round(((originalPrice - salePrice) / originalPrice) * 100);
-        display.textContent = `خصم ${discount}% (وفر ${originalPrice - salePrice} ر.س)`;
-    } else {
-        display.textContent = '';
+    const beforeDiscount = parseFloat(document.getElementById('product-before-discount')?.value) || 0;
+
+    // Show profit
+    const profitDisplay = document.getElementById('profit-display');
+    if (profitDisplay) {
+        if (costPrice > 0 && salePrice > 0) {
+            const profit = salePrice - costPrice;
+            const profitPct = Math.round((profit / costPrice) * 100);
+            if (profit > 0) {
+                profitDisplay.textContent = `الربح: ${profit.toFixed(2)} ر.س (${profitPct}%)`;
+                profitDisplay.className = 'text-sm text-green-600 mt-1 font-bold';
+            } else if (profit < 0) {
+                profitDisplay.textContent = `خسارة: ${Math.abs(profit).toFixed(2)} ر.س`;
+                profitDisplay.className = 'text-sm text-red-500 mt-1 font-bold';
+            } else {
+                profitDisplay.textContent = '';
+            }
+        } else {
+            profitDisplay.textContent = '';
+        }
+    }
+
+    // Show discount badge preview
+    const badge = document.getElementById('discount-badge-preview');
+    if (badge) {
+        if (beforeDiscount > 0 && salePrice > 0 && beforeDiscount > salePrice) {
+            const pct = Math.round(((beforeDiscount - salePrice) / beforeDiscount) * 100);
+            badge.textContent = `خصم ${pct}%`;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
     }
 }
 
@@ -1284,14 +1291,23 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
         productData.stockText = document.getElementById('stock-text')?.value || 'متوفر';
     }
 
-    // Discount price
-    if (salePrice < originalPrice) {
+    // Sale price
+    productData.salePrice = salePrice;
+
+    // Before discount (display price for customer)
+    const beforeDiscount = parseFloat(document.getElementById('product-before-discount')?.value) || 0;
+    if (beforeDiscount > salePrice && beforeDiscount > 0) {
+        productData.beforeDiscount = beforeDiscount;
         productData.discountPrice = salePrice;
-        productData.discountPercentage = Math.round(((originalPrice - salePrice) / originalPrice) * 100);
+        productData.discountPercentage = Math.round(((beforeDiscount - salePrice) / beforeDiscount) * 100);
     } else {
+        productData.beforeDiscount = null;
         productData.discountPrice = null;
         productData.discountPercentage = null;
     }
+
+    // Cost price (internal only)
+    productData.costPrice = parseFloat(document.getElementById('product-original-price')?.value) || null;
 
     // New product with expiry date
     const newCheckbox = document.getElementById('product-new');
@@ -2269,13 +2285,19 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
         }
 
         // Discount price
-        if (salePrice < originalPrice) {
+        // Sale price
+        productData.salePrice = salePrice;
+        const beforeDiscount2 = parseFloat(document.getElementById('product-before-discount')?.value) || 0;
+        if (beforeDiscount2 > salePrice && beforeDiscount2 > 0) {
+            productData.beforeDiscount = beforeDiscount2;
             productData.discountPrice = salePrice;
-            productData.discountPercentage = Math.round(((originalPrice - salePrice) / originalPrice) * 100);
+            productData.discountPercentage = Math.round(((beforeDiscount2 - salePrice) / beforeDiscount2) * 100);
         } else {
+            productData.beforeDiscount = null;
             productData.discountPrice = null;
             productData.discountPercentage = null;
         }
+        productData.costPrice = parseFloat(document.getElementById('product-original-price')?.value) || null;
 
         // New product with expiry date
         const newCheckbox = document.getElementById('product-new');
