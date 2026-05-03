@@ -892,8 +892,8 @@ async function loadProductForEdit(productId) {
             skuInput.value = product.sku || '';
             console.log('📝 SKU loaded:', product.sku, 'Input value:', skuInput.value);
         }
-        if (originalPriceInput) originalPriceInput.value = product.price || '';
-        if (salePriceInput) salePriceInput.value = product.salePrice || product.discountPrice || product.price || '';
+        if (originalPriceInput) originalPriceInput.value = product.costPrice || '';
+        if (salePriceInput) salePriceInput.value = product.salePrice || product.price || '';
         const beforeDiscountInput = document.getElementById('product-before-discount');
         if (beforeDiscountInput) beforeDiscountInput.value = product.beforeDiscount || product.originalDisplayPrice || '';
         if (stockInput) stockInput.value = product.stock || 0;
