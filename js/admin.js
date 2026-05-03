@@ -980,19 +980,29 @@ function compressImage(file, maxWidth, quality) {
     });
 }
 
-function handleDroppedFiles(files) {
+async function handleDroppedFiles(files) {
     if (!files || !files.length) return;
-    const input = document.getElementById('product-images');
-    if (!input) return;
-    const dt = new DataTransfer();
-    if (input.files) {
-        for (const f of input.files) dt.items.add(f);
+    const container = document.getElementById('images-preview-container');
+    const dataInput = document.getElementById('product-images-data');
+    if (!container || !dataInput) return;
+
+    const isMobile = window.innerWidth < 768;
+    const maxWidth = isMobile ? 1200 : 1600;
+    const quality = isMobile ? 0.75 : 0.85;
+
+    let currentImages = JSON.parse(dataInput.value || '[]');
+
+    for (const file of Array.from(files)) {
+        if (!file.type.startsWith('image/')) continue;
+        try {
+            const compressed = await compressImage(file, maxWidth, quality);
+            currentImages.push(compressed);
+            dataInput.value = JSON.stringify(currentImages);
+            renderImagePreviews(currentImages);
+        } catch(e) {
+            console.error('Error compressing image:', e);
+        }
     }
-    for (const f of files) {
-        if (f.type.startsWith('image/')) dt.items.add(f);
-    }
-    input.files = dt.files;
-    previewMultipleImages(input);
 }
 
 async function previewMultipleImages(input) {
