@@ -770,8 +770,13 @@ function renderAdminProducts() {
 
             return `
             <div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
-                <div class="relative aspect-square">
-                    <img src="${imageUrl}" class="w-full h-full object-cover">
+                <div class="relative aspect-square group">
+                    <img src="${imageUrl}" class="w-full h-full object-cover cursor-default">
+                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <a href="${imageUrl}" target="_blank" class="bg-white/90 text-gray-700 px-3 py-1 rounded-lg text-xs font-bold hover:bg-white transition">
+                            <i class="fas fa-eye ml-1"></i> عرض
+                        </a>
+                    </div>
                     ${hasDiscount ? `<div class="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">-${Math.round(product.discountPercentage || 0)}%</div>` : ''}
                     ${isNew ? `<div class="absolute top-2 right-2 bg-antika-pink text-white px-2 py-1 rounded text-xs font-bold">جديد</div>` : ''}
                     ${product.images && product.images.length > 1 ? `<div class="absolute bottom-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs"><i class="fas fa-images"></i> ${product.images.length}</div>` : ''}
@@ -892,8 +897,8 @@ async function loadProductForEdit(productId) {
             skuInput.value = product.sku || '';
             console.log('📝 SKU loaded:', product.sku, 'Input value:', skuInput.value);
         }
-        if (originalPriceInput) originalPriceInput.value = product.costPrice || '';
-        if (salePriceInput) salePriceInput.value = product.salePrice || product.price || '';
+        if (originalPriceInput) originalPriceInput.value = product.price || '';
+        if (salePriceInput) salePriceInput.value = product.salePrice || product.discountPrice || product.price || '';
         const beforeDiscountInput = document.getElementById('product-before-discount');
         if (beforeDiscountInput) beforeDiscountInput.value = product.beforeDiscount || product.originalDisplayPrice || '';
         if (stockInput) stockInput.value = product.stock || 0;
