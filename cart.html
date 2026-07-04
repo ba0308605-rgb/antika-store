@@ -1329,13 +1329,15 @@
                 }
 
                 // ---- ONLINE PAYMENT: open Moyasar ----
-                if (paymentMethod === 'online') {
+                // TEMP: bypass payment gateway for admin-testing - REMOVE THIS BLOCK BEFORE LAUNCH
+                if (false && paymentMethod === 'online') {
                     const submitBtn = document.querySelector('#checkout-form button[type="submit"]');
                     if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'جارٍ التحضير...'; }
                     openMoyasarModal(totals.total, orderData);
                     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'تأكيد الطلب'; }
                     return;
                 }
+                // END TEMP BYPASS
 
                 // ---- COD: create order directly ----
                 await API.createOrder(orderData);
