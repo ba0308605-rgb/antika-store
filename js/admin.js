@@ -406,6 +406,14 @@ function renderRecentOrders(orders) {
         cancelled: ['ملغي', 'bg-red-100 text-red-700'],
     };
 
+    const sortedAllAsc = [...orders].sort((a, b) => {
+        const da = new Date(a.date || a.createdAt || 0).getTime();
+        const db = new Date(b.date || b.createdAt || 0).getTime();
+        return da - db;
+    });
+    const recentSeqMap = {};
+    sortedAllAsc.forEach((o, idx) => { recentSeqMap[o.id || o._id] = idx + 1; });
+
     container.innerHTML = `
         <table class="w-full text-sm">
             <thead>
@@ -422,10 +430,10 @@ function renderRecentOrders(orders) {
                     const [statusText, statusClass] = statusMap[o.status] || ['غير معروف', 'bg-gray-100 text-gray-500'];
                     const date = new Date(o.createdAt || o.date || Date.now()).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' });
                     const customer = o.customerName || o.customerEmail?.split('@')[0] || 'عميل';
-                    const orderId = String(o.id || o._id || '').slice(-6) || '——';
+                    const orderSeq = recentSeqMap[o.id || o._id] || '——';
                     return `
                         <tr class="hover:bg-gray-50 transition">
-                            <td class="py-3 font-mono text-gray-500 text-xs">#${orderId}</td>
+                            <td class="py-3 font-mono text-gray-500 text-xs">#${orderSeq}</td>
                             <td class="py-3 text-gray-700 font-medium">${customer}</td>
                             <td class="py-3 text-gray-400 hidden md:table-cell">${date}</td>
                             <td class="py-3 text-antika-gold font-bold">${Number(o.total || 0).toLocaleString('ar-SA')} ر.س</td>
@@ -459,15 +467,25 @@ async function loadOrders() {
             return;
         }
         
+        // ترقيم تسلسلي: الطلب الأقدم = #1، والأحدث يأخذ أكبر رقم
+        const sortedByDateAsc = [...orders].sort((a, b) => {
+            const da = new Date(a.date || a.createdAt || 0).getTime();
+            const db = new Date(b.date || b.createdAt || 0).getTime();
+            return da - db;
+        });
+        const seqMap = {};
+        sortedByDateAsc.forEach((o, idx) => { seqMap[o.id || o._id] = idx + 1; });
+
         container.innerHTML = orders.map(order => {
             const orderId = order._id || order.id;
+            const orderSeq = seqMap[orderId] || '—';
             const orderDate = order.date ? new Date(order.date).toLocaleString('ar-SA') : '-';
             return `
             <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden mb-4">
                 <div class="p-4 border-b border-gray-100 bg-gray-50">
                     <div class="flex justify-between items-center flex-wrap gap-2">
                         <div class="flex items-center gap-3">
-                            <span class="font-bold text-gray-800">طلب #${orderId}</span>
+                            <span class="font-bold text-gray-800">طلب #${orderSeq}</span>
                             <span class="text-sm text-gray-500">${orderDate}</span>
                         </div>
                         <span class="px-3 py-1 rounded-full text-sm font-semibold ${getOrderStatusClass(order.status)}">
@@ -483,6 +501,13 @@ async function loadOrders() {
                             <p class="text-sm text-gray-600"><i class="fas fa-phone ml-2 text-antika-gold"></i>${order.customerPhone}</p>
                             <p class="text-sm text-gray-600"><i class="fas fa-envelope ml-2 text-antika-gold"></i>${safeText(order.customerEmail)}</p>
                             <p class="text-sm text-gray-600"><i class="fas fa-map-marker-alt ml-2 text-antika-gold"></i>${safeText(order.customerAddress)}</p>
+                            ${order.location && order.location.coordinates ? `
+                            <p class="text-sm mt-1">
+                                <a href="https://www.google.com/maps?q=${order.location.coordinates[1]},${order.location.coordinates[0]}" target="_blank" class="text-blue-600 hover:underline">
+                                    <i class="fas fa-location-dot ml-1"></i> عرض موقع العميل على الخريطة
+                                </a>
+                            </p>` : `
+                            <p class="text-xs text-gray-400 mt-1">لا يوجد موقع GPS محفوظ لهذا الطلب</p>`}
                         </div>
                         <div>
                             <h4 class="font-bold text-gray-700 mb-2">ملخص الطلب</h4>
