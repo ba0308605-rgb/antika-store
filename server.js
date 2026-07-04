@@ -179,7 +179,13 @@ app.use((req, res, next) => {
   const isAsset = req.path.match(/\.(css|js|png|jpg|jpeg|webp|ico|svg|woff|woff2|ttf)$/);
   if (!maintenanceMode || isApi || isAdmin || isAsset) return next();
   // Allow access with secret key
-  if (req.query.key && req.query.key === maintenanceKey) return next();
+  if (req.query.key && req.query.key === maintenanceKey) {
+    res.cookie('maintenance_bypass', maintenanceKey, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: false, sameSite: 'lax' });
+    return next();
+  }
+  const cookies = req.headers.cookie || '';
+  const match = cookies.match(/maintenance_bypass=([^;]+)/);
+  if (match && decodeURIComponent(match[1]) === maintenanceKey) return next();
   // Show maintenance page
   res.send(`<!DOCTYPE html>
 <html lang="ar" dir="rtl">
