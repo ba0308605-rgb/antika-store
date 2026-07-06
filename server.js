@@ -552,7 +552,7 @@ app.put('/api/orders/:id', requireAdmin, async (req, res) => {
     const doc = await ref.get();
     if (!doc.exists) return res.status(404).json({ error: 'Order not found' });
     const order = Object.assign({ id: doc.id }, doc.data());
-    const allowed = ['status','shippingCarrier','trackingNumber','trackingUrl','shipmentReference','shippingMethod','shippingMethodLabel','shippingCity','shippingRegion','shippingEta','shippingCost','shippingBaseFee','shippingMethodExtraFee','codFee','paymentMethod','otoTrackingNumber','otoAwbUrl','otoStatus','otoDcStatus','total'];
+    const allowed = ['status','shippingCarrier','trackingNumber','trackingUrl','shipmentReference','shippingMethod','shippingMethodLabel','shippingCity','shippingRegion','shippingEta','shippingCost','shippingBaseFee','shippingMethodExtraFee','codFee','paymentMethod','otoTrackingNumber','otoAwbUrl','otoStatus','otoDcStatus','total','weight','awaitingPaymentSince'];
     const updates = {};
     const before = { status: String(order.status || ''), trackingNumber: String(order.trackingNumber || '') };
     for (const field of allowed) { if (Object.prototype.hasOwnProperty.call(req.body, field) && req.body[field] !== undefined) updates[field] = req.body[field]; }

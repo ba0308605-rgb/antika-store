@@ -211,7 +211,7 @@ async function loadDashboard() {
         // ---- إحصائيات ----
         const discounted = products.filter(p => p.discountPrice && p.discountPrice < p.price);
         const revenue = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-        const pendingOrders = orders.filter(o => ['pending','processing'].includes(o.status)).length;
+        const pendingOrders = orders.filter(o => ['pending','confirming_availability','awaiting_shipping_payment','processing'].includes(o.status)).length;
 
         // عدد العملاء الفريدين
         const uniqueCustomers = new Set(orders.map(o => o.customerEmail).filter(Boolean)).size;
@@ -264,7 +264,7 @@ function renderAlerts(products, orders) {
     }
 
     // طلبات جديدة بانتظار المعالجة
-    const newOrders = orders.filter(o => o.status === 'pending').length;
+    const newOrders = orders.filter(o => o.status === 'pending' || o.status === 'confirming_availability').length;
     if (newOrders > 0) {
         alerts.push(`
             <div class="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm">
@@ -518,7 +518,8 @@ async function loadOrders() {
                             <p class="text-sm text-gray-600">عدد المنتجات: ${order.items.length}</p>
                             <p class="text-sm text-gray-600">طريقة الدفع: ${order.paymentMethod}</p>
                             <p class="text-sm text-gray-600">المدينة: ${order.shippingCity || 'غير محددة'}</p>
-                            <p class="text-sm text-gray-600">رسوم الشحن: ${Number(order.shippingCost || 0).toFixed(2)} ر.س</p>
+                            <p class="text-sm text-gray-600">الوزن: ${order.weight ? order.weight + ' كجم' : '-'}</p>
+                            <p class="text-sm text-gray-600">رسوم الشحن: ${order.shippingCost != null ? Number(order.shippingCost).toFixed(2) + ' ر.س' : '-'}</p>
                             <p class="text-sm text-gray-600">المدة المتوقعة: ${order.shippingEta || '-'}</p>
                             <p class="text-sm text-gray-600">تتبع OTO: ${order.otoTrackingNumber || '-'}</p>
                             <p class="text-sm text-gray-600">مرجع OTO: ${order.otoOrderId || '-'}</p>
@@ -542,7 +543,7 @@ async function loadOrders() {
                     </div>
                     <div class="border-t border-gray-100 pt-4 mt-4 grid grid-cols-2 md:grid-cols-7 gap-2">
                         <button onclick="setShippingCostAndInvoice('${orderId}', ${order.items.reduce((s, it) => s + (Number(it.price)||0) * (Number(it.quantity)||1), 0)})" class="flex-1 bg-red-100 text-red-700 py-2 rounded-lg hover:bg-red-200 transition text-sm">
-                            تأكيد التوفر + تحديد الشحن
+                            تحديد الوزن + السعر النهائي
                         </button>
                         <button onclick="updateOrderStatus('${orderId}', 'processing')" class="flex-1 bg-blue-100 text-blue-600 py-2 rounded-lg hover:bg-blue-200 transition text-sm">
                             قيد التجهيز
@@ -583,8 +584,9 @@ function toggleOrderDetails(orderId) {
 
 function getOrderStatusClass(status) {
     const classes = {
-        'pending': 'bg-yellow-100 text-yellow-600',
-        'awaiting_shipping_payment': 'bg-red-100 text-red-700',
+        'pending': 'bg-red-100 text-red-700',
+        'confirming_availability': 'bg-red-100 text-red-700',
+        'awaiting_shipping_payment': 'bg-orange-100 text-orange-700',
         'processing': 'bg-blue-100 text-blue-600',
         'shipped': 'bg-purple-100 text-purple-600',
         'out_for_delivery': 'bg-orange-100 text-orange-600',
@@ -596,8 +598,9 @@ function getOrderStatusClass(status) {
 
 function getOrderStatusText(status) {
     const texts = {
-        'pending': 'تحت المراجعة (تأكيد التوفر)',
-        'awaiting_shipping_payment': 'بانتظار دفع تكلفة الشحن',
+        'pending': 'تأكيد التوفر + احتساب الشحن',
+        'confirming_availability': 'تأكيد التوفر + احتساب الشحن',
+        'awaiting_shipping_payment': 'بانتظار الدفع',
         'processing': 'قيد التجهيز',
         'shipped': 'تم الشحن',
         'out_for_delivery': 'خرج للتوصيل',
@@ -622,9 +625,16 @@ async function updateOrderStatus(orderId, status) {
 }
 
 async function setShippingCostAndInvoice(orderId, itemsSubtotal) {
-    const input = prompt('أدخل تكلفة الشحن الفعلية بعد الوزن (ر.س):');
-    if (input === null) return;
-    const shippingCost = Number(input);
+    const weightInput = prompt('أدخل وزن الطلب بعد التغليف (كجم):');
+    if (weightInput === null) return;
+    const weight = Number(weightInput);
+    if (!Number.isFinite(weight) || weight <= 0) {
+        showNotification('وزن غير صحيح', 'error');
+        return;
+    }
+    const shippingInput = prompt('أدخل تكلفة الشحن الفعلية حسب الوزن (ر.س):');
+    if (shippingInput === null) return;
+    const shippingCost = Number(shippingInput);
     if (!Number.isFinite(shippingCost) || shippingCost < 0) {
         showNotification('قيمة غير صحيحة', 'error');
         return;
@@ -635,10 +645,10 @@ async function setShippingCostAndInvoice(orderId, itemsSubtotal) {
         const res = await fetch('/api/orders/' + orderId, {
             method: 'PUT',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'awaiting_shipping_payment', shippingCost, total })
+            body: JSON.stringify({ status: 'awaiting_shipping_payment', weight, shippingCost, total, awaitingPaymentSince: new Date().toISOString() })
         });
         if (!res.ok) throw new Error('فشل التحديث');
-        showNotification('تم تحديد تكلفة الشحن (' + shippingCost + ' ر.س) والإجمالي (' + total + ' ر.س). العميل يقدر الآن يكمل الدفع.');
+        showNotification('تم تحديد الوزن (' + weight + ' كجم) والشحن (' + shippingCost + ' ر.س) والإجمالي (' + total + ' ر.س). العميل يقدر الآن يكمل الدفع.');
         await loadOrders();
         await updateStats();
     } catch (error) {

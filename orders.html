@@ -160,12 +160,13 @@
             return {
                 id: order.id || order._id || ('order_' + Date.now()),
                 date: order.date || order.createdAt || new Date().toISOString(),
-                status: order.status || 'processing',
+                status: order.status || 'confirming_availability',
                 total: Number(order.total || 0),
                 items: Array.isArray(order.items) ? order.items : [],
                 customerEmail: (order.customerEmail || '').toLowerCase(),
                 shippingCity: order.shippingCity || '',
-                shippingCost: order.shippingCost || 0
+                shippingCost: order.shippingCost,
+                weight: order.weight
             };
         }
 
@@ -173,9 +174,9 @@
             if (status === 'delivered') return 'تم التوصيل';
             if (status === 'out_for_delivery') return 'جاري التوصيل';
             if (status === 'shipped') return 'تم الشحن';
-            if (status === 'awaiting_shipping_payment') return 'بانتظار إتمام الدفع';
+            if (status === 'awaiting_shipping_payment') return 'بانتظار الدفع';
             if (status === 'processing') return 'قيد التجهيز';
-            if (status === 'pending') return 'تحت المراجعة';
+            if (status === 'confirming_availability' || status === 'pending') return 'تأكيد التوفر + احتساب الشحن';
             if (status === 'cancelled') return 'ملغي';
             return status || 'قيد المعالجة';
         }
@@ -184,8 +185,9 @@
             if (status === 'delivered') return 'bg-green-100 text-green-700';
             if (status === 'out_for_delivery') return 'bg-orange-100 text-orange-700';
             if (status === 'shipped') return 'bg-yellow-100 text-yellow-700';
-            if (status === 'awaiting_shipping_payment') return 'bg-red-100 text-red-700';
+            if (status === 'awaiting_shipping_payment') return 'bg-orange-100 text-orange-700';
             if (status === 'processing') return 'bg-blue-100 text-blue-700';
+            if (status === 'confirming_availability' || status === 'pending') return 'bg-red-100 text-red-700';
             if (status === 'cancelled') return 'bg-red-100 text-red-700';
             return 'bg-gray-100 text-gray-700';
         }
@@ -206,49 +208,80 @@
             `;
         }
 
-        function renderOrders(orders) {
+        function renderOrders(orders, seqMap) {
             const container = document.getElementById('orders-container');
             container.className = 'bg-white rounded-xl shadow-sm border p-4 md:p-6';
             container.innerHTML = `
-                <div class="space-y-4">
-                    ${orders.map(order => `
-                        <div class="border ${order.status === 'awaiting_shipping_payment' ? 'border-red-300 bg-red-50' : 'border-gray-200'} rounded-xl p-4">
-                            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-                                <div>
-                                    <p class="font-bold text-gray-900">طلب #${order.id}</p>
-                                    <p class="text-sm text-gray-500">${formatDate(order.date)}</p>
+                <div class="space-y-3">
+                    ${orders.map(order => {
+                        const orderSeq = seqMap[order.id] || '—';
+                        return `
+                        <div class="border ${order.status === 'awaiting_shipping_payment' ? 'border-orange-300' : 'border-gray-200'} rounded-xl overflow-hidden">
+                            <div class="p-3 flex justify-between items-center gap-2 cursor-pointer select-none flex-wrap" onclick="toggleOrderDetails('${order.id}')">
+                                <div class="flex items-center gap-3 flex-wrap">
+                                    <span class="font-bold text-gray-800">طلب #${orderSeq}</span>
+                                    <span class="text-xs text-gray-400">${formatDate(order.date)}</span>
                                 </div>
-                                <span class="px-3 py-1 rounded-full text-sm font-semibold ${getStatusClass(order.status)}">${getStatusText(order.status)}</span>
+                                <div class="flex items-center gap-3">
+                                    <span class="px-3 py-1 rounded-full text-sm font-semibold ${getStatusClass(order.status)}">${getStatusText(order.status)}</span>
+                                    <span class="font-bold text-antika-gold">${order.total} ر.س</span>
+                                    <i id="arrow-${order.id}" class="fas fa-chevron-down text-gray-400 transition-transform"></i>
+                                </div>
                             </div>
-                            ${order.status === 'awaiting_shipping_payment' ? `
-                            <div class="mb-3 p-3 bg-red-100 border border-red-200 rounded-lg flex flex-wrap items-center justify-between gap-2">
-                                <p class="text-sm text-red-700 font-semibold">
-                                    <i class="fas fa-triangle-exclamation ml-1"></i>
-                                    تم تأكيد توفر منتجاتك، متبقي دفع ${order.total} ر.س (شامل الشحن) لبدء التجهيز
-                                </p>
-                                <button onclick="payOrder('${order.id}', ${order.total})" class="bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-4 py-2 rounded-lg">
-                                    أكمل الدفع
-                                </button>
-                            </div>` : ''}
-                            <div class="space-y-2 mb-3">
-                                ${order.items.map(item => `
-                                    <div class="flex items-center justify-between text-sm">
-                                        <span class="text-gray-700">${item.name || 'منتج'}</span>
-                                        <span class="text-gray-600">x${item.quantity || 1}</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                            <div class="border-t pt-3 flex items-center justify-between">
-                                <div class="text-gray-600 text-sm">
+                            <div id="details-${order.id}" class="hidden border-t border-gray-100 p-4">
+                                ${order.status === 'awaiting_shipping_payment' ? `
+                                <div class="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg flex flex-wrap items-center justify-between gap-2">
+                                    <p class="text-sm text-orange-700 font-semibold">
+                                        <i class="fas fa-triangle-exclamation ml-1"></i>
+                                        تم تأكيد توفر منتجاتك، متبقي دفع ${order.total} ر.س (شامل الشحن) لبدء التجهيز
+                                    </p>
+                                    <button onclick="payOrder('${order.id}', ${order.total})" class="bg-antika-pink hover:bg-antika-pink-dark text-white text-sm font-bold px-4 py-2 rounded-lg">
+                                        أكمل الدفع
+                                    </button>
+                                </div>` : ''}
+                                <div class="space-y-2 mb-4">
+                                    ${order.items.map(item => `
+                                        <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                                            <img src="${item.image || ''}" alt="${item.name || ''}" class="w-12 h-12 rounded-lg object-cover bg-gray-200">
+                                            <div class="flex-1">
+                                                <p class="font-semibold text-sm text-gray-800">${item.name || 'منتج'}</p>
+                                                <p class="text-xs text-gray-500">${item.quantity || 1} × ${item.price || 0} ر.س</p>
+                                            </div>
+                                            <span class="font-bold text-antika-gold text-sm">${(item.quantity || 1) * (item.price || 0)} ر.س</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <div class="border-t pt-3 grid grid-cols-2 gap-2 text-sm text-gray-600 mb-2">
                                     <div>عدد المنتجات: ${order.items.length}</div>
-                                    <div>المدينة: ${order.shippingCity || 'غير محدد'} - الشحن: ${Number(order.shippingCost || 0).toFixed(2)} ر.س</div>
+                                    <div>الوزن: ${order.weight ? order.weight + ' كجم' : '-'}</div>
+                                    <div>المدينة: ${order.shippingCity || 'غير محدد'}</div>
+                                    <div>الشحن: ${order.shippingCost != null ? Number(order.shippingCost).toFixed(2) + ' ر.س' : '-'}</div>
                                 </div>
-                                <span class="font-bold text-antika-gold">${order.total} ر.س</span>
+                                <div class="border-t pt-3 flex items-center justify-between">
+                                    <span class="font-bold text-gray-700">الإجمالي</span>
+                                    <span class="font-bold text-antika-gold text-lg">${order.total} ر.س</span>
+                                </div>
                             </div>
                         </div>
-                    `).join('')}
+                    `;
+                    }).join('')}
                 </div>
             `;
+        }
+
+        function toggleOrderDetails(orderId) {
+            const details = document.getElementById(`details-${orderId}`);
+            const arrow = document.getElementById(`arrow-${orderId}`);
+            if (!details) return;
+            details.classList.toggle('hidden');
+            if (arrow) arrow.classList.toggle('rotate-180');
+        }
+
+        function buildSeqMap(allNormalizedOrders) {
+            const sortedByDateAsc = [...allNormalizedOrders].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            const seqMap = {};
+            sortedByDateAsc.forEach((o, idx) => { seqMap[o.id] = idx + 1; });
+            return seqMap;
         }
 
         async function loadOrdersPage() {
@@ -260,17 +293,17 @@
 
             try {
                 const allOrders = await API.getOrders();
-                const fromApi = (Array.isArray(allOrders) ? allOrders : [])
-                    .map(normalizeOrder)
-                    .filter(o => !email || o.customerEmail === email);
-                if (fromApi.length > 0) { renderOrders(fromApi); return; }
+                const allNormalized = (Array.isArray(allOrders) ? allOrders : []).map(normalizeOrder);
+                const seqMap = buildSeqMap(allNormalized);
+                const fromApi = allNormalized.filter(o => !email || o.customerEmail === email);
+                if (fromApi.length > 0) { renderOrders(fromApi, seqMap); return; }
             } catch (e) { console.warn('Could not load orders from API:', e); }
 
             try {
-                const localOrders = JSON.parse(localStorage.getItem('antika_orders') || '[]')
-                    .map(normalizeOrder)
-                    .filter(o => !email || o.customerEmail === email);
-                if (localOrders.length > 0) { renderOrders(localOrders); } else { renderEmptyState(); }
+                const localAll = JSON.parse(localStorage.getItem('antika_orders') || '[]').map(normalizeOrder);
+                const seqMap = buildSeqMap(localAll);
+                const localOrders = localAll.filter(o => !email || o.customerEmail === email);
+                if (localOrders.length > 0) { renderOrders(localOrders, seqMap); } else { renderEmptyState(); }
             } catch (e) { renderEmptyState(); }
         }
 
