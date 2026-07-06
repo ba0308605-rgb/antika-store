@@ -481,18 +481,22 @@ async function loadOrders() {
             const orderSeq = seqMap[orderId] || '—';
             const orderDate = order.date ? new Date(order.date).toLocaleString('ar-SA') : '-';
             return `
-            <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden mb-4">
-                <div class="p-4 border-b border-gray-100 bg-gray-50">
-                    <div class="flex justify-between items-center flex-wrap gap-2">
-                        <div class="flex items-center gap-3">
-                            <span class="font-bold text-gray-800">طلب #${orderSeq}</span>
-                            <span class="text-sm text-gray-500">${orderDate}</span>
-                        </div>
+            <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden mb-3">
+                <div class="p-3 flex justify-between items-center gap-2 cursor-pointer select-none flex-wrap" onclick="toggleOrderDetails('${orderId}')">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <span class="font-bold text-gray-800">طلب #${orderSeq}</span>
+                        <span class="text-sm text-gray-600">${safeText(order.customerName)}</span>
+                        <span class="text-xs text-gray-400">${orderDate}</span>
+                    </div>
+                    <div class="flex items-center gap-3">
                         <span class="px-3 py-1 rounded-full text-sm font-semibold ${getOrderStatusClass(order.status)}">
                             ${getOrderStatusText(order.status)}
                         </span>
+                        <span class="font-bold text-antika-gold">${order.total} ر.س</span>
+                        <i id="arrow-${orderId}" class="fas fa-chevron-down text-gray-400 transition-transform"></i>
                     </div>
                 </div>
+                <div id="details-${orderId}" class="hidden border-t border-gray-100">
                 <div class="p-4">
                     <div class="grid md:grid-cols-2 gap-4 mb-4">
                         <div>
@@ -557,12 +561,21 @@ async function loadOrders() {
                         </button>
                     </div>
                 </div>
+                </div>
             </div>
         `;
         }).join('');
     } catch (error) {
         console.error('Error loading orders:', error);
     }
+}
+
+function toggleOrderDetails(orderId) {
+    const details = document.getElementById(`details-${orderId}`);
+    const arrow = document.getElementById(`arrow-${orderId}`);
+    if (!details) return;
+    details.classList.toggle('hidden');
+    if (arrow) arrow.classList.toggle('rotate-180');
 }
 
 function getOrderStatusClass(status) {
