@@ -327,9 +327,7 @@
             }
         }
     </style>
-    <!-- Moyasar Payment -->
-    <script src="https://cdn.moyasar.com/mpf/1.14.0/moyasar.js"></script>
-    <link rel="stylesheet" href="https://cdn.moyasar.com/mpf/1.14.0/moyasar.css">
+    <!-- Moyasar removed from cart - payment now happens in orders.html after final invoice -->
     <style id="antika-reset">
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; }
@@ -519,20 +517,9 @@
                     </div>
 
                     <div class="checkout-section">
-                        <button type="button" class="checkout-section-toggle" data-target="checkout-section-payment">
-                            <span><i class="fas fa-wallet ml-2 text-antika-gold"></i> الدفع</span>
-                            <i class="fas fa-chevron-down checkout-chevron"></i>
-                        </button>
-                        <div id="checkout-section-payment" class="checkout-section-body hidden">
-                            <select id="payment-method" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
-                                <option value="cash">💵 الدفع عند الاستلام (+17 ر.س)</option>
-                                <option value="online">💳 دفع إلكتروني — مدى / فيزا / ماستر</option>
-                            </select>
-                            <div id="online-payment-note" class="hidden mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700">
-                                <i class="fas fa-shield-halved ml-1"></i>
-                                ستنتقل لصفحة الدفع الآمنة عبر Moyasar بعد تأكيد الطلب
-                            </div>
-                            <p id="cod-note" class="text-xs text-gray-500 mt-2">رسوم الدفع عند الاستلام: 17 ر.س</p>
+                        <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+                            <i class="fas fa-circle-info ml-1"></i>
+                            هذا الطلب حجز مبدئي. سنتحقق من توفر القطع ونحسب تكلفة الشحن الفعلية، وسنرسل لك السعر النهائي لإتمام الدفع من صفحة "طلباتي" قبل بدء التجهيز.
                         </div>
                     </div>
                 </div>
@@ -563,7 +550,7 @@
                                 <span class="text-gray-600">الشحن</span>
                                 <span id="checkout-shipping-cost" class="font-bold">0 ر.س</span>
                             </div>
-                            <div class="flex justify-between">
+                            <div class="flex justify-between hidden">
                                 <span class="text-gray-600">رسوم الدفع عند الاستلام</span>
                                 <span id="checkout-cod-fee" class="font-bold">0 ر.س</span>
                             </div>
@@ -578,7 +565,7 @@
                         </div>
 
                         <button type="submit" class="w-full mt-4 bg-antika-pink text-white py-4 rounded-xl font-bold hover:bg-antika-pink-dark transition text-lg">
-                            تأكيد الطلب
+                            تأكيد الحجز
                         </button>
                     </div>
                 </aside>
@@ -707,8 +694,7 @@
             const subtotal = Number(cartTotal || 0);
             const shippingInfo = getShippingBreakdown();
             const shipping = shippingInfo.total;
-            const paymentMethod = document.getElementById('payment-method')?.value || 'cash';
-            const codFee = paymentMethod === 'cash' ? COD_FEE : 0;
+            const codFee = 0;
             let discount = 0;
 
             if (checkoutAppliedCoupon) {
@@ -737,7 +723,7 @@
             if (totalEl) totalEl.textContent = formatSAR(total);
 
             updateShippingHint();
-            return { subtotal, shipping, codFee, discount, total, shippingInfo, paymentMethod };
+            return { subtotal, shipping, codFee, discount, total, shippingInfo };
         }
 
         function updateCheckoutItemsPreview(cartItems) {
@@ -1277,7 +1263,6 @@
                 const totals = recalculateCheckoutTotals();
                 const shippingInfo = totals.shippingInfo || getShippingBreakdown();
                 const shippingMethod = shippingInfo.method || (document.getElementById('shipping-method')?.value || 'redbox_locker');
-                const paymentMethod = totals.paymentMethod || (document.getElementById('payment-method')?.value || 'cash');
 
                 if (!customerName || !customerPhone || !customerAddress) {
                     alert('يرجى تعبئة الاسم ورقم الجوال والعنوان قبل إتمام الطلب.');
@@ -1302,10 +1287,9 @@
                     shippingCost: shippingInfo.total,
                     shippingBaseFee: shippingInfo.baseFee,
                     shippingMethodExtraFee: shippingInfo.methodExtraFee,
-                    codFee: totals.codFee || 0,
                     discount: totals.discount,
                     couponCode: checkoutAppliedCoupon ? checkoutAppliedCoupon.code : null,
-                    paymentMethod,
+                    paymentMethod: 'unpaid',
                     // Add location if available
                     location: location ? {
                         type: 'Point',
@@ -1320,7 +1304,7 @@
                     })),
                     subTotal: totals.subtotal,
                     total: totals.total,
-                    status: 'processing'
+                    status: 'pending'
                 };
 
                 // Remove undefined location field if not set
@@ -1328,18 +1312,7 @@
                     delete orderData.location;
                 }
 
-                // ---- ONLINE PAYMENT: open Moyasar ----
-                // TEMP: bypass payment gateway for admin-testing - REMOVE THIS BLOCK BEFORE LAUNCH
-                if (false && paymentMethod === 'online') {
-                    const submitBtn = document.querySelector('#checkout-form button[type="submit"]');
-                    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'جارٍ التحضير...'; }
-                    openMoyasarModal(totals.total, orderData);
-                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'تأكيد الطلب'; }
-                    return;
-                }
-                // END TEMP BYPASS
-
-                // ---- COD: create order directly ----
+                // ---- RESERVATION: create order directly, no payment collected here ----
                 await API.createOrder(orderData);
                 // سجّل استخدام الكوبون إن وُجد
                 if (checkoutAppliedCoupon && checkoutAppliedCoupon.code) {
@@ -2197,148 +2170,6 @@
             });
         });
     </script>
-    <!-- Moyasar Payment Modal -->
-    <div id="moyasar-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[3000] hidden p-4">
-        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-antika-gold">
-                    <i class="fas fa-lock ml-2"></i>الدفع الآمن
-                </h3>
-                <button onclick="closeMoyasarModal()" class="w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-100 text-xl flex items-center justify-center">&times;</button>
-            </div>
-            <div id="moyasar-form-container"></div>
-            <p class="text-xs text-gray-400 text-center mt-3">
-                <i class="fas fa-shield-halved ml-1 text-green-500"></i>
-                مدفوعاتك محمية بتشفير SSL عبر Moyasar
-            </p>
-        </div>
-    </div>
-
-    <script>
-        // ============================================
-        // MOYASAR PAYMENT INTEGRATION
-        // ============================================
-        let moyasarPublishableKey = '';
-        let pendingOrderData = null;
-
-        // Load Moyasar config on page load
-        async function loadMoyasarConfig() {
-            try {
-                const res = await fetch('/api/payment/config');
-                const cfg = await res.json();
-                moyasarPublishableKey = cfg.publishableKey || '';
-            } catch (e) {
-                console.warn('Could not load Moyasar config:', e);
-            }
-        }
-        loadMoyasarConfig();
-
-        // Show/hide online payment note when selecting payment method
-        document.addEventListener('change', (e) => {
-            if (e.target && e.target.id === 'payment-method') {
-                const isOnline = e.target.value === 'online';
-                document.getElementById('online-payment-note')?.classList.toggle('hidden', !isOnline);
-                document.getElementById('cod-note')?.classList.toggle('hidden', isOnline);
-                recalculateCheckoutTotals();
-            }
-        });
-
-        function closeMoyasarModal() {
-            document.getElementById('moyasar-modal').classList.add('hidden');
-            document.body.style.overflow = 'auto';
-            // Re-enable submit button
-            const submitBtn = document.querySelector('#checkout-form button[type="submit"]');
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'تأكيد الطلب';
-            }
-        }
-
-        function openMoyasarModal(amount, orderData) {
-            if (!moyasarPublishableKey) {
-                alert('خدمة الدفع غير متاحة حالياً. جرب الدفع عند الاستلام.');
-                return;
-            }
-
-            pendingOrderData = orderData;
-            const container = document.getElementById('moyasar-form-container');
-            container.innerHTML = '';
-
-            document.getElementById('moyasar-modal').classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-
-            Moyasar.init({
-                element: container,
-                amount: Math.round(amount * 100), // Moyasar uses halalas
-                currency: 'SAR',
-                publishable_api_key: moyasarPublishableKey,
-                description: 'طلب من متجر أنتيكا',
-                callback_url: window.location.href,
-                methods: ['creditcard'],
-                on_completed: async function(payment) {
-                    await handleMoyasarSuccess(payment);
-                },
-                on_failed: function(payment) {
-                    alert('فشلت عملية الدفع. يرجى المحاولة مرة أخرى.');
-                    closeMoyasarModal();
-                }
-            });
-        }
-
-        async function handleMoyasarSuccess(payment) {
-            try {
-                // 1. Verify payment on server
-                const verifyRes = await fetch('/api/payment/verify', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ paymentId: payment.id })
-                });
-                const verifyData = await verifyRes.json();
-
-                if (!verifyData.success) {
-                    alert('تعذر التحقق من الدفعة. تواصل مع الدعم.');
-                    return;
-                }
-
-                // 2. Create order with paymentId
-                const orderWithPayment = {
-                    ...pendingOrderData,
-                    paymentMethod: 'online',
-                    paymentId: payment.id,
-                    status: 'processing'
-                };
-
-                const createdOrder = await API.createOrder(orderWithPayment);
-                // سجّل استخدام الكوبون إن وُجد
-                if (checkoutAppliedCoupon && checkoutAppliedCoupon.code) {
-                    try { await fetch('/api/coupons/use', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: checkoutAppliedCoupon.code }) }); } catch(e) {}
-                }
-
-                // 3. Update verify with orderId
-                if (createdOrder && createdOrder._id) {
-                    await fetch('/api/payment/verify', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ paymentId: payment.id, orderId: createdOrder._id })
-                    });
-                }
-
-                await API.clearCart();
-                localStorage.removeItem('selectedLocation');
-
-                closeMoyasarModal();
-                closeCheckoutModal();
-                alert('🎉 تم الدفع وتأكيد طلبك بنجاح!');
-                await loadCart();
-                await updateCartCount();
-
-            } catch (err) {
-                console.error('Error after Moyasar success:', err);
-                alert('تم الدفع لكن حدث خطأ في تسجيل الطلب. تواصل مع الدعم.');
-            }
-        }
-    </script>
-
     <script src="js/header.js"></script>
     <script src="js/auth-sync.js"></script>
     <script src="js/announcement-bar.js"></script>

@@ -540,7 +540,10 @@ async function loadOrders() {
                             `).join('')}
                         </div>
                     </div>
-                    <div class="border-t border-gray-100 pt-4 mt-4 grid grid-cols-2 md:grid-cols-6 gap-2">
+                    <div class="border-t border-gray-100 pt-4 mt-4 grid grid-cols-2 md:grid-cols-7 gap-2">
+                        <button onclick="setShippingCostAndInvoice('${orderId}', ${order.items.reduce((s, it) => s + (Number(it.price)||0) * (Number(it.quantity)||1), 0)})" class="flex-1 bg-red-100 text-red-700 py-2 rounded-lg hover:bg-red-200 transition text-sm">
+                            تأكيد التوفر + تحديد الشحن
+                        </button>
                         <button onclick="updateOrderStatus('${orderId}', 'processing')" class="flex-1 bg-blue-100 text-blue-600 py-2 rounded-lg hover:bg-blue-200 transition text-sm">
                             قيد التجهيز
                         </button>
@@ -581,6 +584,7 @@ function toggleOrderDetails(orderId) {
 function getOrderStatusClass(status) {
     const classes = {
         'pending': 'bg-yellow-100 text-yellow-600',
+        'awaiting_shipping_payment': 'bg-red-100 text-red-700',
         'processing': 'bg-blue-100 text-blue-600',
         'shipped': 'bg-purple-100 text-purple-600',
         'out_for_delivery': 'bg-orange-100 text-orange-600',
@@ -592,7 +596,8 @@ function getOrderStatusClass(status) {
 
 function getOrderStatusText(status) {
     const texts = {
-        'pending': 'بانتظار الدفع',
+        'pending': 'تحت المراجعة (تأكيد التوفر)',
+        'awaiting_shipping_payment': 'بانتظار دفع تكلفة الشحن',
         'processing': 'قيد التجهيز',
         'shipped': 'تم الشحن',
         'out_for_delivery': 'خرج للتوصيل',
@@ -613,6 +618,32 @@ async function updateOrderStatus(orderId, status) {
     } catch (error) {
         console.error('Error updating order status:', error);
         showNotification('حدث خطأ أثناء تحديث حالة الطلب', 'error');
+    }
+}
+
+async function setShippingCostAndInvoice(orderId, itemsSubtotal) {
+    const input = prompt('أدخل تكلفة الشحن الفعلية بعد الوزن (ر.س):');
+    if (input === null) return;
+    const shippingCost = Number(input);
+    if (!Number.isFinite(shippingCost) || shippingCost < 0) {
+        showNotification('قيمة غير صحيحة', 'error');
+        return;
+    }
+    const total = Math.round((Number(itemsSubtotal || 0) + shippingCost) * 100) / 100;
+    try {
+        const token = localStorage.getItem('antika_admin_token');
+        const res = await fetch('/api/orders/' + orderId, {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'awaiting_shipping_payment', shippingCost, total })
+        });
+        if (!res.ok) throw new Error('فشل التحديث');
+        showNotification('تم تحديد تكلفة الشحن (' + shippingCost + ' ر.س) والإجمالي (' + total + ' ر.س). العميل يقدر الآن يكمل الدفع.');
+        await loadOrders();
+        await updateStats();
+    } catch (error) {
+        console.error('Error setting shipping cost:', error);
+        showNotification('حدث خطأ أثناء التحديث', 'error');
     }
 }
 

@@ -552,7 +552,7 @@ app.put('/api/orders/:id', requireAdmin, async (req, res) => {
     const doc = await ref.get();
     if (!doc.exists) return res.status(404).json({ error: 'Order not found' });
     const order = Object.assign({ id: doc.id }, doc.data());
-    const allowed = ['status','shippingCarrier','trackingNumber','trackingUrl','shipmentReference','shippingMethod','shippingMethodLabel','shippingCity','shippingRegion','shippingEta','shippingCost','shippingBaseFee','shippingMethodExtraFee','codFee','paymentMethod','otoTrackingNumber','otoAwbUrl','otoStatus','otoDcStatus'];
+    const allowed = ['status','shippingCarrier','trackingNumber','trackingUrl','shipmentReference','shippingMethod','shippingMethodLabel','shippingCity','shippingRegion','shippingEta','shippingCost','shippingBaseFee','shippingMethodExtraFee','codFee','paymentMethod','otoTrackingNumber','otoAwbUrl','otoStatus','otoDcStatus','total'];
     const updates = {};
     const before = { status: String(order.status || ''), trackingNumber: String(order.trackingNumber || '') };
     for (const field of allowed) { if (Object.prototype.hasOwnProperty.call(req.body, field) && req.body[field] !== undefined) updates[field] = req.body[field]; }
@@ -949,10 +949,28 @@ app.post('/api/payment/verify', async (req, res) => {
     if (!mr.ok) return res.status(400).json({ error: '\u0641\u0634\u0644 \u0627\u0644\u062a\u062d\u0642\u0642 \u0645\u0646 \u0627\u0644\u062f\u0641\u0639\u0629' });
     const payment = await mr.json();
     if (payment.status !== 'paid') return res.status(400).json({ error: '\u0627\u0644\u062f\u0641\u0639\u0629 \u0644\u0645 \u062a\u0643\u062a\u0645\u0644', status: payment.status });
-    if (orderId) { try { await db.collection('orders').doc(orderId).update({ paymentMethod: 'online', paymentId, status: 'processing' }); } catch (e) { console.warn('Could not update order:', e.message); } }
+    if (orderId) {
+      const ref = db.collection('orders').doc(orderId);
+      const doc = await ref.get();
+      if (!doc.exists) return res.status(404).json({ error: 'Order not found' });
+      const order = doc.data();
+      // \u0627\u0644\u062a\u0623\u0643\u062f \u0623\u0646 \u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u062f\u0641\u0648\u0639 \u064a\u0637\u0627\u0628\u0642 \u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0637\u0644\u0628 \u0641\u0639\u0644\u064a\u0627\u064b (\u0628\u0627\u0644\u0647\u0644\u0644\u0627\u0644\u0627\u062a)
+      const expectedHalalas = Math.round(Number(order.total || 0) * 100);
+      const paidHalalas = Number(payment.amount || 0);
+      if (paidHalalas !== expectedHalalas) {
+        console.error('Payment amount mismatch for order ' + orderId + ': paid=' + paidHalalas + ' expected=' + expectedHalalas);
+        return res.status(400).json({ error: '\u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u062f\u0641\u0648\u0639 \u0644\u0627 \u064a\u0637\u0627\u0628\u0642 \u0642\u064a\u0645\u0629 \u0627\u0644\u0637\u0644\u0628. \u062a\u0648\u0627\u0635\u0644 \u0645\u0639 \u0627\u0644\u062f\u0639\u0645.' });
+      }
+      const updates = { paymentMethod: 'online', paymentId, status: 'processing' };
+      const tl = order.statusTimeline || [];
+      tl.push({ status: 'processing', title: '\u062a\u0645 \u0627\u0633\u062a\u0644\u0627\u0645 \u0627\u0644\u062f\u0641\u0639\u0629', message: '\u062a\u0645 \u062a\u0623\u0643\u064a\u062f \u0627\u0644\u062f\u0641\u0639 \u0648\u0628\u062f\u0621 \u0627\u0644\u062a\u062c\u0647\u064a\u0632', source: 'system', at: new Date().toISOString() });
+      updates.statusTimeline = tl;
+      try { await ref.update(updates); } catch (e) { console.warn('Could not update order:', e.message); }
+    }
     return res.json({ success: true, payment });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 
 // STATUS
 app.get('/api/status', async (req, res) => {
