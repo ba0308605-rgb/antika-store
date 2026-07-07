@@ -2,25 +2,45 @@
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const admin = require('firebase-admin');
 require('dotenv').config();
+
+// ============================================
+// STARTUP ENV VALIDATION — يوقف السيرفر فورًا لو أي متغير مطلوب ناقص
+// ============================================
+const REQUIRED_ENV_VARS = [
+  'FIREBASE_PROJECT_ID',
+  'FIREBASE_PRIVATE_KEY_ID',
+  'FIREBASE_PRIVATE_KEY',
+  'FIREBASE_CLIENT_EMAIL',
+  'FIREBASE_CLIENT_ID',
+  'JWT_SECRET',
+  'ADMIN_USERNAME',
+  'ADMIN_PASSWORD',
+];
+const missingEnvVars = REQUIRED_ENV_VARS.filter(key => !process.env[key] || !String(process.env[key]).trim());
+if (missingEnvVars.length > 0) {
+  console.error('❌ خطأ فادح: متغيرات البيئة التالية مطلوبة وغير موجودة، السيرفر لن يعمل بدونها:');
+  missingEnvVars.forEach(key => console.error('   - ' + key));
+  console.error('يرجى إضافتها في ملف .env محليًا، أو في إعدادات منصة الاستضافة قبل إعادة المحاولة.');
+  process.exit(1);
+}
 
 // ============================================
 // FIREBASE ADMIN INIT
 // ============================================
 const serviceAccount = {
   type: "service_account",
-  project_id: "antika-store-88ae2",
-  private_key_id: "6be1fc035262e367e9f9710042b2f61520495c8c",
-  private_key: process.env.FIREBASE_PRIVATE_KEY
-    ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
-    : "-----BEGIN PRIVATE KEY-----\nMIIEuwIBADANBgkqhkiG9w0BAQEFAASCBKUwggShAgEAAoIBAQDV5AhzkyL6W+vE\nqWLhK2l1uK5N90TE6RYiki5A3te/jbN81qPSul8OscmKB9028MYAXP9aDGL45/UC\n4hMhkeuzXz+ClYr8lHczg7y+tNgDC4XEdMfd2vHDMF3hA+ASNEjDoD4pmjwrA1Qx\nmlKfVBYYXAb23GGuD08gDts/edA2GSutaUEd6q0n0mbhdNDarGzKBU6eSenzRvBV\nuTCbaWiYK1kvdoJnZmPFdbrVpglPWNA6uvyKcEDuzwpRzNDziDM19lVk4Lvus/Ro\nf+NOOa9Gx4vQgptHF5TqyoCXamzAazQx+f+kn3U/G50ylyBZrI3lp+IrxVU23OEp\nxauVe8VpAgMBAAECggEAEOdbhSHH2gQleQZ/fGbhR+bTbLE557t5jrwhiGosIBT/\nbkJq0kq9HDTQBhb6xD6pUUpIOno/4Ka5SfPqueSVvXhttSDjKfTESmeTBTnW1//D\nP7xQdt+4q1nBU5kKLnogFYjOnNxV/Lq/vsdQ2AttzxlHyh7u39IRKWoPKQA0JLA5\nzXSGlFk+MP+3f+rN9qB4x0nEDgv262WerXTNMZhgE0++CoSmcVeLmT2ceVgh9VUp\nhaji6DHAVbi9V63kM6Tre4vFfIXRIxx4HzpFAT9V4ztHruIv3Ge775NVGPOGt8OE\n30oZZeVsUzq3F72zRSiZxQFJ2sM1vZWZ/tpx4HOLMQKBgQDyWk1PBj9FfQohzLGk\nfDoO4I7GHO2v+4gHCfDA7B4gBvqtgZuWO3cdYn51a4UqyYVbEP+gbAsembhiQb6y\nwfxCg48QC4A0BzgioP6ZYgf2+KTcuQMH+iLxD1cXqq0J5XxGYFS7BlltlUFLlLVC\nFrCkVVZJ1ubalH9BS46XZxx6cQKBgQDh724RDV3dWk7BDJ3cqlhGL8U9psgVZhU+\ncTshRJ2AscV6MjkbdgtqAlnPubAcmS7ZTeq1Gf6ScJ2VFKV+UhznHa8hNB51Nkuv\nS1zTMtbV/SdaUqmYOfPWq9VXLcquBnXgQSqOhIsa9pq/Bm+4/QuYuJFc0bF7YS+M\nbuPwD7tGeQKBgQCPFMk3spSATgZBVjw6xCzyw5kHVeTuVS5GGZROEhjnB7fP4Akf\ndRQqARBv+n6weDGHRk3lRGR8OH0nZXFU0DpCerFn46JZFToLF8m4fKv/H2UV+xTT\nDNa8QzZD/rwSb64jTpQ3ptP9YnUeTjmFPyginU9IYNwCiFFpF1akBHhHwQKBgBjr\nCzyeOMf8+cqY1aBMuUekZSCTkGWryJQGcPsOUkCrWphLibjZoBClCbq7RA0jZ+NX\nkJdAsq779KVIjagM7lsfDv2efe13e4ltymMQrFkVfo2bqFC9s4LtmK3wwvXGiKGf\nDk6Bl8X1hMOkthW08t55HK8cAXMWGORoJoOHeKQhAn9zieuQFkx/EF04cjVZw+mW\nJmIvp6OzekPVOBDkIqHe4l8j4gEPBcqiMYIVuYT5S+ZnmJ7DPkeRPbVkoJTyX1QZ\nN2gJ0KrVwQxkqnu/2NSoc6wBJsWemsmpf+04vrJMUYuowBWWASovOAfpBSctNoA0\ntBkl2a730cVwxWvsxJbS\n-----END PRIVATE KEY-----\n",
-  client_email: "firebase-adminsdk-fbsvc@antika-store-88ae2.iam.gserviceaccount.com",
-  client_id: "102489727863583767782",
+  project_id: process.env.FIREBASE_PROJECT_ID,
+  private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+  private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  client_email: process.env.FIREBASE_CLIENT_EMAIL,
+  client_id: process.env.FIREBASE_CLIENT_ID,
   auth_uri: "https://accounts.google.com/o/oauth2/auth",
   token_uri: "https://oauth2.googleapis.com/token",
   auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-  client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40antika-store-88ae2.iam.gserviceaccount.com"
+  client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/" + encodeURIComponent(process.env.FIREBASE_CLIENT_EMAIL)
 };
 
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
@@ -60,9 +80,9 @@ async function deleteFromCloudinary(imageUrl) {
 // ============================================
 const app = express();
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || '').trim();
-const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'BDR-FIRST';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'B1-a2d3e4r5';
+const JWT_SECRET = process.env.JWT_SECRET;
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const ADMIN_TOKEN_TTL = process.env.ADMIN_TOKEN_TTL || '8h';
 const GOOGLE_MAPS_API_KEY = (process.env.GOOGLE_MAPS_API_KEY || '').trim();
 const GOOGLE_GEOCODING_KEY = (process.env.GOOGLE_GEOCODING_KEY || '').trim();
@@ -159,7 +179,7 @@ app.use(express.json({ limit: '10mb' }));
 
 // MAINTENANCE MODE
 let maintenanceMode = false;
-let maintenanceKey = process.env.MAINTENANCE_KEY || 'antika2024';
+let maintenanceKey = process.env.MAINTENANCE_KEY || crypto.randomBytes(16).toString('hex');
 
 // Load maintenance state from Firestore on startup
 (async () => {
