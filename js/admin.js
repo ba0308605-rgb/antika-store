@@ -526,6 +526,29 @@ async function loadOrders() {
                             <p class="font-bold text-antika-gold text-lg mt-2">الإجمالي: ${order.total} ر.س</p>
                         </div>
                     </div>
+                    <div id="shipping-form-${orderId}" class="hidden mb-4 p-4 bg-red-50 border-2 border-red-200 rounded-xl">
+                        <h4 class="font-bold text-red-700 mb-3 flex items-center gap-2">
+                            <i class="fas fa-weight-hanging"></i> تحديد الوزن والسعر النهائي
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">الوزن بعد التغليف (كجم)</label>
+                                <input type="number" step="0.01" min="0" id="weight-input-${orderId}" value="${order.weight || ''}" placeholder="مثال: 1.5" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-red-400 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">تكلفة الشحن الفعلية (ر.س)</label>
+                                <input type="number" step="0.01" min="0" id="shipping-input-${orderId}" value="${order.shippingCost != null ? order.shippingCost : ''}" placeholder="مثال: 20" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-red-400 focus:outline-none">
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="confirmShippingForm('${orderId}', ${order.items.reduce((s, it) => s + (Number(it.price)||0) * (Number(it.quantity)||1), 0)})" class="flex-1 bg-red-600 text-white py-2 rounded-lg font-bold hover:bg-red-700 transition text-sm">
+                                    ✅ تأكيد وإرسال للعميل
+                                </button>
+                                <button onclick="toggleShippingForm('${orderId}')" class="px-4 bg-gray-200 text-gray-600 py-2 rounded-lg hover:bg-gray-300 transition text-sm">
+                                    إلغاء
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     <div class="border-t border-gray-100 pt-4">
                         <h4 class="font-bold text-gray-700 mb-2">المنتجات</h4>
                         <div class="space-y-2">
@@ -542,7 +565,7 @@ async function loadOrders() {
                         </div>
                     </div>
                     <div class="border-t border-gray-100 pt-4 mt-4 grid grid-cols-2 md:grid-cols-7 gap-2">
-                        <button onclick="setShippingCostAndInvoice('${orderId}', ${order.items.reduce((s, it) => s + (Number(it.price)||0) * (Number(it.quantity)||1), 0)})" class="flex-1 bg-red-100 text-red-700 py-2 rounded-lg hover:bg-red-200 transition text-sm">
+                        <button onclick="toggleShippingForm('${orderId}')" class="flex-1 bg-red-100 text-red-700 py-2 rounded-lg hover:bg-red-200 transition text-sm">
                             تحديد الوزن + السعر النهائي
                         </button>
                         <button onclick="updateOrderStatus('${orderId}', 'processing')" class="flex-1 bg-blue-100 text-blue-600 py-2 rounded-lg hover:bg-blue-200 transition text-sm">
@@ -624,21 +647,34 @@ async function updateOrderStatus(orderId, status) {
     }
 }
 
-async function setShippingCostAndInvoice(orderId, itemsSubtotal) {
-    const weightInput = prompt('أدخل وزن الطلب بعد التغليف (كجم):');
-    if (weightInput === null) return;
-    const weight = Number(weightInput);
+function toggleShippingForm(orderId) {
+    const form = document.getElementById('shipping-form-' + orderId);
+    if (!form) return;
+    form.classList.toggle('hidden');
+    if (!form.classList.contains('hidden')) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        const weightInput = document.getElementById('weight-input-' + orderId);
+        if (weightInput) weightInput.focus();
+    }
+}
+
+async function confirmShippingForm(orderId, itemsSubtotal) {
+    const weightInput = document.getElementById('weight-input-' + orderId);
+    const shippingInput = document.getElementById('shipping-input-' + orderId);
+    const weight = Number(weightInput?.value);
+    const shippingCost = Number(shippingInput?.value);
+
     if (!Number.isFinite(weight) || weight <= 0) {
-        showNotification('وزن غير صحيح', 'error');
+        showNotification('الرجاء إدخال وزن صحيح', 'error');
+        weightInput?.focus();
         return;
     }
-    const shippingInput = prompt('أدخل تكلفة الشحن الفعلية حسب الوزن (ر.س):');
-    if (shippingInput === null) return;
-    const shippingCost = Number(shippingInput);
     if (!Number.isFinite(shippingCost) || shippingCost < 0) {
-        showNotification('قيمة غير صحيحة', 'error');
+        showNotification('الرجاء إدخال تكلفة شحن صحيحة', 'error');
+        shippingInput?.focus();
         return;
     }
+
     const total = Math.round((Number(itemsSubtotal || 0) + shippingCost) * 100) / 100;
     try {
         const token = localStorage.getItem('antika_admin_token');
