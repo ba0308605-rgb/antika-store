@@ -126,7 +126,7 @@ function stripUndefinedDeep(value) {
   return value === undefined ? undefined : value;
 }
 function getOrderStatusTextAr(status) {
-  const map = { pending: '\u0628\u0627\u0646\u062a\u0638\u0627\u0631 \u0627\u0644\u0645\u0631\u0627\u062c\u0639\u0629', processing: '\u0642\u064a\u062f \u0627\u0644\u062a\u062c\u0647\u064a\u0632', shipped: '\u062a\u0645 \u0627\u0644\u0634\u062d\u0646', out_for_delivery: '\u062e\u0631\u062c \u0644\u0644\u062a\u0648\u0635\u064a\u0644', delivered: '\u062a\u0645 \u0627\u0644\u062a\u0633\u0644\u064a\u0645', cancelled: '\u0645\u0644\u063a\u064a' };
+  const map = { pending: '\u0628\u0627\u0646\u062a\u0638\u0627\u0631 \u0627\u0644\u0645\u0631\u0627\u062c\u0639\u0629', confirming_availability: '\u062a\u0623\u0643\u064a\u062f \u0627\u0644\u062a\u0648\u0641\u0631 + \u0627\u062d\u062a\u0633\u0627\u0628 \u0627\u0644\u0634\u062d\u0646', awaiting_shipping_payment: '\u0628\u0627\u0646\u062a\u0638\u0627\u0631 \u0627\u0644\u062f\u0641\u0639', processing: '\u0642\u064a\u062f \u0627\u0644\u062a\u062c\u0647\u064a\u0632', shipped: '\u062a\u0645 \u0627\u0644\u0634\u062d\u0646', out_for_delivery: '\u062e\u0631\u062c \u0644\u0644\u062a\u0648\u0635\u064a\u0644', delivered: '\u062a\u0645 \u0627\u0644\u062a\u0633\u0644\u064a\u0645', cancelled: '\u0645\u0644\u063a\u064a' };
   return map[String(status || '').trim()] || String(status || '');
 }
 function generateOrderCode(orderId, date) {
@@ -554,7 +554,9 @@ app.post('/api/orders', async (req, res) => {
     const codFeeInput = Number(payload.codFee);
     payload.codFee = Number.isFinite(codFeeInput) ? codFeeInput : (pm === 'cash' ? COD_SURCHARGE_SAR : 0);
     payload.paymentMethod = pm;
-    payload.status = String(payload.status || 'processing').trim() || 'processing';
+    // كل طلب جديد يبدأ تلقائياً بحالة "تأكيد التوفر + احتساب الشحن" بدون أي إجراء من الأدمن
+    payload.status = 'confirming_availability';
+    payload.isPaid = false;
     payload.date = admin.firestore.FieldValue.serverTimestamp();
     payload.statusTimeline = [{ status: payload.status, title: '\u062a\u0645 \u0627\u0633\u062a\u0644\u0627\u0645 \u0627\u0644\u0637\u0644\u0628', message: '\u0627\u0633\u062a\u0644\u0645\u0646\u0627 \u0637\u0644\u0628\u0643 \u0628\u0646\u062c\u0627\u062d.', source: 'system', at: new Date().toISOString() }];
     const ref = await db.collection('orders').add(payload);
@@ -572,11 +574,17 @@ app.put('/api/orders/:id', requireAdmin, async (req, res) => {
     const doc = await ref.get();
     if (!doc.exists) return res.status(404).json({ error: 'Order not found' });
     const order = Object.assign({ id: doc.id }, doc.data());
-    const allowed = ['status','shippingCarrier','trackingNumber','trackingUrl','shipmentReference','shippingMethod','shippingMethodLabel','shippingCity','shippingRegion','shippingEta','shippingCost','shippingBaseFee','shippingMethodExtraFee','codFee','paymentMethod','otoTrackingNumber','otoAwbUrl','otoStatus','otoDcStatus','total','weight','awaitingPaymentSince'];
+    const allowed = ['status','shippingCarrier','trackingNumber','trackingUrl','shipmentReference','shippingMethod','shippingMethodLabel','shippingCity','shippingRegion','shippingEta','shippingCost','shippingBaseFee','shippingMethodExtraFee','codFee','paymentMethod','otoTrackingNumber','otoAwbUrl','otoStatus','otoDcStatus','total','weight','awaitingPaymentSince','isPaid','paidAt'];
     const updates = {};
     const before = { status: String(order.status || ''), trackingNumber: String(order.trackingNumber || '') };
     for (const field of allowed) { if (Object.prototype.hasOwnProperty.call(req.body, field) && req.body[field] !== undefined) updates[field] = req.body[field]; }
     const nextStatus = String(updates.status || order.status || 'processing');
+    // 🔒 قفل صارم على مستوى السيرفر: لا يمكن الانتقال لمرحلة التجهيز أو ما بعدها قبل تأكيد الدفع
+    const LOCKED_STATUSES = ['processing', 'shipped', 'out_for_delivery', 'delivered'];
+    const PRE_PAYMENT_STATUSES = ['confirming_availability', 'awaiting_shipping_payment'];
+    if (LOCKED_STATUSES.includes(nextStatus) && PRE_PAYMENT_STATUSES.includes(order.status) && !order.isPaid && !updates.isPaid) {
+      return res.status(400).json({ error: '\u0644\u0627 \u064a\u0645\u0643\u0646 \u0646\u0642\u0644 \u0627\u0644\u0637\u0644\u0628 \u0644\u0647\u0630\u0647 \u0627\u0644\u0645\u0631\u062d\u0644\u0629 \u0642\u0628\u0644 \u062a\u0623\u0643\u064a\u062f \u0627\u0644\u062f\u0641\u0639' });
+    }
     updates.status = nextStatus;
     const statusChanged = before.status !== nextStatus;
     const trackingChanged = before.trackingNumber !== String(updates.trackingNumber || order.trackingNumber || '');
@@ -981,7 +989,7 @@ app.post('/api/payment/verify', async (req, res) => {
         console.error('Payment amount mismatch for order ' + orderId + ': paid=' + paidHalalas + ' expected=' + expectedHalalas);
         return res.status(400).json({ error: '\u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u062f\u0641\u0648\u0639 \u0644\u0627 \u064a\u0637\u0627\u0628\u0642 \u0642\u064a\u0645\u0629 \u0627\u0644\u0637\u0644\u0628. \u062a\u0648\u0627\u0635\u0644 \u0645\u0639 \u0627\u0644\u062f\u0639\u0645.' });
       }
-      const updates = { paymentMethod: 'online', paymentId, status: 'processing' };
+      const updates = { paymentMethod: 'online', paymentId, status: 'processing', isPaid: true, paidAt: new Date().toISOString() };
       const tl = order.statusTimeline || [];
       tl.push({ status: 'processing', title: '\u062a\u0645 \u0627\u0633\u062a\u0644\u0627\u0645 \u0627\u0644\u062f\u0641\u0639\u0629', message: '\u062a\u0645 \u062a\u0623\u0643\u064a\u062f \u0627\u0644\u062f\u0641\u0639 \u0648\u0628\u062f\u0621 \u0627\u0644\u062a\u062c\u0647\u064a\u0632', source: 'system', at: new Date().toISOString() });
       updates.statusTimeline = tl;
@@ -1019,6 +1027,30 @@ async function initData() {
   } catch (err) { console.error('Error initializing data:', err); }
 }
 
+// إلغاء تلقائي للطلبات اللي ما دفع عليها العميل خلال 24 ساعة من إرسال السعر النهائي
+async function autoCancelUnpaidOrders() {
+  try {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const s = await db.collection('orders').where('status', '==', 'awaiting_shipping_payment').get();
+    if (s.empty) return;
+    for (const doc of s.docs) {
+      const order = doc.data();
+      if (order.isPaid) continue;
+      const since = order.awaitingPaymentSince ? new Date(order.awaitingPaymentSince).getTime() : null;
+      if (!since || since > cutoff) continue;
+      const tl = order.statusTimeline || [];
+      tl.push({ status: 'cancelled', title: '\u0625\u0644\u063a\u0627\u0621 \u062a\u0644\u0642\u0627\u0626\u064a', message: '\u062a\u0645 \u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0644\u0639\u062f\u0645 \u0625\u062a\u0645\u0627\u0645 \u0627\u0644\u062f\u0641\u0639 \u062e\u0644\u0627\u0644 24 \u0633\u0627\u0639\u0629', source: 'system', at: new Date().toISOString() });
+      await doc.ref.update({ status: 'cancelled', statusTimeline: tl, cancelReason: 'payment_timeout' });
+      try {
+        const uo = Object.assign({}, order, { status: 'cancelled' });
+        const nr = await sendOrderCustomerNotification(uo, { title: '\u062a\u0645 \u0625\u0644\u063a\u0627\u0621 \u0637\u0644\u0628\u0643', message: '\u062a\u0645 \u0625\u0644\u063a\u0627\u0621 \u0637\u0644\u0628\u0643 \u0644\u0639\u062f\u0645 \u0625\u062a\u0645\u0627\u0645 \u0627\u0644\u062f\u0641\u0639 \u062e\u0644\u0627\u0644 24 \u0633\u0627\u0639\u0629 \u0645\u0646 \u062a\u0623\u0643\u064a\u062f \u0627\u0644\u0633\u0639\u0631 \u0627\u0644\u0646\u0647\u0627\u0626\u064a.' });
+        if (nr.sent) await doc.ref.update({ customerNotifiedAt: new Date().toISOString() });
+      } catch (ne) { console.error('Notify error (auto-cancel):', ne.message); }
+      console.log('\u23f0 Auto-cancelled unpaid order:', doc.id);
+    }
+  } catch (err) { console.error('autoCancelUnpaidOrders error:', err.message); }
+}
+
 async function cleanupOldCarts() {
   try { const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000); const s = await db.collection('carts').where('updatedAt', '<', cutoff).get(); if (!s.empty) { const b = db.batch(); s.docs.forEach(d => b.delete(d.ref)); await b.commit(); console.log('\uD83E\uDDF9 Cleaned ' + s.size + ' old carts'); } }
   catch (err) { console.error('Cart cleanup error:', err.message); }
@@ -1026,6 +1058,8 @@ async function cleanupOldCarts() {
 
 setInterval(cleanupOldCarts, 14 * 24 * 60 * 60 * 1000);
 setTimeout(cleanupOldCarts, 60 * 1000);
+setInterval(autoCancelUnpaidOrders, 15 * 60 * 1000);
+setTimeout(autoCancelUnpaidOrders, 90 * 1000);
 
 // SITEMAP & ROBOTS
 app.get('/sitemap.xml', async (req, res) => {

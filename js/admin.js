@@ -486,7 +486,7 @@ async function loadOrders() {
             const orderSeq = seqMap[orderId] || '—';
             const orderDate = order.date ? new Date(order.date).toLocaleString('ar-SA') : '-';
             const isPrePayment = PRE_PAYMENT_STATUSES.includes(order.status);
-            const isInitialStatus = order.status === 'pending' || order.status === 'confirming_availability';
+            const isLocked = isPrePayment && !order.isPaid;
             const itemsSubtotal = order.items.reduce((s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
             const lockedBtnClass = 'flex-1 bg-gray-100 text-gray-400 py-2 rounded-lg text-sm cursor-not-allowed';
             const lockedTitle = 'title="بانتظار تأكيد الدفع أولاً"';
@@ -557,6 +557,17 @@ async function loadOrders() {
                             </div>
                         </div>
                     </div>` : ''}
+                    ${order.status === 'awaiting_shipping_payment' && !order.isPaid ? `
+                    <div class="mb-4 p-3 bg-yellow-50 border-2 border-yellow-200 rounded-xl flex flex-wrap items-center justify-between gap-2">
+                        <p class="text-sm text-yellow-800"><i class="fas fa-clock ml-1"></i>بانتظار دفع العميل. إذا استلمت الدفع يدوياً (تحويل بنكي مثلاً)، أكد ذلك هنا لفتح باقي الحالات.</p>
+                        <button onclick="confirmManualPayment('${orderId}')" class="bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-bold px-4 py-2 rounded-lg">
+                            ✅ تأكيد استلام الدفع يدوياً
+                        </button>
+                    </div>` : ''}
+                    ${order.isPaid ? `
+                    <div class="mb-4 p-2 px-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+                        <i class="fas fa-check-circle ml-1"></i>تم تأكيد دفع العميل${order.paidAt ? ' في ' + new Date(order.paidAt).toLocaleString('ar-SA') : ''}
+                    </div>` : ''}
                     <div class="border-t border-gray-100 pt-4">
                         <h4 class="font-bold text-gray-700 mb-2">المنتجات</h4>
                         <div class="space-y-2">
@@ -573,20 +584,16 @@ async function loadOrders() {
                         </div>
                     </div>
                     <div class="border-t border-gray-100 pt-4 mt-4 flex flex-wrap gap-2">
-                        ${isInitialStatus ? `
-                        <button onclick="updateOrderStatus('${orderId}', 'confirming_availability')" class="flex-1 bg-red-100 text-red-700 py-2 rounded-lg hover:bg-red-200 transition text-sm">
-                            ✅ تأكيد التوفر
-                        </button>` : ''}
-                        <button ${isPrePayment ? `disabled ${lockedTitle}` : `onclick="updateOrderStatus('${orderId}', 'processing')"`} class="${isPrePayment ? lockedBtnClass : 'flex-1 bg-blue-100 text-blue-600 py-2 rounded-lg hover:bg-blue-200 transition text-sm'}">
+                        <button ${isLocked ? `disabled ${lockedTitle}` : `onclick="updateOrderStatus('${orderId}', 'processing')"`} class="${isLocked ? lockedBtnClass : 'flex-1 bg-blue-100 text-blue-600 py-2 rounded-lg hover:bg-blue-200 transition text-sm'}">
                             قيد التجهيز
                         </button>
-                        <button ${isPrePayment ? `disabled ${lockedTitle}` : `onclick="updateOrderStatus('${orderId}', 'shipped')"`} class="${isPrePayment ? lockedBtnClass : 'flex-1 bg-yellow-100 text-yellow-600 py-2 rounded-lg hover:bg-yellow-200 transition text-sm'}">
+                        <button ${isLocked ? `disabled ${lockedTitle}` : `onclick="updateOrderStatus('${orderId}', 'shipped')"`} class="${isLocked ? lockedBtnClass : 'flex-1 bg-yellow-100 text-yellow-600 py-2 rounded-lg hover:bg-yellow-200 transition text-sm'}">
                             تم الشحن
                         </button>
-                        <button ${isPrePayment ? `disabled ${lockedTitle}` : `onclick="updateOrderStatus('${orderId}', 'out_for_delivery')"`} class="${isPrePayment ? lockedBtnClass : 'flex-1 bg-orange-100 text-orange-600 py-2 rounded-lg hover:bg-orange-200 transition text-sm'}">
+                        <button ${isLocked ? `disabled ${lockedTitle}` : `onclick="updateOrderStatus('${orderId}', 'out_for_delivery')"`} class="${isLocked ? lockedBtnClass : 'flex-1 bg-orange-100 text-orange-600 py-2 rounded-lg hover:bg-orange-200 transition text-sm'}">
                             خرج للتوصيل
                         </button>
-                        <button ${isPrePayment ? `disabled ${lockedTitle}` : `onclick="updateOrderStatus('${orderId}', 'delivered')"`} class="${isPrePayment ? lockedBtnClass : 'flex-1 bg-green-100 text-green-600 py-2 rounded-lg hover:bg-green-200 transition text-sm'}">
+                        <button ${isLocked ? `disabled ${lockedTitle}` : `onclick="updateOrderStatus('${orderId}', 'delivered')"`} class="${isLocked ? lockedBtnClass : 'flex-1 bg-green-100 text-green-600 py-2 rounded-lg hover:bg-green-200 transition text-sm'}">
                             تم التوصيل
                         </button>
                         <button onclick="createOtoShipment('${orderId}')" class="px-4 bg-indigo-100 text-indigo-700 py-2 rounded-lg hover:bg-indigo-200 transition text-sm">
@@ -596,7 +603,7 @@ async function loadOrders() {
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
-                    ${isPrePayment ? `<p class="text-xs text-gray-400 mt-2"><i class="fas fa-lock ml-1"></i>مراحل الشحن مقفلة لحين تأكيد الدفع من العميل</p>` : ''}
+                    ${isLocked ? `<p class="text-xs text-gray-400 mt-2"><i class="fas fa-lock ml-1"></i>مراحل الشحن مقفلة لحين تأكيد الدفع من العميل</p>` : ''}
                 </div>
                 </div>
             </div>
@@ -647,7 +654,7 @@ async function updateOrderStatus(orderId, status) {
     // 🔒 قفل صارم: منع الانتقال لمرحلة التجهيز أو ما بعدها قبل تأكيد الدفع فعلياً
     if (LOCKED_STATUSES.includes(status)) {
         const current = lastLoadedOrders.find(o => (o._id || o.id) === orderId);
-        if (current && PRE_PAYMENT_STATUSES.includes(current.status)) {
+        if (current && PRE_PAYMENT_STATUSES.includes(current.status) && !current.isPaid) {
             showNotification('لا يمكن نقل الطلب لهذه المرحلة قبل تأكيد دفع العميل', 'error');
             return;
         }
@@ -665,14 +672,22 @@ async function updateOrderStatus(orderId, status) {
     }
 }
 
-function toggleShippingForm(orderId) {
-    const form = document.getElementById('shipping-form-' + orderId);
-    if (!form) return;
-    form.classList.toggle('hidden');
-    if (!form.classList.contains('hidden')) {
-        form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        const weightInput = document.getElementById('weight-input-' + orderId);
-        if (weightInput) weightInput.focus();
+async function confirmManualPayment(orderId) {
+    if (!confirm('تأكيد أن العميل دفع المبلغ كاملاً؟ سيتم فتح باقي الحالات لك لاختيار المناسب.')) return;
+    try {
+        const token = localStorage.getItem('antika_admin_token');
+        const res = await fetch('/api/orders/' + orderId, {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isPaid: true, paidAt: new Date().toISOString() })
+        });
+        if (!res.ok) throw new Error('فشل التحديث');
+        showNotification('✅ تم تأكيد الدفع، تقدر الآن تختار الحالة المناسبة');
+        await loadOrders();
+        await updateStats();
+    } catch (error) {
+        console.error('Error confirming manual payment:', error);
+        showNotification('حدث خطأ أثناء تأكيد الدفع', 'error');
     }
 }
 
