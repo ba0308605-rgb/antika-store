@@ -179,6 +179,9 @@ function showSection(sectionName) {
 // ============================================
 
 let salesChartInstance = null;
+let lastLoadedOrders = [];
+const PRE_PAYMENT_STATUSES = ['pending', 'confirming_availability', 'awaiting_shipping_payment'];
+const LOCKED_STATUSES = ['processing', 'shipped', 'out_for_delivery', 'delivered'];
 
 async function updateStats() {
     await loadDashboard();
@@ -476,10 +479,17 @@ async function loadOrders() {
         const seqMap = {};
         sortedByDateAsc.forEach((o, idx) => { seqMap[o.id || o._id] = idx + 1; });
 
+        lastLoadedOrders = orders;
+
         container.innerHTML = orders.map(order => {
             const orderId = order._id || order.id;
             const orderSeq = seqMap[orderId] || '—';
             const orderDate = order.date ? new Date(order.date).toLocaleString('ar-SA') : '-';
+            const isPrePayment = PRE_PAYMENT_STATUSES.includes(order.status);
+            const isInitialStatus = order.status === 'pending' || order.status === 'confirming_availability';
+            const itemsSubtotal = order.items.reduce((s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
+            const lockedBtnClass = 'flex-1 bg-gray-100 text-gray-400 py-2 rounded-lg text-sm cursor-not-allowed';
+            const lockedTitle = 'title="بانتظار تأكيد الدفع أولاً"';
             return `
             <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden mb-3">
                 <div class="p-3 flex justify-between items-center gap-2 cursor-pointer select-none flex-wrap" onclick="toggleOrderDetails('${orderId}')">
@@ -526,7 +536,8 @@ async function loadOrders() {
                             <p class="font-bold text-antika-gold text-lg mt-2">الإجمالي: ${order.total} ر.س</p>
                         </div>
                     </div>
-                    <div id="shipping-form-${orderId}" class="hidden mb-4 p-4 bg-red-50 border-2 border-red-200 rounded-xl">
+                    ${isPrePayment ? `
+                    <div id="shipping-form-${orderId}" class="mb-4 p-4 bg-red-50 border-2 border-red-200 rounded-xl">
                         <h4 class="font-bold text-red-700 mb-3 flex items-center gap-2">
                             <i class="fas fa-weight-hanging"></i> تحديد الوزن والسعر النهائي
                         </h4>
@@ -540,15 +551,12 @@ async function loadOrders() {
                                 <input type="number" step="0.01" min="0" id="shipping-input-${orderId}" value="${order.shippingCost != null ? order.shippingCost : ''}" placeholder="مثال: 20" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-red-400 focus:outline-none">
                             </div>
                             <div class="flex gap-2">
-                                <button onclick="confirmShippingForm('${orderId}', ${order.items.reduce((s, it) => s + (Number(it.price)||0) * (Number(it.quantity)||1), 0)})" class="flex-1 bg-red-600 text-white py-2 rounded-lg font-bold hover:bg-red-700 transition text-sm">
+                                <button onclick="confirmShippingForm('${orderId}', ${itemsSubtotal})" class="flex-1 bg-red-600 text-white py-2 rounded-lg font-bold hover:bg-red-700 transition text-sm">
                                     ✅ تأكيد وإرسال للعميل
-                                </button>
-                                <button onclick="toggleShippingForm('${orderId}')" class="px-4 bg-gray-200 text-gray-600 py-2 rounded-lg hover:bg-gray-300 transition text-sm">
-                                    إلغاء
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </div>` : ''}
                     <div class="border-t border-gray-100 pt-4">
                         <h4 class="font-bold text-gray-700 mb-2">المنتجات</h4>
                         <div class="space-y-2">
@@ -564,20 +572,21 @@ async function loadOrders() {
                             `).join('')}
                         </div>
                     </div>
-                    <div class="border-t border-gray-100 pt-4 mt-4 grid grid-cols-2 md:grid-cols-7 gap-2">
-                        <button onclick="toggleShippingForm('${orderId}')" class="flex-1 bg-red-100 text-red-700 py-2 rounded-lg hover:bg-red-200 transition text-sm">
-                            تحديد الوزن + السعر النهائي
-                        </button>
-                        <button onclick="updateOrderStatus('${orderId}', 'processing')" class="flex-1 bg-blue-100 text-blue-600 py-2 rounded-lg hover:bg-blue-200 transition text-sm">
+                    <div class="border-t border-gray-100 pt-4 mt-4 flex flex-wrap gap-2">
+                        ${isInitialStatus ? `
+                        <button onclick="updateOrderStatus('${orderId}', 'confirming_availability')" class="flex-1 bg-red-100 text-red-700 py-2 rounded-lg hover:bg-red-200 transition text-sm">
+                            ✅ تأكيد التوفر
+                        </button>` : ''}
+                        <button ${isPrePayment ? `disabled ${lockedTitle}` : `onclick="updateOrderStatus('${orderId}', 'processing')"`} class="${isPrePayment ? lockedBtnClass : 'flex-1 bg-blue-100 text-blue-600 py-2 rounded-lg hover:bg-blue-200 transition text-sm'}">
                             قيد التجهيز
                         </button>
-                        <button onclick="updateOrderStatus('${orderId}', 'shipped')" class="flex-1 bg-yellow-100 text-yellow-600 py-2 rounded-lg hover:bg-yellow-200 transition text-sm">
+                        <button ${isPrePayment ? `disabled ${lockedTitle}` : `onclick="updateOrderStatus('${orderId}', 'shipped')"`} class="${isPrePayment ? lockedBtnClass : 'flex-1 bg-yellow-100 text-yellow-600 py-2 rounded-lg hover:bg-yellow-200 transition text-sm'}">
                             تم الشحن
                         </button>
-                        <button onclick="updateOrderStatus('${orderId}', 'out_for_delivery')" class="flex-1 bg-orange-100 text-orange-600 py-2 rounded-lg hover:bg-orange-200 transition text-sm">
+                        <button ${isPrePayment ? `disabled ${lockedTitle}` : `onclick="updateOrderStatus('${orderId}', 'out_for_delivery')"`} class="${isPrePayment ? lockedBtnClass : 'flex-1 bg-orange-100 text-orange-600 py-2 rounded-lg hover:bg-orange-200 transition text-sm'}">
                             خرج للتوصيل
                         </button>
-                        <button onclick="updateOrderStatus('${orderId}', 'delivered')" class="flex-1 bg-green-100 text-green-600 py-2 rounded-lg hover:bg-green-200 transition text-sm">
+                        <button ${isPrePayment ? `disabled ${lockedTitle}` : `onclick="updateOrderStatus('${orderId}', 'delivered')"`} class="${isPrePayment ? lockedBtnClass : 'flex-1 bg-green-100 text-green-600 py-2 rounded-lg hover:bg-green-200 transition text-sm'}">
                             تم التوصيل
                         </button>
                         <button onclick="createOtoShipment('${orderId}')" class="px-4 bg-indigo-100 text-indigo-700 py-2 rounded-lg hover:bg-indigo-200 transition text-sm">
@@ -587,6 +596,7 @@ async function loadOrders() {
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
+                    ${isPrePayment ? `<p class="text-xs text-gray-400 mt-2"><i class="fas fa-lock ml-1"></i>مراحل الشحن مقفلة لحين تأكيد الدفع من العميل</p>` : ''}
                 </div>
                 </div>
             </div>
@@ -634,6 +644,14 @@ function getOrderStatusText(status) {
 }
 
 async function updateOrderStatus(orderId, status) {
+    // 🔒 قفل صارم: منع الانتقال لمرحلة التجهيز أو ما بعدها قبل تأكيد الدفع فعلياً
+    if (LOCKED_STATUSES.includes(status)) {
+        const current = lastLoadedOrders.find(o => (o._id || o.id) === orderId);
+        if (current && PRE_PAYMENT_STATUSES.includes(current.status)) {
+            showNotification('لا يمكن نقل الطلب لهذه المرحلة قبل تأكيد دفع العميل', 'error');
+            return;
+        }
+    }
     try {
         if (API.updateOrderStatus) {
             await API.updateOrderStatus(orderId, status);
