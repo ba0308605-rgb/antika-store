@@ -167,7 +167,9 @@
                 shippingCity: order.shippingCity || '',
                 shippingCost: order.shippingCost,
                 weight: order.weight,
-                awaitingPaymentSince: order.awaitingPaymentSince
+                awaitingPaymentSince: order.awaitingPaymentSince,
+                isPaid: Boolean(order.isPaid),
+                customerCancelled: Boolean(order.customerCancelled)
             };
         }
 
@@ -263,6 +265,15 @@
                                         <i class="fas fa-lock"></i>
                                         أكمل الدفع الآن — ${order.total} ر.س
                                     </button>
+                                    <button onclick="cancelOrder('${order.id}')" class="w-full mt-2 text-red-500 hover:text-red-700 text-xs font-semibold py-1">
+                                        إلغاء الطلب
+                                    </button>
+                                </div>` : ''}
+                                ${order.status === 'confirming_availability' ? `
+                                <div class="mt-4 text-center">
+                                    <button onclick="cancelOrder('${order.id}')" class="text-red-500 hover:text-red-700 text-xs font-semibold py-1">
+                                        إلغاء الطلب
+                                    </button>
                                 </div>` : ''}
                             </div>
                         </div>
@@ -296,14 +307,14 @@
 
             try {
                 const allOrders = await API.getOrders();
-                const allNormalized = (Array.isArray(allOrders) ? allOrders : []).map(normalizeOrder);
+                const allNormalized = (Array.isArray(allOrders) ? allOrders : []).map(normalizeOrder).filter(o => !o.customerCancelled);
                 const seqMap = buildSeqMap(allNormalized);
                 const fromApi = allNormalized.filter(o => !email || o.customerEmail === email);
                 if (fromApi.length > 0) { renderOrders(fromApi, seqMap); return; }
             } catch (e) { console.warn('Could not load orders from API:', e); }
 
             try {
-                const localAll = JSON.parse(localStorage.getItem('antika_orders') || '[]').map(normalizeOrder);
+                const localAll = JSON.parse(localStorage.getItem('antika_orders') || '[]').map(normalizeOrder).filter(o => !o.customerCancelled);
                 const seqMap = buildSeqMap(localAll);
                 const localOrders = localAll.filter(o => !email || o.customerEmail === email);
                 if (localOrders.length > 0) { renderOrders(localOrders, seqMap); } else { renderEmptyState(); }
@@ -369,6 +380,29 @@
                     closeMoyasarModal();
                 }
             });
+        }
+
+        async function cancelOrder(orderId) {
+            if (!confirm('هل أنت متأكد من إلغاء هذا الطلب؟')) return;
+            try {
+                const userRaw = localStorage.getItem('antika_user');
+                const user = userRaw ? JSON.parse(userRaw) : {};
+                const res = await fetch('/api/orders/' + orderId + '/cancel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ customerEmail: user.email || '' })
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    alert(data.error || 'تعذر إلغاء الطلب');
+                    return;
+                }
+                alert('تم إلغاء الطلب بنجاح');
+                await loadOrdersPage();
+            } catch (err) {
+                console.error('Cancel order error:', err);
+                alert('حدث خطأ أثناء إلغاء الطلب');
+            }
         }
 
         async function logout() {

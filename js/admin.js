@@ -491,12 +491,13 @@ async function loadOrders() {
             const lockedBtnClass = 'flex-1 bg-gray-100 text-gray-400 py-2 rounded-lg text-sm cursor-not-allowed';
             const lockedTitle = 'title="بانتظار تأكيد الدفع أولاً"';
             return `
-            <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden mb-3">
+            <div class="bg-white rounded-xl shadow-lg border ${order.customerCancelled ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-100'} overflow-hidden mb-3">
                 <div class="p-3 flex justify-between items-center gap-2 cursor-pointer select-none flex-wrap" onclick="toggleOrderDetails('${orderId}')">
                     <div class="flex items-center gap-3 flex-wrap">
                         <span class="font-bold text-gray-800">طلب #${orderSeq}</span>
                         <span class="text-sm text-gray-600">${safeText(order.customerName)}</span>
                         <span class="text-xs text-gray-400">${orderDate}</span>
+                        ${order.customerCancelled ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-red-600 text-white"><i class="fas fa-ban ml-1"></i>ألغاه العميل</span>` : ''}
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="px-3 py-1 rounded-full text-sm font-semibold ${getOrderStatusClass(order.status)}">
@@ -508,6 +509,16 @@ async function loadOrders() {
                 </div>
                 <div id="details-${orderId}" class="hidden border-t border-gray-100">
                 <div class="p-4">
+                    ${order.customerCancelled ? `
+                    <div class="mb-4 p-3 bg-red-50 border-2 border-red-300 rounded-xl flex flex-wrap items-center justify-between gap-2">
+                        <p class="text-sm text-red-700 font-semibold">
+                            <i class="fas fa-ban ml-1"></i>
+                            العميل ألغى هذا الطلب${order.customerCancelledAt ? ' بتاريخ ' + new Date(order.customerCancelledAt).toLocaleString('ar-SA') : ''}. الطلب باقٍ عندك فقط، اختر تحذفه أو تتركه.
+                        </p>
+                        <button onclick="deleteOrder('${orderId}')" class="bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-4 py-2 rounded-lg">
+                            <i class="fas fa-trash ml-1"></i>حذف الطلب نهائياً
+                        </button>
+                    </div>` : ''}
                     <div class="grid md:grid-cols-2 gap-4 mb-4">
                         <div>
                             <h4 class="font-bold text-gray-700 mb-2">معلومات العميل</h4>

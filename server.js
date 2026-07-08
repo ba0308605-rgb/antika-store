@@ -152,6 +152,18 @@ async function sendOrderCustomerNotification(order, { title, message, subject } 
   const safeSubject = subject || ('\u062a\u062d\u062f\u064a\u062b \u0637\u0644\u0628\u0643 ' + (orderCode ? '#' + orderCode : '')).trim();
   const safeTitle = title || '\u062a\u062d\u062f\u064a\u062b \u062c\u062f\u064a\u062f \u0639\u0644\u0649 \u0637\u0644\u0628\u0643';
   const safeMessage = message || ('\u062d\u0627\u0644\u0629 \u0627\u0644\u0637\u0644\u0628: ' + getOrderStatusTextAr(order && order.status));
+  // \u0625\u0634\u0639\u0627\u0631 \u062f\u0627\u062e\u0644 \u0627\u0644\u062a\u0637\u0628\u064a\u0642 (\u064a\u063a\u0630\u064a \u0627\u0644\u062c\u0631\u0633 \u0641\u0648\u0642 \u0623\u064a\u0642\u0648\u0646\u0629 \u0627\u0644\u0637\u0644\u0628\u0627\u062a)
+  try {
+    await db.collection('notifications').add({
+      ownerEmail: toEmail.toLowerCase(),
+      orderId: String((order && order.id) || (order && order._id) || ''),
+      type: 'order',
+      title: safeTitle,
+      message: safeMessage,
+      read: false,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (ie) { console.error('In-app notification error:', ie.message); }
   const html = '<div style="font-family:Tahoma,Arial,sans-serif;direction:rtl;text-align:right;"><h2>' + safeTitle + '</h2><p>' + safeMessage + '</p><p>\u0634\u0643\u0631\u0627\u064b \u0644\u062a\u0633\u0648\u0642\u0643 \u0645\u0646 \u0645\u062a\u062c\u0631 \u0623\u0646\u062a\u064a\u0643\u0627.</p></div>';
   try { const r = await sendEmailViaResend({ to: toEmail, subject: safeSubject, html }); if (r.devMode) return { sent: true, devMode: true }; } catch (e) { console.error('[EMAIL ERROR]', e.message); throw e; }
   return { sent: true };
@@ -605,6 +617,29 @@ app.put('/api/orders/:id', requireAdmin, async (req, res) => {
 app.delete('/api/orders/:id', requireAdmin, async (req, res) => {
   try { await db.collection('orders').doc(req.params.id).delete(); res.json({ message: 'Order deleted' }); }
   catch (err) { res.status(500).json({ error: err.message }); }
+});
+// \u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0645\u0646 \u0637\u0631\u0641 \u0627\u0644\u0639\u0645\u064a\u0644 \u0642\u0628\u0644 \u0627\u0644\u062f\u0641\u0639 \u0641\u0642\u0637 (\u0644\u0627 \u064a\u062d\u0630\u0641 \u0627\u0644\u0637\u0644\u0628\u060c \u0641\u0642\u0637 \u064a\u062e\u0641\u064a\u0647 \u0639\u0646 \u0627\u0644\u0639\u0645\u064a\u0644 \u0648\u064a\u0638\u0647\u0631 \u0644\u0644\u0623\u062f\u0645\u0646 \u0623\u0646 \u0627\u0644\u0639\u0645\u064a\u0644 \u0623\u0644\u063a\u0627\u0647)
+app.post('/api/orders/:id/cancel', async (req, res) => {
+  try {
+    const { customerEmail } = req.body || {};
+    const ref = db.collection('orders').doc(req.params.id);
+    const doc = await ref.get();
+    if (!doc.exists) return res.status(404).json({ error: '\u0627\u0644\u0637\u0644\u0628 \u063a\u064a\u0631 \u0645\u0648\u062c\u0648\u062f' });
+    const order = doc.data();
+    const email = String(customerEmail || '').trim().toLowerCase();
+    if (!email || email !== String(order.customerEmail || '').trim().toLowerCase()) {
+      return res.status(403).json({ error: '\u063a\u064a\u0631 \u0645\u0635\u0631\u062d \u0628\u0625\u0644\u063a\u0627\u0621 \u0647\u0630\u0627 \u0627\u0644\u0637\u0644\u0628' });
+    }
+    if (order.isPaid) return res.status(400).json({ error: '\u0644\u0627 \u064a\u0645\u0643\u0646 \u0625\u0644\u063a\u0627\u0621 \u0637\u0644\u0628 \u062a\u0645 \u062f\u0641\u0639\u0647\u060c \u062a\u0648\u0627\u0635\u0644 \u0645\u0639 \u0627\u0644\u062f\u0639\u0645' });
+    const cancellableStatuses = ['confirming_availability', 'awaiting_shipping_payment'];
+    if (!cancellableStatuses.includes(order.status)) {
+      return res.status(400).json({ error: '\u0644\u0627 \u064a\u0645\u0643\u0646 \u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0641\u064a \u0647\u0630\u0647 \u0627\u0644\u0645\u0631\u062d\u0644\u0629' });
+    }
+    const tl = order.statusTimeline || [];
+    tl.push({ status: order.status, title: '\u0625\u0644\u063a\u0627\u0621 \u0645\u0646 \u0627\u0644\u0639\u0645\u064a\u0644', message: '\u0642\u0627\u0645 \u0627\u0644\u0639\u0645\u064a\u0644 \u0628\u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0642\u0628\u0644 \u0627\u0644\u062f\u0641\u0639', source: 'customer', at: new Date().toISOString() });
+    await ref.update({ customerCancelled: true, customerCancelledAt: new Date().toISOString(), statusTimeline: tl });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.post('/api/orders/:id/create-shipment', requireAdmin, async (req, res) => {
   try {
