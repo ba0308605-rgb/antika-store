@@ -555,6 +555,17 @@ app.get('/api/orders', requireAdmin, async (req, res) => {
   try { let s; try { s = await db.collection('orders').orderBy('date', 'desc').get(); } catch (e) { s = await db.collection('orders').get(); } res.json(docsToArr(s)); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
+// \u062c\u0644\u0628 \u0637\u0644\u0628\u0627\u062a \u0639\u0645\u064a\u0644 \u0645\u0639\u064a\u0646 (\u0628\u062f\u0648\u0646 \u0635\u0644\u0627\u062d\u064a\u0629 \u0623\u062f\u0645\u0646) \u0644\u0627\u0633\u062a\u062e\u062f\u0627\u0645\u0647 \u0641\u064a \u0635\u0641\u062d\u0629 "\u0637\u0644\u0628\u0627\u062a\u064a"
+app.get('/api/orders/customer', async (req, res) => {
+  try {
+    const email = String(req.query.email || '').trim().toLowerCase();
+    if (!email) return res.json([]);
+    let s;
+    try { s = await db.collection('orders').where('customerEmail', '==', email).orderBy('date', 'desc').get(); }
+    catch (e) { s = await db.collection('orders').where('customerEmail', '==', email).get(); }
+    res.json(docsToArr(s));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 app.get('/api/orders/:id', requireAdmin, async (req, res) => {
   try { const doc = await db.collection('orders').doc(req.params.id).get(); if (!doc.exists) return res.status(404).json({ error: 'Order not found' }); res.json(Object.assign({ id: doc.id }, doc.data())); }
   catch (err) { res.status(500).json({ error: err.message }); }

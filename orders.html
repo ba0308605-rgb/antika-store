@@ -306,11 +306,14 @@
             const email = (user.email || '').toLowerCase();
 
             try {
-                const allOrders = await API.getOrders();
+                const res = await fetch('/api/orders/customer?email=' + encodeURIComponent(email));
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const allOrders = await res.json();
                 const allNormalized = (Array.isArray(allOrders) ? allOrders : []).map(normalizeOrder).filter(o => !o.customerCancelled);
                 const seqMap = buildSeqMap(allNormalized);
-                const fromApi = allNormalized.filter(o => !email || o.customerEmail === email);
-                if (fromApi.length > 0) { renderOrders(fromApi, seqMap); return; }
+                if (allNormalized.length > 0) { renderOrders(allNormalized, seqMap); return; }
+                renderEmptyState();
+                return;
             } catch (e) { console.warn('Could not load orders from API:', e); }
 
             try {
@@ -383,6 +386,10 @@
         }
 
         async function cancelOrder(orderId) {
+            if (String(orderId).startsWith('local_')) {
+                alert('هذا الطلب غير محفوظ على السيرفر، حدّث الصفحة وحاول مرة أخرى. إذا استمرت المشكلة تواصل معنا.');
+                return;
+            }
             if (!confirm('هل أنت متأكد من إلغاء هذا الطلب؟')) return;
             try {
                 const userRaw = localStorage.getItem('antika_user');
