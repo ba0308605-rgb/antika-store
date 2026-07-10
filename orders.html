@@ -311,8 +311,9 @@
                 const allOrders = await res.json();
                 const allNormalized = (Array.isArray(allOrders) ? allOrders : []).map(normalizeOrder).filter(o => !o.customerCancelled);
                 const seqMap = buildSeqMap(allNormalized);
-                if (allNormalized.length > 0) { renderOrders(allNormalized, seqMap); return; }
+                if (allNormalized.length > 0) { renderOrders(allNormalized, seqMap); focusOrderFromUrl(); clearOrderNotifications(email); return; }
                 renderEmptyState();
+                clearOrderNotifications(email);
                 return;
             } catch (e) { console.warn('Could not load orders from API:', e); }
 
@@ -322,6 +323,23 @@
                 const localOrders = localAll.filter(o => !email || o.customerEmail === email);
                 if (localOrders.length > 0) { renderOrders(localOrders, seqMap); } else { renderEmptyState(); }
             } catch (e) { renderEmptyState(); }
+        }
+
+        // يمسح إشعارات الطلبات بعد ما العميل يفتح صفحة "طلباتي" ويشوفها كاملة
+        async function clearOrderNotifications(email) {
+            try { await fetch('/api/notifications/by-type?email=' + encodeURIComponent(email) + '&type=order', { method: 'DELETE' }); }
+            catch (e) { console.warn('Could not clear order notifications:', e); }
+        }
+
+        // لو وصل العميل من رابط إشعار فيه رقم طلب معيّن (orders.html?order=ID) نفتحله الطلب مباشرة
+        function focusOrderFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const orderId = params.get('order');
+            if (!orderId) return;
+            const details = document.getElementById('details-' + orderId);
+            if (!details) return;
+            if (details.classList.contains('hidden')) toggleOrderDetails(orderId);
+            setTimeout(() => details.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
         }
 
         let moyasarPublishableKey = '';

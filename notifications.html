@@ -173,23 +173,40 @@
             const container = document.getElementById('notif-container');
 
             if (!notifications.length) {
-                container.innerHTML = '<div class="bg-white rounded-xl shadow-sm border p-12 text-center min-h-[300px] flex flex-col items-center justify-center"><div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-5"><i class="fas fa-bell text-3xl text-gray-300"></i></div><h2 class="text-lg font-bold text-gray-700 mb-2">لا توجد إشعارات</h2><p class="text-gray-400 text-sm">ستظهر هنا عندما يعجب أحد بتعليقاتك</p></div>';
+                container.innerHTML = '<div class="bg-white rounded-xl shadow-sm border p-12 text-center min-h-[300px] flex flex-col items-center justify-center"><div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-5"><i class="fas fa-bell text-3xl text-gray-300"></i></div><h2 class="text-lg font-bold text-gray-700 mb-2">لا توجد إشعارات</h2><p class="text-gray-400 text-sm">ستظهر هنا إشعاراتك الجديدة، مثل تحديثات طلباتك</p></div>';
                 return;
             }
 
             container.innerHTML = notifications.map(function(n) {
                 const date = new Date(n.updatedAt).toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
+                const unreadClass = !n.read ? ' unread' : '';
+                const closeBtn = '<button onclick="event.preventDefault();event.stopPropagation();deleteNotification(\'' + n.id + '\')" class="text-gray-300 hover:text-red-500 transition flex-shrink-0 p-1" title="حذف الإشعار"><i class="fas fa-times"></i></button>';
+
+                // إشعار متعلق بحالة الطلب
+                if (n.type === 'order') {
+                    return '<div class="notif-card' + unreadClass + '" id="notif-' + n.id + '">'
+                        + '<div class="notif-icon">📦</div>'
+                        + '<div style="flex:1">'
+                        + '<p class="font-bold text-gray-800 text-sm mb-1">' + (n.title || 'تحديث على طلبك') + '</p>'
+                        + '<p class="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 mb-2 leading-relaxed">' + (n.message || '') + '</p>'
+                        + '<p class="text-xs text-gray-400"><i class="fas fa-clock ml-1"></i>' + date + '</p>'
+                        + '</div>'
+                        + (n.orderId ? '<a href="orders.html?order=' + n.orderId + '" class="text-xs text-antika-gold hover:text-antika-gold-dark transition mt-1 flex-shrink-0" title="عرض الطلب"><i class="fas fa-arrow-left"></i></a>' : '')
+                        + closeBtn
+                        + '</div>';
+                }
+
+                // إشعار إعجاب بتعليق (النوع القديم)
                 const newCount = n.newLikes || 0;
                 const total = n.totalLikes || 0;
                 const shortComment = (n.comment || '').length > 60 ? n.comment.substring(0, 60) + '...' : (n.comment || '');
-                const unreadClass = !n.read ? ' unread' : '';
 
                 let msg = '';
                 if (total === 1) msg = 'أعجب شخص واحد بتعليقك';
                 else if (total === 2) msg = 'أعجب شخصان بتعليقك';
                 else msg = 'أعجب ' + total + ' أشخاص بتعليقك';
 
-                return '<div class="notif-card' + unreadClass + '">' 
+                return '<div class="notif-card' + unreadClass + '" id="notif-' + n.id + '">' 
                     + '<div class="notif-icon">❤️</div>'
                     + '<div style="flex:1">'
                     + '<p class="font-bold text-gray-800 text-sm mb-1">' + msg + '</p>'
@@ -197,9 +214,27 @@
                     + '<p class="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 mb-2 leading-relaxed">&ldquo;' + shortComment + '&rdquo;</p>'
                     + '<p class="text-xs text-gray-400"><i class="fas fa-clock ml-1"></i>' + date + '</p>'
                     + '</div>'
-                    + (n.productId ? '<a href="product.html?id=' + n.productId + '" class="text-xs text-antika-gold hover:text-antika-gold-dark transition mt-1 flex-shrink-0"><i class="fas fa-arrow-left"></i></a>' : '')
+                    + (n.productId ? '<a href="product.html?id=' + n.productId + '" class="text-xs text-antika-gold hover:text-antika-gold-dark transition mt-1 flex-shrink-0" title="عرض المنتج"><i class="fas fa-arrow-left"></i></a>' : '')
+                    + closeBtn
                     + '</div>';
             }).join('');
+        }
+
+        async function deleteNotification(id) {
+            try {
+                await fetch('/api/notifications/' + id, { method: 'DELETE' });
+                const el = document.getElementById('notif-' + id);
+                if (el) el.remove();
+                const container = document.getElementById('notif-container');
+                if (container && !container.querySelector('.notif-card')) {
+                    renderNotifications([]);
+                }
+                // تحديث الجرس والنقطة الحمراء بالهيدر
+                if (window.currentUser || currentUserEmail) {
+                    const header = document.querySelector('antika-header');
+                    if (header && typeof header.updateNotifCount === 'function') header.updateNotifCount(currentUserEmail);
+                }
+            } catch (e) { console.warn('Could not delete notification:', e); }
         }
 
         async function markAllRead(reload = true) {
@@ -211,9 +246,11 @@
                     body: JSON.stringify({ email: currentUserEmail })
                 });
                 document.getElementById('mark-read-btn').classList.add('hidden');
-                // تصفير جرس الإشعارات في الهيدر
+                // تصفير جرس الإشعارات ونقطة الحساب في الهيدر
                 const badge = document.getElementById('notif-count');
                 if (badge) badge.classList.add('hidden');
+                const accountDot = document.getElementById('account-notif-dot');
+                if (accountDot) { accountDot.classList.add('hidden'); accountDot.classList.remove('flex'); }
                 if (reload) loadNotifications();
             } catch(e) {}
         }

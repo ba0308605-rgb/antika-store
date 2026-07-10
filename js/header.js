@@ -335,10 +335,13 @@ class AntikaHeader extends HTMLElement {
                             </a>
                             
                             <!-- User Info (shown when logged in) -->
-                            <button id="user-info-btn" class="hidden flex items-center gap-2 text-gray-600 hover:text-antika-gold transition" onclick="showAccountMenu()">
+                            <button id="user-info-btn" class="hidden relative flex items-center gap-2 text-gray-600 hover:text-antika-gold transition" onclick="showAccountMenu()">
                                 <div class="w-8 h-8 rounded-full flex items-center justify-center text-gray-800 text-sm font-bold" style="background-color: #FFB6C1;" id="user-avatar">
                                     👤
                                 </div>
+                                <span id="account-notif-dot" class="hidden absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white items-center justify-center">
+                                    <i class="fas fa-exclamation text-white" style="font-size:7px;"></i>
+                                </span>
                                 <span id="user-name-display" class="hidden sm:inline text-sm font-semibold"></span>
                             </button>
                         </div>
@@ -572,6 +575,7 @@ class AntikaHeader extends HTMLElement {
             if (!res.ok) return;
             const data = await res.json();
             const count = data.unreadCount || 0;
+            window.antikaOrderUnreadCount = data.orderUnreadCount || 0;
             const badge = document.getElementById('notif-count');
             if (badge) {
                 if (count > 0) {
@@ -580,6 +584,12 @@ class AntikaHeader extends HTMLElement {
                 } else {
                     badge.classList.add('hidden');
                 }
+            }
+            // نقطة التنبيه الحمراء على أيقونة الحساب (تدل إن فيه إشعار بإحدى قوائم الحساب)
+            const accountDot = document.getElementById('account-notif-dot');
+            if (accountDot) {
+                if (count > 0) { accountDot.classList.remove('hidden'); accountDot.classList.add('flex'); }
+                else { accountDot.classList.add('hidden'); accountDot.classList.remove('flex'); }
             }
         } catch(e) {}
     }
@@ -790,6 +800,10 @@ function showAccountMenu() {
     menu.id = 'account-menu';
     menu.className = 'fixed bg-white shadow-2xl rounded-xl border border-gray-100 z-50';
     menu.style.cssText = 'top: 80px; left: 20px; width: 320px; max-height: 80vh; overflow-y: auto;';
+
+    const orderBadgeHtml = (count) => count > 0
+        ? `<span class="bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center">${count > 9 ? '9+' : count}</span>`
+        : '';
     
     menu.innerHTML = `
         <!-- Header with user info -->
@@ -822,8 +836,9 @@ function showAccountMenu() {
             
             <!-- الطلبات -->
             <a href="orders.html" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
-                <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-500">
+                <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-500 relative">
                     <i class="fas fa-shopping-bag"></i>
+                    <span id="account-menu-orders-badge" class="absolute -top-1 -right-1">${orderBadgeHtml(window.antikaOrderUnreadCount || 0)}</span>
                 </div>
                 <div class="flex-1">
                     <p class="font-semibold text-gray-800 text-sm">الطلبات</p>
@@ -881,6 +896,19 @@ function showAccountMenu() {
     `;
 
     document.body.appendChild(menu);
+
+    // جلب أحدث عدد لإشعارات الطلبات وتحديث الشارة داخل القائمة فور فتحها
+    if (user && user.email) {
+        fetch('/api/notifications?email=' + encodeURIComponent(user.email))
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!data) return;
+                window.antikaOrderUnreadCount = data.orderUnreadCount || 0;
+                const badgeSlot = document.getElementById('account-menu-orders-badge');
+                if (badgeSlot) badgeSlot.innerHTML = orderBadgeHtml(window.antikaOrderUnreadCount);
+            })
+            .catch(() => {});
+    }
 
     // إغلاق القائمة عند النقر خارجها
     setTimeout(() => {
