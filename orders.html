@@ -327,8 +327,15 @@
 
         // يمسح إشعارات الطلبات بعد ما العميل يفتح صفحة "طلباتي" ويشوفها كاملة
         async function clearOrderNotifications(email) {
-            try { await fetch('/api/notifications/by-type?email=' + encodeURIComponent(email) + '&type=order', { method: 'DELETE' }); }
-            catch (e) { console.warn('Could not clear order notifications:', e); }
+            try {
+                await fetch('/api/notifications/by-type?email=' + encodeURIComponent(email) + '&type=order', { method: 'DELETE' });
+            } catch (e) { console.warn('Could not clear order notifications:', e); }
+            // تحديث فوري لشارات الهيدر (الجرس + نقطة الحساب + عداد الطلبات بالقائمة) بدون انتظار إعادة تحميل الصفحة
+            try {
+                window.antikaOrderUnreadCount = 0;
+                const header = document.querySelector('antika-header');
+                if (header && typeof header.updateNotifCount === 'function') await header.updateNotifCount(email);
+            } catch (e) { console.warn('Could not refresh header badges:', e); }
         }
 
         // لو وصل العميل من رابط إشعار فيه رقم طلب معيّن (orders.html?order=ID) نفتحله الطلب مباشرة
