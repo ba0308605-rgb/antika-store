@@ -211,6 +211,75 @@
             `;
         }
 
+        function buildOrderStepper(order) {
+            if (order.status === 'cancelled' || order.customerCancelled) return '';
+
+            const stages = [
+                { key: 'confirming_availability', label: 'تأكيد التوفر', icon: 'fa-magnifying-glass' },
+                { key: 'paid', label: 'تم الدفع', icon: 'fa-credit-card' },
+                { key: 'processing', label: 'قيد التجهيز', icon: 'fa-box' },
+                { key: 'shipped', label: 'تم الشحن', icon: 'fa-truck' },
+                { key: 'out_for_delivery', label: 'خرج للتوصيل', icon: 'fa-route' },
+                { key: 'delivered', label: 'تم التوصيل', icon: 'fa-house' }
+            ];
+
+            const rank = { confirming_availability: 0, awaiting_shipping_payment: 1, processing: 2, shipped: 3, out_for_delivery: 4, delivered: 5 };
+            const currentRank = rank[order.status] != null ? rank[order.status] : 0;
+            const isPastPayment = Boolean(order.isPaid) || currentRank >= 2;
+
+            const states = stages.map((stage, idx) => {
+                if (idx === 0) {
+                    if (currentRank > 0) return 'done';
+                    return 'current';
+                }
+                if (idx === 1) {
+                    if (isPastPayment) return 'done';
+                    if (order.status === 'awaiting_shipping_payment') return 'current';
+                    return 'upcoming';
+                }
+                const stageRank = idx + 1;
+                if (currentRank > stageRank) return 'done';
+                if (currentRank === stageRank) return 'current';
+                return 'upcoming';
+            });
+
+            const circleClasses = {
+                done: 'bg-green-500 text-white',
+                current: 'bg-antika-pink text-white',
+                upcoming: 'bg-white border-2 border-gray-200 text-gray-300'
+            };
+            const labelClasses = {
+                done: 'text-gray-500',
+                current: 'text-antika-pink font-bold',
+                upcoming: 'text-gray-300'
+            };
+
+            const circlesHtml = stages.map((stage, idx) => {
+                const state = states[idx];
+                const inner = state === 'done'
+                    ? '<i class="fas fa-check" style="font-size:12px;"></i>'
+                    : `<i class="fas ${stage.icon}" style="font-size:11px;"></i>`;
+                const connector = idx < stages.length - 1
+                    ? `<div class="flex-1 h-0.5 mt-3.5 md:mt-4 ${state === 'done' ? 'bg-green-500' : 'bg-gray-200'}"></div>`
+                    : '';
+                return `
+                    <div class="flex flex-col items-center flex-1 min-w-0">
+                        <div class="w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center shrink-0 ${circleClasses[state]}">${inner}</div>
+                        <span class="hidden sm:block text-[10px] md:text-xs mt-1.5 text-center leading-tight ${labelClasses[state]}">${stage.label}</span>
+                    </div>
+                    ${connector}
+                `;
+            }).join('');
+
+            return `
+                <div class="mb-4 pb-4 border-b border-gray-100">
+                    <div class="flex items-start">
+                        ${circlesHtml}
+                    </div>
+                </div>
+            `;
+        }
+
         function renderOrders(orders, seqMap, unreadOrderIds) {
             unreadOrderIds = unreadOrderIds || new Set();
             const container = document.getElementById('orders-container');
@@ -238,6 +307,7 @@
                                 </div>
                             </div>
                             <div id="details-${order.id}" class="hidden border-t border-gray-100 p-4">
+                                ${buildOrderStepper(order)}
                                 <div class="space-y-2 mb-4">
                                     ${order.items.map(item => `
                                         <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
