@@ -211,7 +211,8 @@
             `;
         }
 
-        function renderOrders(orders, seqMap) {
+        function renderOrders(orders, seqMap, unreadOrderIds) {
+            unreadOrderIds = unreadOrderIds || new Set();
             const container = document.getElementById('orders-container');
             container.className = 'bg-white rounded-xl shadow-sm border p-4 md:p-6';
             container.innerHTML = `
@@ -219,7 +220,11 @@
                     ${orders.map(order => {
                         const orderSeq = seqMap[order.id] || '—';
                         return `
-                        <div class="border ${order.status === 'awaiting_shipping_payment' ? 'border-orange-300' : 'border-gray-200'} rounded-xl overflow-hidden">
+                        <div class="relative border ${order.status === 'awaiting_shipping_payment' ? 'border-orange-300' : 'border-gray-200'} rounded-xl overflow-hidden">
+                            ${unreadOrderIds.has(order.id) ? `
+                            <span id="order-notif-dot-${order.id}" class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 rounded-full border-2 border-white flex items-center justify-center z-10">
+                                <i class="fas fa-exclamation text-white" style="font-size:8px;"></i>
+                            </span>` : ''}
                             <div class="p-3 flex justify-between items-center gap-2 cursor-pointer select-none flex-wrap" onclick="toggleOrderDetails('${order.id}')">
                                 <div class="flex items-center gap-3 flex-wrap">
                                     <span class="font-bold text-gray-800">طلب #${orderSeq}</span>
@@ -287,8 +292,24 @@
             const details = document.getElementById(`details-${orderId}`);
             const arrow = document.getElementById(`arrow-${orderId}`);
             if (!details) return;
+            const isOpening = details.classList.contains('hidden');
             details.classList.toggle('hidden');
             if (arrow) arrow.classList.toggle('rotate-180');
+            if (isOpening) clearNotificationsForOrder(orderId);
+        }
+
+        // يمسح الإشعارات وعلامة التنبيه الخاصة بطلب معيّن بمجرد ما العميل يفتحه
+        async function clearNotificationsForOrder(orderId) {
+            const dot = document.getElementById('order-notif-dot-' + orderId);
+            if (dot) dot.remove();
+            if (!currentCustomerEmail) return;
+            try {
+                await fetch('/api/notifications/by-order?email=' + encodeURIComponent(currentCustomerEmail) + '&orderId=' + encodeURIComponent(orderId), { method: 'DELETE' });
+            } catch (e) { console.warn('Could not clear notifications for order:', e); }
+            try {
+                const header = document.querySelector('antika-header');
+                if (header && typeof header.updateNotifCount === 'function') await header.updateNotifCount(currentCustomerEmail);
+            } catch (e) { console.warn('Could not refresh header badges:', e); }
         }
 
         function buildSeqMap(allNormalizedOrders) {
@@ -298,22 +319,34 @@
             return seqMap;
         }
 
+        let currentCustomerEmail = '';
+
         async function loadOrdersPage() {
             const userRaw = localStorage.getItem('antika_user');
             if (!userRaw) { renderEmptyState(); return; }
 
             const user = JSON.parse(userRaw);
             const email = (user.email || '').toLowerCase();
+            currentCustomerEmail = email;
 
             try {
-                const res = await fetch('/api/orders/customer?email=' + encodeURIComponent(email));
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const allOrders = await res.json();
+                const ordersRes = await fetch('/api/orders/customer?email=' + encodeURIComponent(email));
+                if (!ordersRes.ok) throw new Error('HTTP ' + ordersRes.status);
+                const allOrders = await ordersRes.json();
+
+                let unreadOrderIds = new Set();
+                try {
+                    const notifRes = await fetch('/api/notifications?email=' + encodeURIComponent(email));
+                    if (notifRes.ok) {
+                        const notifData = await notifRes.json();
+                        (notifData.notifications || []).forEach(n => { if (n.type === 'order' && !n.read && n.orderId) unreadOrderIds.add(n.orderId); });
+                    }
+                } catch (ne) { console.warn('Could not load notifications:', ne); }
+
                 const allNormalized = (Array.isArray(allOrders) ? allOrders : []).map(normalizeOrder).filter(o => !o.customerCancelled);
                 const seqMap = buildSeqMap(allNormalized);
-                if (allNormalized.length > 0) { renderOrders(allNormalized, seqMap); focusOrderFromUrl(); clearOrderNotifications(email); return; }
+                if (allNormalized.length > 0) { renderOrders(allNormalized, seqMap, unreadOrderIds); focusOrderFromUrl(); return; }
                 renderEmptyState();
-                clearOrderNotifications(email);
                 return;
             } catch (e) { console.warn('Could not load orders from API:', e); }
 
@@ -323,19 +356,6 @@
                 const localOrders = localAll.filter(o => !email || o.customerEmail === email);
                 if (localOrders.length > 0) { renderOrders(localOrders, seqMap); } else { renderEmptyState(); }
             } catch (e) { renderEmptyState(); }
-        }
-
-        // يمسح إشعارات الطلبات بعد ما العميل يفتح صفحة "طلباتي" ويشوفها كاملة
-        async function clearOrderNotifications(email) {
-            try {
-                await fetch('/api/notifications/by-type?email=' + encodeURIComponent(email) + '&type=order', { method: 'DELETE' });
-            } catch (e) { console.warn('Could not clear order notifications:', e); }
-            // تحديث فوري لشارات الهيدر (الجرس + نقطة الحساب + عداد الطلبات بالقائمة) بدون انتظار إعادة تحميل الصفحة
-            try {
-                window.antikaOrderUnreadCount = 0;
-                const header = document.querySelector('antika-header');
-                if (header && typeof header.updateNotifCount === 'function') await header.updateNotifCount(email);
-            } catch (e) { console.warn('Could not refresh header badges:', e); }
         }
 
         // لو وصل العميل من رابط إشعار فيه رقم طلب معيّن (orders.html?order=ID) نفتحله الطلب مباشرة

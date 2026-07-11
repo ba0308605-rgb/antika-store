@@ -1016,6 +1016,17 @@ app.delete('/api/notifications/by-type', async (req, res) => {
     res.json({ success: true, deleted: s.size });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// حذف الإشعارات المرتبطة بطلب معيّن فقط لعميل معين (يستخدم عند فتح تفاصيل طلب محدد)
+app.delete('/api/notifications/by-order', async (req, res) => {
+  try {
+    const email = String(req.query.email || '').trim().toLowerCase();
+    const orderId = String(req.query.orderId || '').trim();
+    if (!email || !orderId) return res.status(400).json({ error: '\u0627\u0644\u0625\u064a\u0645\u064a\u0644 \u0648\u0631\u0642\u0645 \u0627\u0644\u0637\u0644\u0628 \u0645\u0637\u0644\u0648\u0628\u0627\u0646' });
+    const s = await db.collection('notifications').where('ownerEmail', '==', email).where('orderId', '==', orderId).get();
+    const b = db.batch(); s.docs.forEach(d => b.delete(d.ref)); await b.commit();
+    res.json({ success: true, deleted: s.size });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 // MAPS & PAYMENT
 app.get('/api/maps/config', (req, res) => { const e = Boolean(GOOGLE_MAPS_API_KEY); res.json({ provider: e ? 'google' : 'leaflet', googleMapsEnabled: e, googleMapsApiKey: e ? GOOGLE_MAPS_API_KEY : '' }); });
