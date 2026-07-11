@@ -341,13 +341,13 @@
                                         <i class="fas fa-lock"></i>
                                         أكمل الدفع الآن — ${order.total} ر.س
                                     </button>
-                                    <button onclick="cancelOrder('${order.id}')" class="w-full mt-2 text-red-500 hover:text-red-700 text-xs font-semibold py-1">
+                                    <button onclick="cancelOrder('${order.id}')" class="block mx-auto mt-3 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold py-1.5 px-5 rounded-full transition-colors">
                                         إلغاء الطلب
                                     </button>
                                 </div>` : ''}
                                 ${order.status === 'confirming_availability' ? `
                                 <div class="mt-4 text-center">
-                                    <button onclick="cancelOrder('${order.id}')" class="text-red-500 hover:text-red-700 text-xs font-semibold py-1">
+                                    <button onclick="cancelOrder('${order.id}')" class="bg-red-500 hover:bg-red-600 text-white text-xs font-semibold py-1.5 px-5 rounded-full transition-colors">
                                         إلغاء الطلب
                                     </button>
                                 </div>` : ''}
