@@ -591,6 +591,14 @@ class AntikaHeader extends HTMLElement {
                 if (count > 0) { accountDot.classList.remove('hidden'); accountDot.classList.add('flex'); }
                 else { accountDot.classList.add('hidden'); accountDot.classList.remove('flex'); }
             }
+            // شارة "الطلبات" داخل القائمة المنسدلة (لو كانت مفتوحة حالياً)
+            const ordersBadgeSlot = document.getElementById('account-menu-orders-badge');
+            if (ordersBadgeSlot) {
+                const orderCount = window.antikaOrderUnreadCount || 0;
+                ordersBadgeSlot.innerHTML = orderCount > 0
+                    ? `<span class="bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center">${orderCount > 9 ? '9+' : orderCount}</span>`
+                    : '';
+            }
         } catch(e) {}
     }
 

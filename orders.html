@@ -220,11 +220,12 @@
                     ${orders.map(order => {
                         const orderSeq = seqMap[order.id] || '—';
                         return `
-                        <div class="relative border ${order.status === 'awaiting_shipping_payment' ? 'border-orange-300' : 'border-gray-200'} rounded-xl overflow-hidden">
+                        <div class="relative border ${order.status === 'awaiting_shipping_payment' ? 'border-orange-300' : 'border-gray-200'} rounded-xl">
                             ${unreadOrderIds.has(order.id) ? `
-                            <span id="order-notif-dot-${order.id}" class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 rounded-full border-2 border-white flex items-center justify-center z-10">
-                                <i class="fas fa-exclamation text-white" style="font-size:8px;"></i>
+                            <span id="order-notif-dot-${order.id}" class="absolute -top-2.5 -right-2.5 w-6 h-6 bg-red-500 rounded-full border-2 border-white shadow-md flex items-center justify-center z-20">
+                                <i class="fas fa-exclamation text-white" style="font-size:11px;"></i>
                             </span>` : ''}
+                            <div class="rounded-xl overflow-hidden">
                             <div class="p-3 flex justify-between items-center gap-2 cursor-pointer select-none flex-wrap" onclick="toggleOrderDetails('${order.id}')">
                                 <div class="flex items-center gap-3 flex-wrap">
                                     <span class="font-bold text-gray-800">طلب #${orderSeq}</span>
@@ -281,6 +282,7 @@
                                     </button>
                                 </div>` : ''}
                             </div>
+                            </div>
                         </div>
                     `;
                     }).join('')}
@@ -310,6 +312,16 @@
                 const header = document.querySelector('antika-header');
                 if (header && typeof header.updateNotifCount === 'function') await header.updateNotifCount(currentCustomerEmail);
             } catch (e) { console.warn('Could not refresh header badges:', e); }
+            // لو قائمة الحساب المنسدلة مفتوحة، حدّث شارة "الطلبات" جوّاها فوراً بنفس العدد المحدّث
+            try {
+                const badgeSlot = document.getElementById('account-menu-orders-badge');
+                if (badgeSlot) {
+                    const count = window.antikaOrderUnreadCount || 0;
+                    badgeSlot.innerHTML = count > 0
+                        ? `<span class="bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center">${count > 9 ? '9+' : count}</span>`
+                        : '';
+                }
+            } catch (e) { console.warn('Could not refresh account menu badge:', e); }
         }
 
         function buildSeqMap(allNormalizedOrders) {
