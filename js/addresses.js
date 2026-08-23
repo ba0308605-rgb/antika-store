@@ -209,7 +209,6 @@
         if (!mapEl || !window.google) return;
 
         mapInitialized = true;
-        geocoder = new google.maps.Geocoder();
 
         const center = { lat: 21.3891, lng: 39.8579 }; // Jeddah default
         map = new google.maps.Map(mapEl, {
@@ -252,96 +251,92 @@
         }
     }
 
-    function reverseGeocode(lat, lng) {
+    async function reverseGeocode(lat, lng) {
         selectedLat = lat;
         selectedLng = lng;
         try {
-            if (!geocoder) geocoder = new google.maps.Geocoder();
-            geocoder.geocode({ location: { lat, lng }, language: 'ar', region: 'SA' }, (results, status) => {
-                if (status === 'OK' && results[0]) {
-                    selectedAddressText = results[0].formatted_address;
-                    document.getElementById('selected-address-text').textContent = selectedAddressText;
-                    document.getElementById('selected-address-box').classList.remove('hidden');
+            // نستخدم OpenStreetMap (Nominatim) بدل Google Geocoding — مجانية بالكامل وبدون حساب فوترة
+            const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=ar&zoom=18&addressdetails=1`;
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            const data = await res.json();
 
-                    const comps = results[0].address_components;
-                    let detectedCity = '';
-                    let detectedRegion = '';
+            if (data && data.address) {
+                selectedAddressText = data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                document.getElementById('selected-address-text').textContent = selectedAddressText;
+                document.getElementById('selected-address-box').classList.remove('hidden');
 
-                    comps.forEach(c => {
-                        if (c.types.includes('route')) {
-                            const el = document.getElementById('addr-street');
-                            if (el) el.value = c.long_name;
-                        }
-                        if (c.types.includes('sublocality') || c.types.includes('neighborhood') || c.types.includes('sublocality_level_1')) {
-                            const el = document.getElementById('addr-district');
-                            if (el) el.value = c.long_name;
-                        }
-                        if (c.types.includes('postal_code')) {
-                            const el = document.getElementById('addr-postal');
-                            if (el) el.value = c.long_name;
-                        }
-                        if (c.types.includes('locality') || c.types.includes('administrative_area_level_2')) {
-                            detectedCity = c.long_name;
-                        }
-                        if (c.types.includes('administrative_area_level_1')) {
-                            detectedRegion = c.long_name;
-                        }
-                    });
+                const a = data.address;
+                const detectedStreet = a.road || a.pedestrian || '';
+                const detectedDistrict = a.suburb || a.neighbourhood || a.quarter || a.city_district || '';
+                const detectedPostal = a.postcode || '';
+                const detectedCity = a.city || a.town || a.village || a.municipality || '';
+                const detectedRegion = a.state || a.region || '';
 
-                    if (detectedCity || detectedRegion) {
-                        let matchedRegionKey = '';
+                if (detectedStreet) {
+                    const el = document.getElementById('addr-street');
+                    if (el) el.value = detectedStreet;
+                }
+                if (detectedDistrict) {
+                    const el = document.getElementById('addr-district');
+                    if (el) el.value = detectedDistrict;
+                }
+                if (detectedPostal) {
+                    const el = document.getElementById('addr-postal');
+                    if (el) el.value = detectedPostal;
+                }
 
-                        // الطريقة الأولى (الأدق): نبحث عن المدينة المكتشفة بالضبط داخل قائمة المدن
-                        // فنحدد المنطقة تلقائياً من نفس المطابقة (بدل الاعتماد على نص المنطقة المتغيّر من Google)
-                        if (detectedCity) {
-                            for (const [key, cities] of Object.entries(CITIES)) {
-                                if (cities.some(c => c === detectedCity || detectedCity.includes(c) || c.includes(detectedCity))) {
-                                    matchedRegionKey = key;
-                                    break;
-                                }
+                if (detectedCity || detectedRegion) {
+                    let matchedRegionKey = '';
+
+                    // الطريقة الأولى (الأدق): نبحث عن المدينة المكتشفة بالضبط داخل قائمة المدن
+                    if (detectedCity) {
+                        for (const [key, cities] of Object.entries(CITIES)) {
+                            if (cities.some(c => c === detectedCity || detectedCity.includes(c) || c.includes(detectedCity))) {
+                                matchedRegionKey = key;
+                                break;
                             }
-                        }
-
-                        // الطريقة الثانية (احتياطية): مطابقة نص المنطقة مع خيارات القائمة
-                        if (!matchedRegionKey && detectedRegion) {
-                            const regionSelect = document.getElementById('addr-region');
-                            if (regionSelect) {
-                                const norm = s => (s || '').replace(/منطقة/g, '').trim();
-                                const options = Array.from(regionSelect.options);
-                                const match = options.find(o =>
-                                    norm(detectedRegion).includes(norm(o.text)) ||
-                                    norm(o.text).includes(norm(detectedRegion))
-                                );
-                                if (match) matchedRegionKey = match.value;
-                            }
-                        }
-
-                        if (matchedRegionKey) {
-                            const regionSelect = document.getElementById('addr-region');
-                            if (regionSelect) {
-                                regionSelect.value = matchedRegionKey;
-                                loadCities(matchedRegionKey); // متزامنة، ما تحتاج انتظار
-                                if (detectedCity) {
-                                    const citySelect = document.getElementById('addr-city');
-                                    if (citySelect) {
-                                        const cityOptions = Array.from(citySelect.options);
-                                        const cityMatch = cityOptions.find(o => o.value === detectedCity || detectedCity.includes(o.text) || o.text.includes(detectedCity));
-                                        if (cityMatch) citySelect.value = cityMatch.value;
-                                    }
-                                }
-                            }
-                        } else {
-                            console.warn('تعذّر مطابقة المنطقة/المدينة تلقائياً من نتيجة الخريطة:', { detectedCity, detectedRegion });
                         }
                     }
-                } else {
-                    console.warn('فشل الاستعلام العكسي عن العنوان (reverse geocoding) — status:', status);
-                    selectedAddressText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-                    document.getElementById('selected-address-text').textContent = selectedAddressText;
-                    document.getElementById('selected-address-box').classList.remove('hidden');
+
+                    // الطريقة الثانية (احتياطية): مطابقة نص المنطقة مع خيارات القائمة
+                    if (!matchedRegionKey && detectedRegion) {
+                        const regionSelect = document.getElementById('addr-region');
+                        if (regionSelect) {
+                            const norm = s => (s || '').replace(/منطقة/g, '').trim();
+                            const options = Array.from(regionSelect.options);
+                            const match = options.find(o =>
+                                norm(detectedRegion).includes(norm(o.text)) ||
+                                norm(o.text).includes(norm(detectedRegion))
+                            );
+                            if (match) matchedRegionKey = match.value;
+                        }
+                    }
+
+                    if (matchedRegionKey) {
+                        const regionSelect = document.getElementById('addr-region');
+                        if (regionSelect) {
+                            regionSelect.value = matchedRegionKey;
+                            loadCities(matchedRegionKey); // متزامنة، ما تحتاج انتظار
+                            if (detectedCity) {
+                                const citySelect = document.getElementById('addr-city');
+                                if (citySelect) {
+                                    const cityOptions = Array.from(citySelect.options);
+                                    const cityMatch = cityOptions.find(o => o.value === detectedCity || detectedCity.includes(o.text) || o.text.includes(detectedCity));
+                                    if (cityMatch) citySelect.value = cityMatch.value;
+                                }
+                            }
+                        }
+                    } else {
+                        console.warn('تعذّر مطابقة المنطقة/المدينة تلقائياً من نتيجة الخريطة:', { detectedCity, detectedRegion });
+                    }
                 }
-                enableNextBtn();
-            });
+            } else {
+                console.warn('لم يُرجع الاستعلام عن العنوان أي بيانات لهذه النقطة');
+                selectedAddressText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                document.getElementById('selected-address-text').textContent = selectedAddressText;
+                document.getElementById('selected-address-box').classList.remove('hidden');
+            }
+            enableNextBtn();
         } catch (err) {
             console.error('Geocoding error:', err);
             selectedAddressText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
