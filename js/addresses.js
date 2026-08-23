@@ -375,6 +375,34 @@
     }
 
     // ====================================================
+    // VALIDATION HELPERS (تمييز الحقول الفارغة بصرياً)
+    // ====================================================
+    function clearFieldError(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove('field-error');
+        const err = document.getElementById(id + '-error');
+        if (err) err.classList.add('hidden');
+    }
+
+    function markFieldError(id, message) {
+        const el = document.getElementById(id);
+        if (!el) return null;
+        el.classList.add('field-error');
+        const err = document.getElementById(id + '-error');
+        if (err) { err.textContent = message; err.classList.remove('hidden'); }
+        return el;
+    }
+
+    // إزالة التمييز الأحمر فور ما المستخدم يبدأ يعبّي الحقل
+    document.addEventListener('input', (e) => {
+        if (e.target && e.target.id) clearFieldError(e.target.id);
+    });
+    document.addEventListener('change', (e) => {
+        if (e.target && e.target.id) clearFieldError(e.target.id);
+    });
+
+    // ====================================================
     // SAVE
     // ====================================================
     async function saveAddress() {
@@ -392,8 +420,28 @@
         if (!selectedLat || !selectedLng) {
             showToast('الرجاء تحديد موقعك على الخريطة', '⚠️'); goToStep1(); return;
         }
-        if (!region || !city || !district || !street || !label) {
-            showToast('الرجاء تعبئة الحقول المطلوبة', '⚠️'); return;
+
+        // تمييز كل حقل مطلوب وفارغ بحدود حمراء + رسالة، والتمرير لأول حقل ناقص
+        ['addr-region','addr-city','addr-district','addr-street','addr-label'].forEach(clearFieldError);
+        const requiredFields = [
+            { id: 'addr-region', value: region, message: 'الرجاء اختيار المنطقة' },
+            { id: 'addr-city', value: city, message: 'الرجاء اختيار المدينة' },
+            { id: 'addr-district', value: district, message: 'الرجاء إدخال اسم الحي' },
+            { id: 'addr-street', value: street, message: 'الرجاء إدخال اسم الشارع' },
+            { id: 'addr-label', value: label, message: 'الرجاء إدخال اسم للعنوان' }
+        ];
+        let firstInvalidEl = null;
+        requiredFields.forEach(f => {
+            if (!f.value) {
+                const el = markFieldError(f.id, f.message);
+                if (el && !firstInvalidEl) firstInvalidEl = el;
+            }
+        });
+        if (firstInvalidEl) {
+            showToast('فيه حقول مطلوبة ناقصة، مُعلّمة باللون الأحمر', '⚠️');
+            firstInvalidEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            firstInvalidEl.focus({ preventScroll: true });
+            return;
         }
 
         const fullAddress = [district, street, city, getRegionName(region)].filter(Boolean).join('، ');

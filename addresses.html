@@ -85,6 +85,7 @@
         }
         .input-field:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(214,193,166,0.15); }
         .input-field::placeholder { color: #9ca3af; }
+        .input-field.field-error { border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239,68,68,0.12) !important; }
 
         select.input-field { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: left 12px center; padding-left: 36px; }
 
@@ -292,12 +293,14 @@
                             <option value="jouf">منطقة الجوف</option>
                             <option value="qassim">منطقة القصيم</option>
                         </select>
+                        <p id="addr-region-error" class="hidden text-xs text-red-500 mt-1"></p>
                     </div>
                     <div>
                         <label class="block text-sm font-bold mb-2" style="color:var(--text)">المدينة <span class="text-red-500">*</span></label>
                         <select id="addr-city" class="input-field">
                             <option value="">اختر المدينة</option>
                         </select>
+                        <p id="addr-city-error" class="hidden text-xs text-red-500 mt-1"></p>
                     </div>
                 </div>
 
@@ -305,10 +308,12 @@
                     <div>
                         <label class="block text-sm font-bold mb-2" style="color:var(--text)">الحي <span class="text-red-500">*</span></label>
                         <input id="addr-district" type="text" class="input-field" placeholder="مثال: حي النزهة">
+                        <p id="addr-district-error" class="hidden text-xs text-red-500 mt-1"></p>
                     </div>
                     <div>
                         <label class="block text-sm font-bold mb-2" style="color:var(--text)">الشارع <span class="text-red-500">*</span></label>
                         <input id="addr-street" type="text" class="input-field" placeholder="مثال: شارع الملك فهد">
+                        <p id="addr-street-error" class="hidden text-xs text-red-500 mt-1"></p>
                     </div>
                 </div>
 
@@ -337,6 +342,7 @@
                 <div class="mb-4">
                     <label class="block text-sm font-bold mb-2" style="color:var(--text)">اسم العنوان <span class="text-red-500">*</span></label>
                     <input id="addr-label" type="text" class="input-field" placeholder="مثال: المنزل، العمل">
+                    <p id="addr-label-error" class="hidden text-xs text-red-500 mt-1"></p>
                     <div class="flex gap-2 mt-2">
                         <button onclick="setLabel('المنزل')" class="px-3 py-1 rounded-full text-xs font-bold border transition" style="border-color:var(--gold);color:var(--gold-dark)">🏠 المنزل</button>
                         <button onclick="setLabel('العمل')" class="px-3 py-1 rounded-full text-xs font-bold border transition" style="border-color:var(--gold);color:var(--gold-dark)">🏢 العمل</button>
