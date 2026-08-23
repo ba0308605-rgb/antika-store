@@ -288,28 +288,54 @@
                         }
                     });
 
-                    if (detectedRegion) {
-                        const regionSelect = document.getElementById('addr-region');
-                        if (regionSelect) {
-                            const options = Array.from(regionSelect.options);
-                            const match = options.find(o => detectedRegion.includes(o.text) || o.text.includes(detectedRegion));
-                            if (match) {
-                                regionSelect.value = match.value;
-                                loadCities(match.value);
-                                setTimeout(() => {
-                                    if (detectedCity) {
-                                        const citySelect = document.getElementById('addr-city');
-                                        if (citySelect) {
-                                            const cityOptions = Array.from(citySelect.options);
-                                            const cityMatch = cityOptions.find(o => detectedCity.includes(o.text) || o.text.includes(detectedCity));
-                                            if (cityMatch) citySelect.value = cityMatch.value;
-                                        }
-                                    }
-                                }, 500);
+                    if (detectedCity || detectedRegion) {
+                        let matchedRegionKey = '';
+
+                        // الطريقة الأولى (الأدق): نبحث عن المدينة المكتشفة بالضبط داخل قائمة المدن
+                        // فنحدد المنطقة تلقائياً من نفس المطابقة (بدل الاعتماد على نص المنطقة المتغيّر من Google)
+                        if (detectedCity) {
+                            for (const [key, cities] of Object.entries(CITIES)) {
+                                if (cities.some(c => c === detectedCity || detectedCity.includes(c) || c.includes(detectedCity))) {
+                                    matchedRegionKey = key;
+                                    break;
+                                }
                             }
+                        }
+
+                        // الطريقة الثانية (احتياطية): مطابقة نص المنطقة مع خيارات القائمة
+                        if (!matchedRegionKey && detectedRegion) {
+                            const regionSelect = document.getElementById('addr-region');
+                            if (regionSelect) {
+                                const norm = s => (s || '').replace(/منطقة/g, '').trim();
+                                const options = Array.from(regionSelect.options);
+                                const match = options.find(o =>
+                                    norm(detectedRegion).includes(norm(o.text)) ||
+                                    norm(o.text).includes(norm(detectedRegion))
+                                );
+                                if (match) matchedRegionKey = match.value;
+                            }
+                        }
+
+                        if (matchedRegionKey) {
+                            const regionSelect = document.getElementById('addr-region');
+                            if (regionSelect) {
+                                regionSelect.value = matchedRegionKey;
+                                loadCities(matchedRegionKey); // متزامنة، ما تحتاج انتظار
+                                if (detectedCity) {
+                                    const citySelect = document.getElementById('addr-city');
+                                    if (citySelect) {
+                                        const cityOptions = Array.from(citySelect.options);
+                                        const cityMatch = cityOptions.find(o => o.value === detectedCity || detectedCity.includes(o.text) || o.text.includes(detectedCity));
+                                        if (cityMatch) citySelect.value = cityMatch.value;
+                                    }
+                                }
+                            }
+                        } else {
+                            console.warn('تعذّر مطابقة المنطقة/المدينة تلقائياً من نتيجة الخريطة:', { detectedCity, detectedRegion });
                         }
                     }
                 } else {
+                    console.warn('فشل الاستعلام العكسي عن العنوان (reverse geocoding) — status:', status);
                     selectedAddressText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
                     document.getElementById('selected-address-text').textContent = selectedAddressText;
                     document.getElementById('selected-address-box').classList.remove('hidden');
