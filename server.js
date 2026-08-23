@@ -573,6 +573,17 @@ app.get('/api/orders/:id', requireAdmin, async (req, res) => {
 app.post('/api/orders', async (req, res) => {
   try {
     const payload = Object.assign({}, req.body || {});
+    // 🔒 إجبارية الموقع الجغرافي: لا يُقبل أي طلب بدون إحداثيات صالحة (يمنع التلاعب من الفرونت)
+    const rawLat = payload.lat != null ? payload.lat : (payload.location && Array.isArray(payload.location.coordinates) ? payload.location.coordinates[1] : undefined);
+    const rawLng = payload.lng != null ? payload.lng : (payload.location && Array.isArray(payload.location.coordinates) ? payload.location.coordinates[0] : undefined);
+    const numLat = Number(rawLat);
+    const numLng = Number(rawLng);
+    if (!Number.isFinite(numLat) || !Number.isFinite(numLng) || (numLat === 0 && numLng === 0)) {
+      return res.status(400).json({ error: '\u0644\u0627 \u064a\u0645\u0643\u0646 \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0628\u062f\u0648\u0646 \u062a\u062d\u062f\u064a\u062f \u0645\u0648\u0642\u0639 \u0635\u0627\u0644\u062d \u0639\u0644\u0649 \u0627\u0644\u062e\u0631\u064a\u0637\u0629' });
+    }
+    payload.lat = numLat;
+    payload.lng = numLng;
+    payload.location = { type: 'Point', coordinates: [numLng, numLat] };
     const pm = String(payload.paymentMethod || 'cash').toLowerCase();
     const codFeeInput = Number(payload.codFee);
     payload.codFee = Number.isFinite(codFeeInput) ? codFeeInput : (pm === 'cash' ? COD_SURCHARGE_SAR : 0);

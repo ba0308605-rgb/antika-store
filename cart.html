@@ -417,74 +417,10 @@
                                     <i class="fas fa-map-location-dot text-3xl mb-2 text-antika-gold opacity-50"></i>
                                     <p class="text-sm">لا توجد عناوين محفوظة</p>
                                 </div>
-                                <button type="button" onclick="openAddressEditor(null)"
+                                <a href="addresses.html"
                                     class="w-full mt-1 py-2 px-4 border-2 border-dashed border-antika-gold text-antika-gold rounded-xl font-bold text-sm hover:bg-antika-beige transition flex items-center justify-center gap-2">
                                     <i class="fas fa-plus"></i> إضافة عنوان جديد
-                                </button>
-                            </div>
-
-                            <!-- محرر العنوان (مخفي افتراضياً) -->
-                            <div id="addr-editor-view" class="hidden">
-                                <div class="flex items-center justify-between mb-3">
-                                    <h4 id="addr-editor-title" class="font-bold text-gray-800 text-sm">إضافة عنوان جديد</h4>
-                                    <button type="button" onclick="closeAddressEditor()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
-                                </div>
-
-                                <!-- بحث -->
-                                <div class="mb-2 relative">
-                                    <input type="text" id="addr-map-search"
-                                        placeholder="ابحث عن موقع أو حي..."
-                                        class="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm focus:border-antika-gold focus:outline-none pr-10">
-                                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-                                    <div id="addr-search-results" class="absolute top-full right-0 left-0 bg-white border border-gray-200 rounded-xl mt-1 shadow-lg z-50 max-h-40 overflow-y-auto hidden"></div>
-                                </div>
-
-                                <!-- الخريطة -->
-                                <div id="addr-map" style="width:100%; height:220px; border-radius:12px; border:2px solid #E8D9C5;" class="mb-3"></div>
-
-                                <!-- زر موقعي الحالي -->
-                                <button type="button" onclick="useCurrentLocationInEditor()"
-                                    class="w-full mb-3 py-2 px-3 border border-gray-200 rounded-lg text-xs text-gray-600 hover:border-antika-gold hover:text-antika-gold transition flex items-center justify-center gap-2">
-                                    <i class="fas fa-crosshairs text-antika-gold"></i> استخدم موقعي الحالي
-                                </button>
-
-                                <!-- حقل الاسم -->
-                                <div class="mb-2">
-                                    <label class="block text-xs font-bold text-gray-600 mb-1">اسم العنوان</label>
-                                    <div class="flex gap-2 mb-2">
-                                        <button type="button" onclick="setAddrLabel('🏠 المنزل')" class="addr-label-btn px-3 py-1 rounded-lg border border-gray-200 text-xs hover:border-antika-gold transition">🏠 المنزل</button>
-                                        <button type="button" onclick="setAddrLabel('🏢 العمل')" class="addr-label-btn px-3 py-1 rounded-lg border border-gray-200 text-xs hover:border-antika-gold transition">🏢 العمل</button>
-                                        <button type="button" onclick="setAddrLabel('👨‍👩‍👧 العائلة')" class="addr-label-btn px-3 py-1 rounded-lg border border-gray-200 text-xs hover:border-antika-gold transition">👨‍👩‍👧 العائلة</button>
-                                    </div>
-                                    <input type="text" id="addr-label-input" placeholder="أو اكتب اسماً مخصصاً"
-                                        class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-antika-gold focus:outline-none">
-                                </div>
-
-                                <!-- حقل العنوان -->
-                                <div class="mb-3">
-                                    <label class="block text-xs font-bold text-gray-600 mb-1">تفاصيل العنوان</label>
-                                    <textarea id="addr-details-input" rows="2"
-                                        class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-antika-gold focus:outline-none"
-                                        placeholder="سيُملأ تلقائياً من الخريطة أو اكتب يدوياً"></textarea>
-                                </div>
-
-                                <!-- تعيين افتراضي -->
-                                <label class="flex items-center gap-2 mb-3 cursor-pointer">
-                                    <input type="checkbox" id="addr-is-default" class="w-4 h-4 accent-antika-gold">
-                                    <span class="text-sm text-gray-700">تعيين كعنوان افتراضي</span>
-                                </label>
-
-                                <!-- أزرار الحفظ -->
-                                <div class="flex gap-2">
-                                    <button type="button" onclick="saveAddressFromEditor()"
-                                        class="flex-1 py-2 px-4 bg-antika-gold text-white rounded-xl font-bold text-sm hover:bg-antika-gold-dark transition">
-                                        <i class="fas fa-check ml-1"></i> حفظ العنوان
-                                    </button>
-                                    <button type="button" onclick="closeAddressEditor()"
-                                        class="py-2 px-4 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50 transition">
-                                        إلغاء
-                                    </button>
-                                </div>
+                                </a>
                             </div>
 
                             <!-- العنوان المختار -->
@@ -1185,9 +1121,10 @@
                                 select.value = String(chosenIdx);
                                 const first = usedUser.addresses[chosenIdx];
                                 document.getElementById('customer-address').value = first.address || '';
-                                if (first.location) {
-                                    updateLocationDisplay(first.location);
-                                    localStorage.setItem('selectedLocation', JSON.stringify(first.location));
+                                if (first.lat != null && first.lng != null && Number.isFinite(Number(first.lat)) && Number.isFinite(Number(first.lng))) {
+                                    const loc = { lat: Number(first.lat), lng: Number(first.lng) };
+                                    updateLocationDisplay(loc);
+                                    localStorage.setItem('selectedLocation', JSON.stringify(loc));
                                 }
                             } else {
                                 savedRow.classList.add('hidden');
@@ -1239,19 +1176,34 @@
                 const storedLocation = localStorage.getItem('selectedLocation');
                 const location = storedLocation ? JSON.parse(storedLocation) : null;
 
+                if (!location || !Number.isFinite(Number(location.lat)) || !Number.isFinite(Number(location.lng))) {
+                    alert('يرجى تحديد موقعك على الخريطة قبل إتمام الطلب. اختر عنواناً محفوظاً فيه موقع، أو أضف عنواناً جديداً من صفحة عناويني.');
+                    return;
+                }
+
+                const addrExtra = window.__selectedAddressExtra || {};
+
                 const orderData = {
                     customerName,
                     customerPhone,
                     customerEmail,
                     customerAddress,
+                    customerCity: addrExtra.city || '',
+                    customerDistrict: addrExtra.district || '',
+                    customerStreet: addrExtra.street || '',
+                    customerBuilding: addrExtra.building || '',
+                    customerPostal: addrExtra.postal || '',
+                    customerLandmark: addrExtra.landmark || '',
+                    customerAltPhone: addrExtra.altPhone || '',
                     discount: totals.discount,
                     couponCode: checkoutAppliedCoupon ? checkoutAppliedCoupon.code : null,
                     paymentMethod: 'unpaid',
-                    // Add location if available
-                    location: location ? {
+                    lat: Number(location.lat),
+                    lng: Number(location.lng),
+                    location: {
                         type: 'Point',
-                        coordinates: [location.lng, location.lat] // GeoJSON format: [longitude, latitude]
-                    } : undefined,
+                        coordinates: [Number(location.lng), Number(location.lat)] // GeoJSON format: [longitude, latitude]
+                    },
                     items: cart.map(item => ({
                         productId: item.productId,
                         name: item.name,
@@ -1263,11 +1215,6 @@
                     total: totals.total,
                     status: 'confirming_availability'
                 };
-
-                // Remove undefined location field if not set
-                if (!orderData.location) {
-                    delete orderData.location;
-                }
 
                 // ---- RESERVATION: create order directly, no payment collected here ----
                 await API.createOrder(orderData);
@@ -1488,17 +1435,8 @@
 
 
         // ============================================
-        // ADDRESS EDITOR — NEW INLINE DESIGN
+        // ADDRESS SELECTION (editing happens on addresses.html)
         // ============================================
-        let addrEditorMap = null;
-        let addrEditorMarker = null;
-        let addrEditorGeocoder = null;
-        let addrEditorAutoService = null;
-        let addrEditorPredictions = [];
-        let addrEditorEditIdx = null; // null = new, number = edit
-        let addrEditorLocation = null;
-        let addrEditorSearchBound = false;
-
         function setupAddressSelector() { /* no-op — replaced by new system */ }
 
         async function loadSavedAddressesForAddressSelection() {
@@ -1553,7 +1491,7 @@
                     </div>
                     <div class="flex gap-1 shrink-0" onclick="event.stopPropagation()">
                         <button type="button" title="تعديل"
-                            onclick="openAddressEditor(${i})"
+                            onclick="window.location.href='addresses.html'"
                             class="w-8 h-8 rounded-lg border border-gray-200 text-gray-500 hover:border-antika-gold hover:text-antika-gold transition flex items-center justify-center text-xs">
                             <i class="fas fa-pen"></i>
                         </button>
@@ -1603,10 +1541,23 @@
             document.getElementById('selected-address-text').textContent = `${label} — ${details}`;
             document.getElementById('address-selected-display').classList.remove('hidden');
 
-            // Store location for order
-            if (addr.location && addr.location.lat && addr.location.lng) {
-                localStorage.setItem('selectedLocation', JSON.stringify(addr.location));
+            // Store location for order (addresses store lat/lng directly, not nested under .location)
+            if (addr.lat != null && addr.lng != null && Number.isFinite(Number(addr.lat)) && Number.isFinite(Number(addr.lng))) {
+                localStorage.setItem('selectedLocation', JSON.stringify({ lat: Number(addr.lat), lng: Number(addr.lng) }));
+            } else {
+                localStorage.removeItem('selectedLocation');
             }
+
+            // Keep extra address details for order payload
+            window.__selectedAddressExtra = {
+                city: addr.city || '',
+                district: addr.district || '',
+                street: addr.street || '',
+                building: addr.building || '',
+                postal: addr.postal || '',
+                landmark: addr.landmark || '',
+                altPhone: addr.altPhone || ''
+            };
 
             // Set city for shipping calc
             if (addr.city) {
@@ -1634,220 +1585,6 @@
                 console.error(e);
             }
         }
-
-        function openAddressEditor(idx) {
-            addrEditorEditIdx = idx;
-            addrEditorLocation = null;
-            addrEditorMap = null;
-            addrEditorSearchBound = false;
-
-            const title = document.getElementById('addr-editor-title');
-            const labelInput = document.getElementById('addr-label-input');
-            const detailsInput = document.getElementById('addr-details-input');
-            const isDefaultChk = document.getElementById('addr-is-default');
-
-            if (idx !== null) {
-                // Edit mode
-                let user = {};
-                try { user = JSON.parse(localStorage.getItem('antika_user') || '{}'); } catch(e){}
-                const addr = (user.addresses || [])[idx] || {};
-                title.textContent = 'تعديل العنوان';
-                labelInput.value = addr.label || '';
-                detailsInput.value = addr.address || '';
-                isDefaultChk.checked = addr.isDefault === true;
-                if (addr.location) addrEditorLocation = addr.location;
-            } else {
-                // Add mode
-                title.textContent = 'إضافة عنوان جديد';
-                labelInput.value = '';
-                detailsInput.value = '';
-                isDefaultChk.checked = false;
-            }
-
-            document.getElementById('addr-list-view').classList.add('hidden');
-            document.getElementById('addr-editor-view').classList.remove('hidden');
-
-            // Init map after render
-            setTimeout(() => initAddrEditorMap(), 150);
-        }
-
-        function closeAddressEditor() {
-            document.getElementById('addr-editor-view').classList.add('hidden');
-            document.getElementById('addr-list-view').classList.remove('hidden');
-            addrEditorMap = null;
-            addrEditorMarker = null;
-        }
-
-        function setAddrLabel(val) {
-            document.getElementById('addr-label-input').value = val;
-        }
-
-        async function initAddrEditorMap() {
-            const mapEl = document.getElementById('addr-map');
-            if (!mapEl || addrEditorMap) return;
-
-            const defaultLat = addrEditorLocation ? addrEditorLocation.lat : 24.7136;
-            const defaultLng = addrEditorLocation ? addrEditorLocation.lng : 46.6753;
-
-            try {
-                await ensureGoogleMapsReady();
-                addrEditorMap = new google.maps.Map(mapEl, {
-                    center: { lat: defaultLat, lng: defaultLng },
-                    zoom: addrEditorLocation ? 15 : 12,
-                    mapTypeControl: false,
-                    streetViewControl: false,
-                    fullscreenControl: false,
-                    gestureHandling: 'greedy'
-                });
-
-                addrEditorMarker = new google.maps.Marker({
-                    map: addrEditorMap,
-                    position: { lat: defaultLat, lng: defaultLng },
-                    draggable: true
-                });
-
-                addrEditorMarker.addListener('dragend', () => {
-                    const pos = addrEditorMarker.getPosition();
-                    onAddrMapLocationPicked(pos.lat(), pos.lng());
-                });
-
-                addrEditorMap.addListener('click', (e) => {
-                    addrEditorMarker.setPosition(e.latLng);
-                    onAddrMapLocationPicked(e.latLng.lat(), e.latLng.lng());
-                });
-
-                addrEditorAutoService = new google.maps.places.AutocompleteService();
-                addrEditorGeocoder = new google.maps.Geocoder();
-                bindAddrEditorSearch();
-
-            } catch(e) {
-                mapEl.innerHTML = '<div class="h-full flex items-center justify-center text-sm text-red-500 p-3">تعذر تحميل الخريطة</div>';
-            }
-        }
-
-        function onAddrMapLocationPicked(lat, lng) {
-            addrEditorLocation = { lat, lng };
-            // Reverse geocode to fill address
-            if (addrEditorGeocoder) {
-                addrEditorGeocoder.geocode({ location: { lat, lng }, language: 'ar' }, (results, status) => {
-                    if (status === 'OK' && results[0]) {
-                        document.getElementById('addr-details-input').value = results[0].formatted_address;
-                    }
-                });
-            }
-        }
-
-        function useCurrentLocationInEditor() {
-            if (!navigator.geolocation) { alert('المتصفح لا يدعم تحديد الموقع'); return; }
-            navigator.geolocation.getCurrentPosition((pos) => {
-                const lat = pos.coords.latitude;
-                const lng = pos.coords.longitude;
-                addrEditorLocation = { lat, lng };
-                if (addrEditorMap && addrEditorMarker) {
-                    addrEditorMap.setCenter({ lat, lng });
-                    addrEditorMap.setZoom(16);
-                    addrEditorMarker.setPosition({ lat, lng });
-                }
-                onAddrMapLocationPicked(lat, lng);
-            }, () => alert('تعذر تحديد موقعك الحالي'));
-        }
-
-        function bindAddrEditorSearch() {
-            if (addrEditorSearchBound) return;
-            addrEditorSearchBound = true;
-            const input = document.getElementById('addr-map-search');
-            const results = document.getElementById('addr-search-results');
-            if (!input || !results) return;
-
-            input.addEventListener('input', async () => {
-                const q = input.value.trim();
-                if (q.length < 3) { results.classList.add('hidden'); return; }
-                if (!addrEditorAutoService) return;
-
-                addrEditorPredictions = await new Promise(resolve => {
-                    addrEditorAutoService.getPlacePredictions(
-                        { input: q, language: 'ar', componentRestrictions: { country: 'sa' } },
-                        (preds, status) => resolve(status === google.maps.places.PlacesServiceStatus.OK ? preds : [])
-                    );
-                });
-
-                if (!addrEditorPredictions.length) {
-                    results.innerHTML = '<p class="text-xs text-gray-400 p-2">لا توجد نتائج</p>';
-                } else {
-                    results.innerHTML = addrEditorPredictions.map((p, i) => `
-                        <button type="button" onclick="selectAddrEditorResult(${i})"
-                            class="w-full text-right px-3 py-2 text-xs hover:bg-gray-50 border-b border-gray-100 transition">
-                            <div class="font-bold text-gray-800">${p.structured_formatting?.main_text || p.description}</div>
-                            <div class="text-gray-400">${p.structured_formatting?.secondary_text || ''}</div>
-                        </button>`).join('');
-                }
-                results.classList.remove('hidden');
-            });
-        }
-
-        async function selectAddrEditorResult(i) {
-            const p = addrEditorPredictions[i];
-            if (!p || !addrEditorGeocoder) return;
-            const geoResults = await new Promise(resolve => {
-                addrEditorGeocoder.geocode({ placeId: p.place_id }, (r, s) => resolve(s === 'OK' ? r : []));
-            });
-            if (!geoResults.length) return;
-            const loc = geoResults[0].geometry.location;
-            const lat = loc.lat(), lng = loc.lng();
-            addrEditorLocation = { lat, lng };
-            addrEditorMap.setCenter({ lat, lng });
-            addrEditorMap.setZoom(16);
-            addrEditorMarker.setPosition({ lat, lng });
-            document.getElementById('addr-details-input').value = geoResults[0].formatted_address;
-            document.getElementById('addr-map-search').value = p.description;
-            document.getElementById('addr-search-results').classList.add('hidden');
-        }
-
-        async function saveAddressFromEditor() {
-            const label = (document.getElementById('addr-label-input').value || '').trim();
-            const details = (document.getElementById('addr-details-input').value || '').trim();
-            const isDefault = document.getElementById('addr-is-default').checked;
-
-            if (!label) { alert('أدخل اسم العنوان'); return; }
-            if (!details) { alert('أدخل تفاصيل العنوان أو حدد موقعاً على الخريطة'); return; }
-
-            let user = {};
-            try { user = JSON.parse(localStorage.getItem('antika_user') || '{}'); } catch(e){}
-            user.addresses = user.addresses || [];
-
-            const entry = { label, address: details, location: addrEditorLocation, isDefault };
-
-            // If isDefault, clear others
-            if (isDefault) user.addresses.forEach(a => a.isDefault = false);
-
-            try {
-                if (user.email) {
-                    let updated;
-                    if (addrEditorEditIdx !== null) {
-                        updated = await API.updateUserAddress(user.email, addrEditorEditIdx, entry);
-                    } else {
-                        updated = await API.addUserAddress(user.email, entry);
-                    }
-                    user = mergeAndPersistUserProfile(updated, getStoredUserSafe());
-                } else {
-                    if (addrEditorEditIdx !== null) {
-                        user.addresses[addrEditorEditIdx] = entry;
-                    } else {
-                        user.addresses.push(entry);
-                    }
-                    localStorage.setItem('antika_user', JSON.stringify(user));
-                }
-
-                closeAddressEditor();
-                renderAddressList(user.addresses || []);
-            } catch(e) {
-                alert('حدث خطأ أثناء الحفظ.');
-                console.error(e);
-            }
-        }
-
-        function selectAddressInCheckout() { /* legacy stub */ }
-
 
         // Check login status
         function checkLoginStatus() {

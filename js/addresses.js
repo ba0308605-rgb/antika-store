@@ -130,6 +130,8 @@
             document.getElementById('addr-street').value = addr.street || '';
             document.getElementById('addr-building').value = addr.building || '';
             document.getElementById('addr-postal').value = addr.postal || '';
+            document.getElementById('addr-landmark').value = addr.landmark || '';
+            document.getElementById('addr-alt-phone').value = addr.altPhone || '';
             document.getElementById('addr-label').value = addr.label || '';
             document.getElementById('addr-default').checked = addr.isDefault || false;
             if (addr.lat && addr.lng) {
@@ -142,7 +144,7 @@
         } else {
             title.innerHTML = '<i class="fas fa-map-marker-alt ml-2" style="color:var(--pink)"></i> إضافة عنوان جديد';
             resetForm();
-            goToChoose();
+            goToStep1();
         }
 
         setTimeout(() => initMap(), 300);
@@ -165,7 +167,7 @@
 
     function resetForm() {
         selectedLat = null; selectedLng = null; selectedAddressText = '';
-        ['addr-region','addr-city','addr-district','addr-street','addr-building','addr-postal','addr-label'].forEach(id => {
+        ['addr-region','addr-city','addr-district','addr-street','addr-building','addr-postal','addr-landmark','addr-alt-phone','addr-label'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = '';
         });
@@ -174,34 +176,14 @@
         disableNextBtn();
     }
 
-    function goToChoose() {
-        document.getElementById('step-choose').classList.remove('hidden');
-        document.getElementById('step-map').classList.add('hidden');
-        document.getElementById('step-details').classList.add('hidden');
-    }
-
-    function chooseMap() {
-        document.getElementById('step-choose').classList.add('hidden');
-        document.getElementById('step-map').classList.remove('hidden');
-        document.getElementById('step-details').classList.add('hidden');
-        setTimeout(() => initMap(), 200);
-    }
-
-    function chooseManual() {
-        document.getElementById('step-choose').classList.add('hidden');
-        document.getElementById('step-map').classList.add('hidden');
-        document.getElementById('step-details').classList.remove('hidden');
-    }
-
     function goToStep1() {
-        document.getElementById('step-choose').classList.add('hidden');
         document.getElementById('step-map').classList.remove('hidden');
         document.getElementById('step-details').classList.add('hidden');
         setTimeout(() => initMap(), 200);
     }
 
     function goToStep2() {
-        document.getElementById('step-choose').classList.add('hidden');
+        if (!selectedLat || !selectedLng) { showToast('الرجاء تحديد موقعك على الخريطة أولاً', '⚠️'); return; }
         document.getElementById('step-map').classList.add('hidden');
         document.getElementById('step-details').classList.remove('hidden');
     }
@@ -214,43 +196,6 @@
     function disableNextBtn() {
         const btn = document.getElementById('save-map-btn');
         if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
-    }
-
-    async function saveMapAddress() {
-        if (!selectedLat || !selectedLng) { showToast('الرجاء تحديد موقعك على الخريطة', '⚠️'); return; }
-        const labelInput = document.getElementById('map-label-input');
-        const label = (labelInput && labelInput.value.trim()) ? labelInput.value.trim() : 'منزل';
-        const entry = {
-            label,
-            address: selectedAddressText || selectedLat.toFixed(5) + ', ' + selectedLng.toFixed(5),
-            lat: selectedLat, lng: selectedLng,
-            isDefault: false
-        };
-        currentUser.addresses = currentUser.addresses || [];
-        if (currentUser.addresses.length === 0) entry.isDefault = true;
-        try {
-            if (editingIndex !== null) {
-                if (currentUser.email) {
-                    const updated = await API.updateUserAddress(currentUser.email, editingIndex, entry);
-                    if (updated?.addresses) currentUser.addresses = updated.addresses;
-                    else currentUser.addresses[editingIndex] = entry;
-                } else { currentUser.addresses[editingIndex] = entry; }
-                showToast('تم تحديث العنوان', '✅');
-            } else {
-                if (currentUser.email) {
-                    const updated = await API.addUserAddress(currentUser.email, entry);
-                    if (updated?.addresses) currentUser.addresses = updated.addresses;
-                    else currentUser.addresses.push(entry);
-                } else { currentUser.addresses.push(entry); }
-                showToast('تم حفظ العنوان', '✅');
-            }
-            localStorage.setItem('antika_user', JSON.stringify(currentUser));
-            closeAddressModal();
-            renderAddresses();
-        } catch(err) {
-            console.error(err);
-            showToast('حدث خطأ أثناء الحفظ', '❌');
-        }
     }
 
     function setLabel(val) { document.getElementById('addr-label').value = val; }
@@ -418,9 +363,14 @@
         const street = document.getElementById('addr-street').value.trim();
         const building = document.getElementById('addr-building').value.trim();
         const postal = document.getElementById('addr-postal').value.trim();
+        const landmark = document.getElementById('addr-landmark').value.trim();
+        const altPhone = document.getElementById('addr-alt-phone').value.trim();
         const label = document.getElementById('addr-label').value.trim();
         const isDefault = document.getElementById('addr-default').checked;
 
+        if (!selectedLat || !selectedLng) {
+            showToast('الرجاء تحديد موقعك على الخريطة', '⚠️'); goToStep1(); return;
+        }
         if (!region || !city || !district || !street || !label) {
             showToast('الرجاء تعبئة الحقول المطلوبة', '⚠️'); return;
         }
@@ -429,7 +379,7 @@
 
         const entry = {
             label, regionKey: region, region: getRegionName(region),
-            city, district, street, building, postal,
+            city, district, street, building, postal, landmark, altPhone,
             address: selectedAddressText || fullAddress,
             lat: selectedLat, lng: selectedLng,
             isDefault: false
