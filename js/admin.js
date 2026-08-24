@@ -486,10 +486,11 @@ async function loadOrders() {
             const orderSeq = seqMap[orderId] || '—';
             const orderDate = order.date ? new Date(order.date).toLocaleString('ar-SA') : '-';
             const isPrePayment = PRE_PAYMENT_STATUSES.includes(order.status);
-            const isLocked = isPrePayment && !order.isPaid;
+            const isCancelled = order.status === 'cancelled';
+            const isLocked = (isPrePayment && !order.isPaid) || isCancelled;
             const itemsSubtotal = order.items.reduce((s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
             const lockedBtnClass = 'flex-1 bg-gray-100 text-gray-400 py-2 rounded-lg text-sm cursor-not-allowed';
-            const lockedTitle = 'title="بانتظار تأكيد الدفع أولاً"';
+            const lockedTitle = isCancelled ? 'title="الطلب ملغي"' : 'title="بانتظار تأكيد الدفع أولاً"';
             return `
             <div class="bg-white rounded-xl shadow-lg border ${order.customerCancelled ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-100'} overflow-hidden mb-3">
                 <div class="p-3 flex justify-between items-center gap-2 cursor-pointer select-none flex-wrap" onclick="toggleOrderDetails('${orderId}')">
@@ -579,6 +580,18 @@ async function loadOrders() {
                     <div class="mb-4 p-2 px-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
                         <i class="fas fa-check-circle ml-1"></i>تم تأكيد دفع العميل${order.paidAt ? ' في ' + new Date(order.paidAt).toLocaleString('ar-SA') : ''}
                     </div>` : ''}
+                    ${order.stockReturnAttempted ? (order.stockReturned ? `
+                    <div class="mb-4 p-3 bg-green-50 border-2 border-green-300 rounded-xl text-sm text-green-700">
+                        <i class="fas fa-box-open ml-1"></i>
+                        <span class="font-bold">تم إرجاع جميع القطع في هذا الطلب إلى المخزون بنجاح</span>، بعد مراجعة دقيقة لكل منتج${order.stockReturnedAt ? ' — بتاريخ ' + new Date(order.stockReturnedAt).toLocaleString('ar-SA') : ''}.
+                    </div>` : `
+                    <div class="mb-4 p-3 bg-red-50 border-2 border-red-400 rounded-xl text-sm text-red-700">
+                        <p class="font-bold mb-1"><i class="fas fa-triangle-exclamation ml-1"></i>خلل في إرجاع المخزون — يحتاج مراجعة يدوية فورية</p>
+                        <p>تعذّر إرجاع القطع التالية تلقائياً (على الأغلب لأن المنتج محذوف نهائياً من المخزون):</p>
+                        <ul class="list-disc list-inside mt-1">
+                            ${((order.stockReturnLog && order.stockReturnLog.failedItems) || []).map(f => `<li>${f.name || f.productId} — الكمية: ${f.quantity}</li>`).join('') || '<li>راجع سجل stock_return_logs لتفاصيل الخلل</li>'}
+                        </ul>
+                    </div>`) : ''}
                     <div class="border-t border-gray-100 pt-4">
                         <h4 class="font-bold text-gray-700 mb-2">المنتجات</h4>
                         <div class="space-y-2">
@@ -610,6 +623,13 @@ async function loadOrders() {
                         <button onclick="createOtoShipment('${orderId}')" class="px-4 bg-indigo-100 text-indigo-700 py-2 rounded-lg hover:bg-indigo-200 transition text-sm">
                             شحنة OTO
                         </button>
+                        ${isCancelled ? `
+                        <button disabled title="الطلب ملغي مسبقاً" class="px-4 bg-gray-100 text-gray-400 py-2 rounded-lg text-sm cursor-not-allowed">
+                            <i class="fas fa-ban ml-1"></i>ملغي
+                        </button>` : `
+                        <button onclick="cancelOrderAdmin('${orderId}')" class="px-4 bg-red-50 text-red-700 border border-red-200 py-2 rounded-lg hover:bg-red-100 transition text-sm font-semibold">
+                            <i class="fas fa-ban ml-1"></i>إلغاء الطلب
+                        </button>`}
                         <button onclick="deleteOrder('${orderId}')" class="px-4 bg-red-100 text-red-600 py-2 rounded-lg hover:bg-red-200 transition text-sm">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -683,6 +703,39 @@ async function updateOrderStatus(orderId, status) {
     }
 }
 
+function describeStockReturnResult(data) {
+    if (data && data.stockReturned === true) {
+        return { message: '✅ تم الإلغاء، وتم إرجاع جميع القطع إلى المخزون بنجاح بعد مراجعة دقيقة.', type: 'success' };
+    }
+    if (data && data.stockReturned === false) {
+        const failed = Array.isArray(data.stockReturnFailed) ? data.stockReturnFailed : [];
+        const names = failed.map(f => f.name || f.productId).filter(Boolean).join('، ');
+        return { message: '⚠️ تم الإلغاء لكن حصل خلل في إرجاع بعض القطع للمخزون' + (names ? (' (' + names + ')') : '') + ' — راجع المخزون يدوياً فوراً.', type: 'error' };
+    }
+    return null; // الطلب أصلاً ما كان فيه منتجات لإرجاعها أو تم إرجاع مخزونه مسبقاً — لا داعي لرسالة
+}
+
+async function cancelOrderAdmin(orderId) {
+    if (!confirm('هل أنت متأكد من إلغاء هذا الطلب؟ سيتم إرجاع كل القطع تلقائياً إلى المخزون بعد مراجعة دقيقة لكل منتج.')) return;
+    try {
+        const token = localStorage.getItem('antika_admin_token');
+        const res = await fetch('/api/orders/' + orderId, {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'cancelled' })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'فشل إلغاء الطلب');
+        const stockInfo = describeStockReturnResult(data);
+        showNotification(stockInfo ? stockInfo.message : 'تم إلغاء الطلب.', stockInfo ? stockInfo.type : undefined);
+        await loadOrders();
+        await updateStats();
+    } catch (error) {
+        console.error('Error cancelling order:', error);
+        showNotification(error.message || 'حدث خطأ أثناء إلغاء الطلب', 'error');
+    }
+}
+
 async function confirmManualPayment(orderId) {
     if (!confirm('تأكيد أن العميل دفع المبلغ كاملاً؟ سيتم فتح باقي الحالات لك لاختيار المناسب.')) return;
     try {
@@ -750,18 +803,23 @@ async function createOtoShipment(orderId) {
 }
 
 async function deleteOrder(orderId) {
-    if (!confirm('هل أنت متأكد من حذف هذا الطلب؟')) return;
+    if (!confirm('هل أنت متأكد من حذف هذا الطلب؟ لو ما رجعنا مخزونه قبل كذا، بيتم إرجاعه تلقائياً قبل الحذف.')) return;
     
     try {
-        if (API.deleteOrder) {
-            await API.deleteOrder(orderId);
-            showNotification('تم حذف الطلب بنجاح');
-            await loadOrders();
-            await updateStats();
-        }
+        const token = localStorage.getItem('antika_admin_token');
+        const res = await fetch('/api/orders/' + orderId, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'فشل حذف الطلب');
+        const stockInfo = describeStockReturnResult(data);
+        showNotification(stockInfo ? ('تم حذف الطلب. ' + stockInfo.message) : 'تم حذف الطلب بنجاح', stockInfo ? stockInfo.type : undefined);
+        await loadOrders();
+        await updateStats();
     } catch (error) {
         console.error('Error deleting order:', error);
-        showNotification('حدث خطأ أثناء حذف الطلب', 'error');
+        showNotification(error.message || 'حدث خطأ أثناء حذف الطلب', 'error');
     }
 }
 

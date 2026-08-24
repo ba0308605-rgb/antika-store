@@ -550,6 +550,89 @@ app.delete('/api/cart', async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ============================================
+// STOCK RETURN ON CANCELLATION — إرجاع المخزون بدقة عند إلغاء أي طلب
+// ============================================
+// يرجّع كل قطعة محفوظة داخل الطلب (order.items) إلى مخزون منتجها الأصلي عبر Firestore Transaction واحدة،
+// عشان نضمن دقة الأرقام حتى لو صار تزامن (concurrency) مع طلبات أو تعديلات ثانية بنفس اللحظة.
+// أي extraOrderUpdates (مثل تغيير status) تُكتب على وثيقة الطلب ضمن نفس الـ Transaction لضمان الذرية (atomicity).
+async function restoreOrderStock(ref, order, extraOrderUpdates) {
+  // 🔒 حماية من الإرجاع المضاعف: لو الطلب سبق ورجّعنا مخزونه، لا نكرر العملية أبداً
+  if (order && order.stockReturned) {
+    if (extraOrderUpdates && Object.keys(extraOrderUpdates).length) await ref.update(extraOrderUpdates);
+    return { alreadyReturned: true, success: true, restored: [], failed: [] };
+  }
+  const items = Array.isArray(order && order.items) ? order.items : [];
+  const qtyByProduct = {};
+  const nameByProduct = {};
+  for (const it of items) {
+    const pid = it && it.productId ? String(it.productId) : '';
+    const qty = Number(it && it.quantity) || 0;
+    if (!pid || qty <= 0) continue;
+    qtyByProduct[pid] = (qtyByProduct[pid] || 0) + qty;
+    if (!nameByProduct[pid]) nameByProduct[pid] = String((it && it.name) || '');
+  }
+  const productIds = Object.keys(qtyByProduct);
+
+  const txResult = await db.runTransaction(async (t) => {
+    const restored = [];
+    const failed = [];
+    // ⚠️ كل قراءات الـ Transaction يجب أن تحصل قبل أي كتابة (متطلب Firestore) — لذا نجمع القراءات أولاً بالكامل
+    const refs = productIds.map(pid => db.collection('products').doc(pid));
+    const snaps = [];
+    for (const r of refs) snaps.push(await t.get(r));
+    snaps.forEach((snap, i) => {
+      const pid = productIds[i];
+      const qty = qtyByProduct[pid];
+      if (!snap.exists) {
+        // المنتج محذوف نهائياً من المخزون (مثلاً: كانت آخر قطعة وحذفه الأدمن يدوياً) — لا يمكن إرجاع تلقائي آمن
+        failed.push({ productId: pid, name: nameByProduct[pid] || '', quantity: qty, reason: 'product_not_found' });
+        return;
+      }
+      const data = snap.data() || {};
+      const currentStock = Number.isFinite(Number(data.stock)) ? Number(data.stock) : 0;
+      const newStock = currentStock + qty;
+      t.update(snap.ref, { stock: newStock });
+      restored.push({ productId: pid, name: data.name || nameByProduct[pid] || '', quantity: qty, stockBefore: currentStock, stockAfter: newStock });
+    });
+
+    const hasNoItems = items.length === 0 || productIds.length === 0;
+    // ✅ النجاح المؤكد يُشترط فيه: وجود منتجات فعلاً بالطلب + نجاح إرجاع كل قطعة منها بدون استثناء واحد
+    const success = !hasNoItems && failed.length === 0;
+    const nowIso = new Date().toISOString();
+    const stockReturnLog = stripUndefinedDeep({
+      attemptedAt: nowIso,
+      success,
+      restoredItems: restored,
+      failedItems: failed,
+      note: hasNoItems ? 'الطلب لا يحتوي على منتجات مرتبطة بالمخزون' : null
+    });
+    const orderUpdates = Object.assign({}, extraOrderUpdates || {}, {
+      stockReturnAttempted: true,
+      stockReturned: success,
+      stockReturnedAt: nowIso,
+      stockReturnLog
+    });
+    t.update(ref, orderUpdates);
+    return { success, restored, failed, hasNoItems };
+  });
+
+  // 📋 سجل تدقيق دائم بكولكشن منفصل — يبقى موجوداً حتى لو الطلب نفسه انحذف لاحقاً من الأدمن
+  try {
+    await db.collection('stock_return_logs').add(stripUndefinedDeep({
+      orderId: ref.id,
+      orderCode: (order && order.orderCode) || null,
+      customerEmail: (order && order.customerEmail) || null,
+      success: txResult.success,
+      restoredItems: txResult.restored,
+      failedItems: txResult.failed,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    }));
+  } catch (le) { console.error('Stock return log error:', le.message); }
+
+  return txResult;
+}
+
 // ORDERS
 app.get('/api/orders', requireAdmin, async (req, res) => {
   try { let s; try { s = await db.collection('orders').orderBy('date', 'desc').get(); } catch (e) { s = await db.collection('orders').get(); } res.json(docsToArr(s)); }
@@ -630,15 +713,34 @@ app.put('/api/orders/:id', requireAdmin, async (req, res) => {
       tl.push({ status: nextStatus, title: '\u062a\u062d\u062f\u064a\u062b \u062d\u0627\u0644\u0629 \u0627\u0644\u0637\u0644\u0628', message: '\u062a\u0645 \u062a\u062d\u062f\u064a\u062b \u062d\u0627\u0644\u0629 \u0627\u0644\u0637\u0644\u0628 \u0625\u0644\u0649: ' + getOrderStatusTextAr(nextStatus), source: 'admin', at: new Date().toISOString() });
       updates.statusTimeline = tl;
     }
-    await ref.update(updates);
+    // 🔁 إلغاء الطلب من الأدمن = إرجاع تلقائي وآمن للمخزون (ضمن نفس Transaction تحديث الحالة، ولا يتكرر لو سبق إرجاعه)
+    let stockResult = null;
+    if (statusChanged && nextStatus === 'cancelled') {
+      stockResult = await restoreOrderStock(ref, order, updates);
+    } else {
+      await ref.update(updates);
+    }
     if (statusChanged || trackingChanged) { try { const uo = Object.assign({}, order, updates); const nr = await sendOrderCustomerNotification(uo, { title: statusChanged ? '\u062d\u0627\u0644\u0629 \u0627\u0644\u0637\u0644\u0628: ' + getOrderStatusTextAr(nextStatus) : '\u062a\u062d\u062f\u064a\u062b \u0639\u0644\u0649 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0634\u062d\u0646\u0629' }); if (nr.sent) await ref.update({ customerNotifiedAt: new Date().toISOString() }); } catch (ne) { console.error('Notify error:', ne.message); } }
     const ud = await ref.get();
-    res.json({ success: true, notificationSent: statusChanged || trackingChanged, order: Object.assign({ id: ud.id }, ud.data()) });
+    res.json({ success: true, notificationSent: statusChanged || trackingChanged, stockReturned: stockResult ? stockResult.success : undefined, stockReturnFailed: stockResult ? stockResult.failed : undefined, order: Object.assign({ id: ud.id }, ud.data()) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.delete('/api/orders/:id', requireAdmin, async (req, res) => {
-  try { await db.collection('orders').doc(req.params.id).delete(); res.json({ message: 'Order deleted' }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  try {
+    const ref = db.collection('orders').doc(req.params.id);
+    const doc = await ref.get();
+    let stockResult = null;
+    // 🛡️ شبكة أمان: لو الأدمن حذف الطلب نهائياً بدون ما يمر بحالة "ملغي" أولاً، نرجّع المخزون هنا قبل الحذف
+    if (doc.exists) {
+      const order = Object.assign({ id: doc.id }, doc.data());
+      if (!order.stockReturned) {
+        try { stockResult = await restoreOrderStock(ref, order, {}); }
+        catch (se) { console.error('Stock restore before delete error:', se.message); }
+      }
+    }
+    await ref.delete();
+    res.json({ message: 'Order deleted', stockReturned: stockResult ? stockResult.success : undefined, stockReturnFailed: stockResult ? stockResult.failed : undefined });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // \u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0645\u0646 \u0637\u0631\u0641 \u0627\u0644\u0639\u0645\u064a\u0644 \u0642\u0628\u0644 \u0627\u0644\u062f\u0641\u0639 \u0641\u0642\u0637 (\u0644\u0627 \u064a\u062d\u0630\u0641 \u0627\u0644\u0637\u0644\u0628\u060c \u0641\u0642\u0637 \u064a\u062e\u0641\u064a\u0647 \u0639\u0646 \u0627\u0644\u0639\u0645\u064a\u0644 \u0648\u064a\u0638\u0647\u0631 \u0644\u0644\u0623\u062f\u0645\u0646 \u0623\u0646 \u0627\u0644\u0639\u0645\u064a\u0644 \u0623\u0644\u063a\u0627\u0647)
 app.post('/api/orders/:id/cancel', async (req, res) => {
@@ -659,8 +761,9 @@ app.post('/api/orders/:id/cancel', async (req, res) => {
     }
     const tl = order.statusTimeline || [];
     tl.push({ status: order.status, title: '\u0625\u0644\u063a\u0627\u0621 \u0645\u0646 \u0627\u0644\u0639\u0645\u064a\u0644', message: '\u0642\u0627\u0645 \u0627\u0644\u0639\u0645\u064a\u0644 \u0628\u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0642\u0628\u0644 \u0627\u0644\u062f\u0641\u0639', source: 'customer', at: new Date().toISOString() });
-    await ref.update({ customerCancelled: true, customerCancelledAt: new Date().toISOString(), statusTimeline: tl });
-    res.json({ success: true });
+    // 🔁 إرجاع كل قطعة بالطلب لمخزون منتجها الأصلي (Transaction آمنة + سجل تدقيق) — لا يُحذف الطلب، فقط يُعلَّم ويُرجَّع مخزونه
+    const stockResult = await restoreOrderStock(ref, order, { customerCancelled: true, customerCancelledAt: new Date().toISOString(), statusTimeline: tl });
+    res.json({ success: true, stockReturned: stockResult.success, stockReturnFailed: stockResult.failed || [] });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.post('/api/orders/:id/create-shipment', requireAdmin, async (req, res) => {
