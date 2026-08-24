@@ -128,6 +128,20 @@
             font-size: 15px;
             outline: none;
         }
+        .field-error-msg {
+            color: #dc2626;
+            font-size: 12px;
+            margin-top: 6px;
+            display: none;
+        }
+        .phone-container.has-error,
+        .antika-input.has-error {
+            border-color: #dc2626 !important;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1) !important;
+        }
+        .field-error-msg.show {
+            display: block;
+        }
         
         /* Profile Image */
         .profile-image-container {
@@ -359,13 +373,14 @@
                                 <label class="block text-gray-700 font-bold mb-2 text-sm">
                                     رقم الجوال <span class="text-red-500">*</span>
                                 </label>
-                                <div class="phone-container">
+                                <div class="phone-container" id="phone-container">
                                     <div class="phone-prefix">
                                         <span>🇸🇦</span>
                                         <span>+966</span>
                                     </div>
                                     <input type="tel" id="phone-number" class="phone-input" placeholder="55 123 4567" maxlength="10">
                                 </div>
+                                <p class="field-error-msg" id="phone-error">الرجاء إدخال رقم جوال سعودي صحيح (يبدأ بـ 5 ويتكوّن من 9 أرقام)</p>
                             </div>
                             
                             <!-- Email -->
@@ -374,6 +389,7 @@
                                     البريد الإلكتروني <span class="text-red-500">*</span>
                                 </label>
                                 <input type="email" id="email" class="antika-input" placeholder="example@email.com" required>
+                                <p class="field-error-msg" id="email-error">الرجاء إدخال بريد إلكتروني صحيح (مثال: name@example.com)</p>
                                 <p class="text-xs text-gray-500 mt-1">سنرسل لك رابط تحقق عند تغيير الإيميل</p>
                             </div>
                             
@@ -607,10 +623,62 @@
             }
         }
         
+        // ===== التحقق من صحة رقم الجوال والبريد الإلكتروني =====
+        function validateSaudiPhone(raw) {
+            const digits = (raw || '').replace(/\D/g, '');
+            // نسمح بصيغتين: 5XXXXXXXX (9 أرقام) أو 05XXXXXXXX (10 أرقام مع صفر بالبداية)
+            const normalized = digits.startsWith('0') ? digits.substring(1) : digits;
+            return /^5\d{8}$/.test(normalized);
+        }
+
+        function validateEmailFormat(email) {
+            // تحقق أساسي: نص@نص.امتداد (حرفين على الأقل)، بدون مسافات
+            return /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test((email || '').trim());
+        }
+
+        function setFieldError(containerId, errorId, hasError) {
+            const container = document.getElementById(containerId);
+            const errorMsg = document.getElementById(errorId);
+            if (container) container.classList.toggle('has-error', hasError);
+            if (errorMsg) errorMsg.classList.toggle('show', hasError);
+        }
+
+        function clearFieldErrors() {
+            setFieldError('phone-container', 'phone-error', false);
+            setFieldError('email', 'email-error', false);
+        }
+
+        document.getElementById('phone-number').addEventListener('input', () => setFieldError('phone-container', 'phone-error', false));
+        document.getElementById('email').addEventListener('input', () => setFieldError('email', 'email-error', false));
+
         // Form Submit
         document.getElementById('profile-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
+            clearFieldErrors();
+
+            const firstNameCheck = document.getElementById('first-name').value.trim();
+            const emailCheck = document.getElementById('email').value.trim();
+            const phoneCheck = document.getElementById('phone-number').value.trim();
+
+            let firstInvalidEl = null;
+
+            if (!validateEmailFormat(emailCheck)) {
+                setFieldError('email', 'email-error', true);
+                if (!firstInvalidEl) firstInvalidEl = document.getElementById('email');
+            }
+
+            if (!validateSaudiPhone(phoneCheck)) {
+                setFieldError('phone-container', 'phone-error', true);
+                if (!firstInvalidEl) firstInvalidEl = document.getElementById('phone-number');
+            }
+
+            if (firstInvalidEl) {
+                firstInvalidEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                firstInvalidEl.focus();
+                return;
+            }
+
             const submitBtn = this.querySelector('.save-btn');
             const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري الحفظ...';
@@ -631,18 +699,15 @@
                 const lastName = document.getElementById('last-name').value.trim();
                 const fullName = firstName + (lastName ? ' ' + lastName : '');
                 const email = document.getElementById('email').value.trim();
-                const phone = document.getElementById('phone-number').value.trim();
+                const rawPhone = document.getElementById('phone-number').value.trim();
+                const phoneDigits = rawPhone.replace(/\D/g, '');
+                const phone = phoneDigits.startsWith('0') ? phoneDigits.substring(1) : phoneDigits;
                 const birthDate = document.getElementById('birth-date').value;
                 const gender = document.getElementById('gender').value;
                 
                 // Validate - only first name is required
                 if (!firstName) {
                     alert('الرجاء إدخال الاسم الأول');
-                    return;
-                }
-                
-                if (!email) {
-                    alert('الرجاء إدخال البريد الإلكتروني');
                     return;
                 }
                 
