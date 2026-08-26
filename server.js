@@ -834,6 +834,29 @@ app.put('/api/users/:email', async (req, res) => {
     else { await s.docs[0].ref.update({ name: name || '', phone: phone || '' }); const doc = await s.docs[0].ref.get(); return res.json(Object.assign({ id: doc.id }, doc.data())); }
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// 🔒 تغيير البريد الإلكتروني الفعلي لسجل المستخدم — يُستدعى فقط بعد تأكيد رمز التحقق بنجاح (/api/verify-email-code)
+// يحافظ على نفس السجل (العناوين، الموقع المحفوظ) لكن تحت البريد الإلكتروني الجديد، ويمنع تكرار بريد مستخدم بحساب آخر
+app.post('/api/users/:email/change-email', async (req, res) => {
+  try {
+    const oldEmail = decodeURIComponent(req.params.email).toLowerCase();
+    const newEmail = String((req.body && req.body.newEmail) || '').trim().toLowerCase();
+    if (!newEmail || !/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(newEmail)) {
+      return res.status(400).json({ error: '\u0627\u0644\u0628\u0631\u064a\u062f \u0627\u0644\u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a \u0627\u0644\u062c\u062f\u064a\u062f \u063a\u064a\u0631 \u0635\u0627\u0644\u062d' });
+    }
+    if (newEmail === oldEmail) return res.json({ success: true, unchanged: true });
+    const dup = await db.collection('mongo_users').where('email', '==', newEmail).get();
+    if (!dup.empty) return res.status(409).json({ error: '\u0647\u0630\u0627 \u0627\u0644\u0628\u0631\u064a\u062f \u0627\u0644\u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a \u0645\u0633\u062a\u062e\u062f\u0645 \u0628\u0627\u0644\u0641\u0639\u0644 \u0628\u062d\u0633\u0627\u0628 \u0622\u062e\u0631' });
+    const s = await db.collection('mongo_users').where('email', '==', oldEmail).get();
+    if (s.empty) {
+      const ref = await db.collection('mongo_users').add({ email: newEmail, name: '', phone: '', addresses: [], createdAt: admin.firestore.FieldValue.serverTimestamp() });
+      const doc = await ref.get();
+      return res.json({ success: true, user: Object.assign({ id: ref.id }, doc.data()) });
+    }
+    await s.docs[0].ref.update({ email: newEmail, emailChangedAt: new Date().toISOString(), previousEmail: oldEmail });
+    const doc = await s.docs[0].ref.get();
+    res.json({ success: true, user: Object.assign({ id: doc.id }, doc.data()) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 app.delete('/api/users/:email', requireAdmin, async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();

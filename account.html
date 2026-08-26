@@ -142,6 +142,34 @@
         .field-error-msg.show {
             display: block;
         }
+
+        /* Email Verification Widget */
+        .email-verify-box {
+            margin-top: 10px;
+            padding: 14px;
+            border: 2px dashed #D6C1A6;
+            border-radius: 12px;
+            background: #faf7f4;
+            display: none;
+        }
+        .email-verify-box.show { display: block; }
+        .email-verify-code-input {
+            width: 140px;
+            letter-spacing: 4px;
+            font-weight: 700;
+            text-align: center;
+        }
+        .email-verify-msg {
+            font-size: 13px;
+            margin-top: 8px;
+        }
+        .email-verify-msg.error { color: #dc2626; }
+        .email-verify-msg.success { color: #059669; }
+        .antika-input.locked {
+            background: #f3f4f6;
+            color: #6b7280;
+            cursor: not-allowed;
+        }
         
         /* Profile Image */
         .profile-image-container {
@@ -394,7 +422,27 @@
                                 </label>
                                 <input type="email" id="email" class="antika-input" placeholder="example@email.com" required>
                                 <p class="field-error-msg" id="email-error">الرجاء إدخال بريد إلكتروني صحيح (مثال: name@example.com)</p>
-                                <p class="text-xs text-gray-500 mt-1">سنرسل لك رابط تحقق عند تغيير الإيميل</p>
+                                <p class="text-xs text-gray-500 mt-1" id="email-google-note" style="display:none;">هذا البريد مرتبط بحسابك في جوجل ولا يمكن تغييره من هنا.</p>
+                                <p class="text-xs text-gray-500 mt-1" id="email-hint">غيّر البريد أعلاه ثم اضغط "إرسال رمز التحقق" — لن يتغير بريدك فعلياً إلا بعد تأكيد الرمز.</p>
+
+                                <button type="button" id="email-send-code-btn" onclick="startEmailVerification()" class="hidden mt-2 text-sm font-bold px-4 py-2 rounded-lg border-2" style="border-color:#D6C1A6; color:#8a6d4e;">
+                                    <i class="fas fa-paper-plane ml-1"></i>إرسال رمز التحقق لهذا البريد
+                                </button>
+
+                                <div class="email-verify-box" id="email-verify-box">
+                                    <p class="text-sm text-gray-700 mb-2">
+                                        أرسلنا رمز تحقق مكوّن من 6 أرقام إلى <b id="email-verify-target"></b>. أدخله هنا لتأكيد البريد الجديد:
+                                    </p>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <input type="text" inputmode="numeric" maxlength="6" id="email-verify-code" class="antika-input email-verify-code-input" placeholder="000000">
+                                        <button type="button" onclick="confirmEmailVerificationCode()" class="save-btn" style="padding:10px 20px; font-size:14px;">
+                                            <i class="fas fa-check ml-1"></i>تأكيد الرمز
+                                        </button>
+                                        <button type="button" onclick="startEmailVerification()" class="text-sm text-gray-500 underline">إعادة إرسال الرمز</button>
+                                        <button type="button" onclick="cancelEmailVerification()" class="text-sm text-red-500 underline">إلغاء</button>
+                                    </div>
+                                    <p class="email-verify-msg" id="email-verify-msg"></p>
+                                </div>
                             </div>
                             
                             <!-- Birth Date -->
@@ -548,7 +596,17 @@
                 }
                 
                 // Email
+                originalEmail = (user.email || '').trim().toLowerCase();
                 document.getElementById('email').value = user.email || '';
+                resetEmailVerificationUI();
+
+                // 🔒 مستخدمو جوجل: البريد مرتبط بحساب جوجل نفسه، ما يتغير من هذي الصفحة
+                const emailInput = document.getElementById('email');
+                const isGoogleUser = user.provider === 'google';
+                emailInput.readOnly = isGoogleUser;
+                emailInput.classList.toggle('locked', isGoogleUser);
+                document.getElementById('email-google-note').style.display = isGoogleUser ? 'block' : 'none';
+                document.getElementById('email-hint').style.display = isGoogleUser ? 'none' : 'block';
                 
                 // Phone (remove +966 if exists)
                 let phone = user.phone || '';
@@ -653,7 +711,105 @@
         }
 
         document.getElementById('phone-number').addEventListener('input', () => setFieldError('phone-container', 'phone-error', false));
-        document.getElementById('email').addEventListener('input', () => setFieldError('email', 'email-error', false));
+        document.getElementById('email').addEventListener('input', () => {
+            setFieldError('email', 'email-error', false);
+            handleEmailInputChanged();
+        });
+
+        // ===== واجهة تحقق الإيميل (خطوتين: إرسال رمز ثم تأكيده) — لا يتغير الإيميل فعلياً إلا بعد نجاح التأكيد =====
+        let originalEmail = '';
+
+        function resetEmailVerificationUI() {
+            document.getElementById('email-send-code-btn').classList.add('hidden');
+            document.getElementById('email-verify-box').classList.remove('show');
+            document.getElementById('email-verify-code').value = '';
+            const msg = document.getElementById('email-verify-msg');
+            msg.textContent = '';
+            msg.className = 'email-verify-msg';
+        }
+
+        function handleEmailInputChanged() {
+            const current = document.getElementById('email').value.trim().toLowerCase();
+            const changed = current !== '' && current !== originalEmail;
+            document.getElementById('email-send-code-btn').classList.toggle('hidden', !changed);
+            // لو رجع يكتب نفس الإيميل القديم، نخفي صندوق التحقق تلقائياً
+            if (!changed) document.getElementById('email-verify-box').classList.remove('show');
+        }
+
+        async function startEmailVerification() {
+            const newEmail = document.getElementById('email').value.trim();
+            if (!validateEmailFormat(newEmail)) {
+                setFieldError('email', 'email-error', true);
+                document.getElementById('email').focus();
+                return;
+            }
+            if (!window.Auth || typeof Auth.requestEmailChangeVerification !== 'function') {
+                alert('نظام المصادقة غير متوفر حالياً');
+                return;
+            }
+            const btn = document.getElementById('email-send-code-btn');
+            const originalBtnHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i>جاري الإرسال...';
+            const result = await Auth.requestEmailChangeVerification(newEmail);
+            btn.disabled = false;
+            btn.innerHTML = originalBtnHtml;
+
+            const msg = document.getElementById('email-verify-msg');
+            if (result.success) {
+                document.getElementById('email-verify-target').textContent = newEmail;
+                document.getElementById('email-verify-box').classList.add('show');
+                document.getElementById('email-verify-code').value = '';
+                msg.textContent = 'تم إرسال الرمز بنجاح، تحقق من بريدك الوارد.';
+                msg.className = 'email-verify-msg success';
+                document.getElementById('email-verify-code').focus();
+            } else {
+                msg.textContent = result.error || 'تعذر إرسال رمز التحقق، حاول مرة أخرى.';
+                msg.className = 'email-verify-msg error';
+                document.getElementById('email-verify-box').classList.add('show');
+            }
+        }
+
+        async function confirmEmailVerificationCode() {
+            const newEmail = document.getElementById('email').value.trim();
+            const code = document.getElementById('email-verify-code').value.trim();
+            const msg = document.getElementById('email-verify-msg');
+
+            if (!/^\d{6}$/.test(code)) {
+                msg.textContent = 'الرجاء إدخال الرمز المكوّن من 6 أرقام كاملاً.';
+                msg.className = 'email-verify-msg error';
+                return;
+            }
+            if (!window.Auth || typeof Auth.confirmEmailChange !== 'function') {
+                alert('نظام المصادقة غير متوفر حالياً');
+                return;
+            }
+
+            msg.textContent = 'جاري التحقق...';
+            msg.className = 'email-verify-msg';
+            const result = await Auth.confirmEmailChange(newEmail, code);
+
+            if (result.success) {
+                originalEmail = newEmail.trim().toLowerCase();
+                resetEmailVerificationUI();
+                document.getElementById('success-message').querySelector('span').textContent = 'تم تأكيد وتحديث بريدك الإلكتروني بنجاح!';
+                document.getElementById('success-message').classList.add('show');
+                setTimeout(() => {
+                    document.getElementById('success-message').classList.remove('show');
+                    document.getElementById('success-message').querySelector('span').textContent = 'تم حفظ التغييرات بنجاح!';
+                }, 3000);
+                document.getElementById('last-updated').textContent = 'آخر تحديث: ' + new Date().toLocaleDateString('ar-SA');
+            } else {
+                msg.textContent = result.error || 'رمز التحقق غير صحيح، حاول مرة أخرى.';
+                msg.className = 'email-verify-msg error';
+            }
+        }
+
+        function cancelEmailVerification() {
+            document.getElementById('email').value = originalEmail;
+            resetEmailVerificationUI();
+            handleEmailInputChanged();
+        }
 
         // Form Submit
         document.getElementById('profile-form').addEventListener('submit', async function(e) {
@@ -664,10 +820,12 @@
             const firstNameCheck = document.getElementById('first-name').value.trim();
             const emailCheck = document.getElementById('email').value.trim();
             const phoneCheck = document.getElementById('phone-number').value.trim();
+            const emailChangedPending = emailCheck.toLowerCase() !== originalEmail;
 
             let firstInvalidEl = null;
 
-            if (!validateEmailFormat(emailCheck)) {
+            // نتحقق من صيغة الإيميل فقط لو المستخدم بصدد تغييره فعلاً — التغيير الفعلي نفسه له مسار تحقق منفصل بالأسفل
+            if (emailChangedPending && !validateEmailFormat(emailCheck)) {
                 setFieldError('email', 'email-error', true);
                 if (!firstInvalidEl) firstInvalidEl = document.getElementById('email');
             }
@@ -702,7 +860,6 @@
                 const firstName = document.getElementById('first-name').value.trim();
                 const lastName = document.getElementById('last-name').value.trim();
                 const fullName = firstName + (lastName ? ' ' + lastName : '');
-                const email = document.getElementById('email').value.trim();
                 const rawPhone = document.getElementById('phone-number').value.trim();
                 const phoneDigits = rawPhone.replace(/\D/g, '');
                 const phone = phoneDigits.startsWith('0') ? phoneDigits.substring(1) : phoneDigits;
@@ -716,12 +873,14 @@
                 }
                 
                 // Update user object with all fields
+                // 🔒 ملاحظة: الإيميل هنا يبقى القيمة المؤكدة (originalEmail) دائماً — تغييره الفعلي يمر حصراً عبر
+                // startEmailVerification() / confirmEmailVerificationCode() بعد تأكيد رمز التحقق، وليس من هذا الحفظ العام
                 const updatedUser = {
                     ...user,
                     name: fullName,
                     firstName: firstName,
                     lastName: lastName,
-                    email: email,
+                    email: originalEmail,
                     phone: phone ? '+966' + phone : user.phone,
                     birthDate: birthDate,
                     gender: gender,
@@ -731,14 +890,13 @@
                 // Save to localStorage
                 localStorage.setItem('antika_user', JSON.stringify(updatedUser));
                 
-                // Sync to Auth system (saves to Firestore)
+                // Sync to Auth system (saves to Firestore) — بدون الإيميل، لأنه محكوم بمسار التحقق المنفصل
                 if (window.Auth && typeof Auth.updateUserProfile === 'function') {
                     try {
                         await Auth.updateUserProfile({
                             name: fullName,
                             firstName: firstName,
                             lastName: lastName,
-                            email: email,
                             phone: phone ? '+966' + phone : user.phone,
                             birthDate: birthDate,
                             gender: gender,

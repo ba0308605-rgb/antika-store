@@ -692,20 +692,24 @@ const Auth = {
     async updateUserProfile(updates) {
         try {
             if (!this.currentUser) return { success: false, error: 'No user logged in' };
-            
+
+            // 🔒 الإيميل له مسار تحقق مستقل (requestEmailChangeVerification + confirmEmailChange)
+            // ولا يجب أبداً أن يتغيّر مباشرة من هذي الدالة بدون تأكيد رمز يوصل لصندوق البريد الجديد فعلياً
+            const { email, ...safeUpdates } = updates || {};
+
             // Update in-memory current user
-            this.currentUser = { ...this.currentUser, ...updates };
+            this.currentUser = { ...this.currentUser, ...safeUpdates };
             this.saveUserToStorage();
             
             // Sync to server if API available
             if (this.currentUser.email && window.API && typeof API.upsertUser === 'function') {
                 try {
                     await API.upsertUser(this.currentUser.email, {
-                        firstName: updates.firstName || this.currentUser.firstName || '',
-                        lastName: updates.lastName || this.currentUser.lastName || '',
-                        phone: updates.phone || this.currentUser.phone || '',
-                        birthDate: updates.birthDate || this.currentUser.birthDate || '',
-                        gender: updates.gender || this.currentUser.gender || '',
+                        firstName: safeUpdates.firstName || this.currentUser.firstName || '',
+                        lastName: safeUpdates.lastName || this.currentUser.lastName || '',
+                        phone: safeUpdates.phone || this.currentUser.phone || '',
+                        birthDate: safeUpdates.birthDate || this.currentUser.birthDate || '',
+                        gender: safeUpdates.gender || this.currentUser.gender || '',
                         name: this.currentUser.name
                     });
                 } catch (e) {
@@ -716,7 +720,7 @@ const Auth = {
             // Also update Firebase if available
             if (typeof firebase !== 'undefined' && firebase.firestore && this.currentUser.uid) {
                 try {
-                    await firebase.firestore().collection('users').doc(this.currentUser.uid).set(updates, { merge: true });
+                    await firebase.firestore().collection('users').doc(this.currentUser.uid).set(safeUpdates, { merge: true });
                 } catch (e) {
                     console.warn('Failed to update Firebase profile:', e);
                 }
@@ -729,6 +733,79 @@ const Auth = {
             return { success: true };
         } catch (error) {
             console.error('Profile update error:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    // ===== تغيير البريد الإلكتروني بتحقق حقيقي (خطوتين) =====
+    // الخطوة 1: يرسل رمز تحقق مكوّن من 6 أرقام إلى البريد الإلكتروني الجديد (قبل أي تغيير فعلي)
+    async requestEmailChangeVerification(newEmail) {
+        try {
+            const email = String(newEmail || '').trim().toLowerCase();
+            if (!email || !/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email)) {
+                return { success: false, error: 'صيغة البريد الإلكتروني غير صحيحة' };
+            }
+            const res = await fetch('/api/send-verification-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) return { success: false, error: data.error || 'تعذر إرسال رمز التحقق' };
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    },
+
+    // الخطوة 2: يتحقق من الرمز، وفقط عند نجاحه يطبّق التغيير الفعلي على Firebase Auth + سجل المستخدم بالسيرفر + Firestore
+    async confirmEmailChange(newEmail, code) {
+        try {
+            if (!this.currentUser) return { success: false, error: 'يجب تسجيل الدخول أولاً' };
+            const email = String(newEmail || '').trim().toLowerCase();
+            const oldEmail = this.currentUser.email;
+
+            const vr = await fetch('/api/verify-email-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, code: String(code || '').trim() })
+            });
+            const vd = await vr.json().catch(() => ({}));
+            if (!vr.ok || !vd.success) return { success: false, error: vd.error || 'رمز التحقق غير صحيح' };
+
+            // تحديث بريد Firebase Auth الفعلي (يتطلب جلسة دخول حديثة نسبياً لأسباب أمنية من Firebase نفسه)
+            if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
+                try {
+                    await firebase.auth().currentUser.updateEmail(email);
+                } catch (fe) {
+                    if (fe && fe.code === 'auth/requires-recent-login') {
+                        return { success: false, error: 'لأمانك، يرجى تسجيل الخروج ثم الدخول مرة أخرى، وبعدها إعادة محاولة تغيير البريد الإلكتروني', requiresRelogin: true };
+                    }
+                    return { success: false, error: fe.message || 'فشل تحديث البريد الإلكتروني في نظام الدخول' };
+                }
+            }
+
+            // تحديث سجل المستخدم بالسيرفر — يحافظ على العناوين والموقع المحفوظ مربوطين بنفس الحساب تحت البريد الجديد
+            if (oldEmail) {
+                try {
+                    await fetch('/api/users/' + encodeURIComponent(oldEmail) + '/change-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ newEmail: email })
+                    });
+                } catch (se) { console.warn('Failed to sync email change to server:', se); }
+            }
+
+            // تحديث Firestore (users/{uid}) لو موجود
+            if (typeof firebase !== 'undefined' && firebase.firestore && this.currentUser.uid) {
+                try { await firebase.firestore().collection('users').doc(this.currentUser.uid).set({ email }, { merge: true }); }
+                catch (ffe) { console.warn('Failed to update Firestore email:', ffe); }
+            }
+
+            this.currentUser = { ...this.currentUser, email };
+            this.saveUserToStorage();
+            return { success: true };
+        } catch (error) {
             return { success: false, error: error.message };
         }
     },
