@@ -112,6 +112,13 @@ function sanitizePhone(raw) {
   if (digits.startsWith('0')) return '966' + digits.slice(1);
   return digits;
 }
+// 🔒 تحقق صارم من صحة رقم جوال سعودي: 9 أرقام تبدأ بـ5 بعد تجريده من 0/966/+966 الاختيارية
+function isValidSaudiPhone(raw) {
+  let digits = String(raw || '').replace(/[^\d]/g, '');
+  if (digits.startsWith('966')) digits = digits.slice(3);
+  if (digits.startsWith('0')) digits = digits.slice(1);
+  return /^5\d{8}$/.test(digits);
+}
 function mapOTOStatusToOrderStatus(status, dcStatus) {
   const s = ((status || '') + ' ' + (dcStatus || '')).toLowerCase();
   if (s.includes('deliver')) return 'delivered';
@@ -667,6 +674,10 @@ app.post('/api/orders', async (req, res) => {
     payload.lat = numLat;
     payload.lng = numLng;
     payload.location = { type: 'Point', coordinates: [numLng, numLat] };
+    // 🔒 إجبارية رقم جوال سعودي صحيح: لا يُقبل أي طلب برقم ناقص أو غير صالح (يمنع التلاعب من الفرونت)
+    if (!isValidSaudiPhone(payload.customerPhone)) {
+      return res.status(400).json({ error: '\u0631\u0642\u0645 \u0627\u0644\u062c\u0648\u0627\u0644 \u063a\u064a\u0631 \u0635\u062d\u064a\u062d\u060c \u064a\u062c\u0628 \u0623\u0646 \u064a\u0643\u0648\u0646 \u0631\u0642\u0645 \u062c\u0648\u0627\u0644 \u0633\u0639\u0648\u062f\u064a \u0645\u0643\u0648\u0646 \u0645\u0646 9 \u0623\u0631\u0642\u0627\u0645 \u0648\u064a\u0628\u062f\u0623 \u0628\u0640 5' });
+    }
     const pm = String(payload.paymentMethod || 'cash').toLowerCase();
     const codFeeInput = Number(payload.codFee);
     payload.codFee = Number.isFinite(codFeeInput) ? codFeeInput : (pm === 'cash' ? COD_SURCHARGE_SAR : 0);

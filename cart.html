@@ -436,6 +436,21 @@
                 stroke-dashoffset: 0 !important;
             }
         }
+
+        /* تمييز حقل رقم الجوال بالخطأ (إتمام الطلب) */
+        #customer-phone.has-error {
+            border-color: #dc2626 !important;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1) !important;
+        }
+        #customer-phone-error {
+            color: #dc2626;
+            font-size: 12px;
+            margin-top: 6px;
+            display: none;
+        }
+        #customer-phone-error.show {
+            display: block;
+        }
     </style>
     <!-- Moyasar removed from cart - payment now happens in orders.html after final invoice -->
     <style id="antika-reset">
@@ -502,6 +517,7 @@
                                 <div>
                                     <label class="block text-gray-700 font-bold mb-2">رقم الجوال</label>
                                     <input id="customer-phone" type="tel" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="05xxxxxxxx" required>
+                                    <p id="customer-phone-error">الرجاء إدخال رقم جوال سعودي صحيح (يبدأ بـ 5 ويتكوّن من 9 أرقام بعد حذف الصفر أو 966)</p>
                                 </div>
                                 <div>
                                     <label class="block text-gray-700 font-bold mb-2">البريد الإلكتروني</label>
@@ -1228,6 +1244,7 @@
         // Checkout Modal
         async function openCheckoutModal() {
             checkoutAppliedCoupon = null;
+            setCheckoutPhoneError(false);
             const couponInput = document.getElementById('checkout-coupon');
             const couponStatus = document.getElementById('coupon-status');
             if (couponInput) couponInput.value = '';
@@ -1406,6 +1423,25 @@
             }, 300);
         }
 
+        // ===== التحقق من صحة رقم الجوال بصفحة إتمام الطلب (نفس منطق صفحة الحساب) =====
+        function validateSaudiPhoneCheckout(raw) {
+            const digits = (raw || '').replace(/\D/g, '');
+            // نسمح بصيغ: 5XXXXXXXX / 05XXXXXXXX / 9665XXXXXXXX / +9665XXXXXXXX
+            let normalized = digits;
+            if (normalized.startsWith('966')) normalized = normalized.substring(3);
+            if (normalized.startsWith('0')) normalized = normalized.substring(1);
+            return /^5\d{8}$/.test(normalized);
+        }
+
+        function setCheckoutPhoneError(hasError) {
+            const input = document.getElementById('customer-phone');
+            const msg = document.getElementById('customer-phone-error');
+            if (input) input.classList.toggle('has-error', hasError);
+            if (msg) msg.classList.toggle('show', hasError);
+        }
+
+        document.getElementById('customer-phone')?.addEventListener('input', () => setCheckoutPhoneError(false));
+
         // Checkout Form Submit
         document.getElementById('checkout-form')?.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -1425,6 +1461,15 @@
 
                 if (!customerName || !customerPhone || !customerAddress) {
                     alert('يرجى تعبئة الاسم ورقم الجوال والعنوان قبل إتمام الطلب.');
+                    return;
+                }
+
+                // 🔒 لا يُقبل حجز الطلب أبداً برقم جوال ناقص أو غير صحيح
+                if (!validateSaudiPhoneCheckout(customerPhone)) {
+                    setCheckoutPhoneError(true);
+                    const phoneEl = document.getElementById('customer-phone');
+                    phoneEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    phoneEl.focus();
                     return;
                 }
 
@@ -1507,7 +1552,7 @@
                 
             } catch (error) {
                 console.error('Error during checkout:', error);
-                alert('حدث خطأ أثناء إتمام الطلب. حاول مرة أخرى.');
+                alert(error?.message || 'حدث خطأ أثناء إتمام الطلب. حاول مرة أخرى.');
             }
         });
 
