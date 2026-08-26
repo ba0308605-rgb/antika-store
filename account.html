@@ -213,23 +213,27 @@
         
         /* Success Message */
         .success-message {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
-            padding: 12px 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            display: none;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            display: flex;
             align-items: center;
             gap: 10px;
-            font-weight: 500;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.35);
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
         }
         .success-message.show {
-            display: flex;
-            animation: slideDown 0.3s ease;
-        }
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
         }
         /* Password Toggle */
         .password-wrapper {
