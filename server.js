@@ -141,6 +141,17 @@ function generateOrderCode(orderId, date) {
   const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
   return 'ANT-' + y + m + dd + '-' + String(orderId || '').slice(-6).toUpperCase();
 }
+// رقم طلب تسلسلي ثابت (يبدأ من 1000) — لا يتغيّر أبداً حتى لو حُذفت طلبات لاحقاً، عكس الترقيم المحسوب بالفرونت
+async function getNextOrderNumber() {
+  const counterRef = db.collection('counters').doc('orders');
+  return await db.runTransaction(async (t) => {
+    const doc = await t.get(counterRef);
+    const current = doc.exists ? Number(doc.data().value || 999) : 999;
+    const next = current + 1;
+    t.set(counterRef, { value: next }, { merge: true });
+    return next;
+  });
+}
 function docsToArr(snapshot) { return snapshot.docs.map(d => Object.assign({ id: d.id }, d.data())); }
 function normalizeCartRef(value) { return value == null ? '' : String(value).trim(); }
 function getSessionId(req) { return req.headers['x-session-id'] || 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); }
@@ -687,6 +698,7 @@ app.post('/api/orders', async (req, res) => {
     payload.isPaid = false;
     payload.date = admin.firestore.FieldValue.serverTimestamp();
     payload.statusTimeline = [{ status: payload.status, title: '\u062a\u0645 \u0627\u0633\u062a\u0644\u0627\u0645 \u0627\u0644\u0637\u0644\u0628', message: '\u0627\u0633\u062a\u0644\u0645\u0646\u0627 \u0637\u0644\u0628\u0643 \u0628\u0646\u062c\u0627\u062d.', source: 'system', at: new Date().toISOString() }];
+    payload.orderNumber = await getNextOrderNumber();
     const ref = await db.collection('orders').add(payload);
     if (!payload.orderCode) await ref.update({ orderCode: generateOrderCode(ref.id, new Date()) });
     try { for (const item of (payload.items || [])) { const qty = Number(item.quantity || 1); if (!item.productId) continue; const pd = await db.collection('products').doc(item.productId).get(); if (pd.exists) await pd.ref.update({ stock: Math.max(0, (pd.data().stock || 0) - qty) }); } } catch (se) { console.error('Stock error:', se.message); }

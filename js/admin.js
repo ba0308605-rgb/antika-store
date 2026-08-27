@@ -456,6 +456,28 @@ function renderRecentOrders(orders) {
 async function loadOrders() {
     try {
         const orders = await API.getOrders ? await API.getOrders() : [];
+        lastLoadedOrders = orders;
+        renderOrdersList(orders);
+    } catch (err) {
+        console.error('Error loading orders:', err);
+    }
+}
+
+function copyToClipboard(text) {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+        if (typeof showNotification === 'function') showNotification('تم النسخ ✅');
+    }).catch(() => {
+        if (typeof showNotification === 'function') showNotification('تعذّر النسخ', 'error');
+    });
+}
+
+function filterOrdersFromSearch() {
+    renderOrdersList(lastLoadedOrders || []);
+}
+
+function renderOrdersList(orders) {
+    try {
         const container = document.getElementById('orders-list');
         
         if (!container) return;
@@ -470,20 +492,38 @@ async function loadOrders() {
             return;
         }
         
-        // ترقيم تسلسلي: الطلب الأقدم = #1، والأحدث يأخذ أكبر رقم
+        // ترقيم احتياطي فقط للطلبات القديمة اللي ما فيها orderNumber ثابت من السيرفر
         const sortedByDateAsc = [...orders].sort((a, b) => {
             const da = new Date(a.date || a.createdAt || 0).getTime();
-            const db = new Date(b.date || b.createdAt || 0).getTime();
-            return da - db;
+            const db_ = new Date(b.date || b.createdAt || 0).getTime();
+            return da - db_;
         });
         const seqMap = {};
-        sortedByDateAsc.forEach((o, idx) => { seqMap[o.id || o._id] = idx + 1; });
+        sortedByDateAsc.forEach((o, idx) => { seqMap[o.id || o._id] = 1000 + idx; });
 
-        lastLoadedOrders = orders;
+        const searchInput = document.getElementById('orders-search-input');
+        const searchTerm = (searchInput && searchInput.value || '').trim().toLowerCase();
+        const filteredOrders = !searchTerm ? orders : orders.filter(o => {
+            const haystack = [
+                o.orderNumber, o.orderCode, o.customerName, o.customerPhone,
+                o.customerEmail, o.otoTrackingNumber
+            ].filter(Boolean).join(' ').toLowerCase();
+            return haystack.includes(searchTerm);
+        });
 
-        container.innerHTML = orders.map(order => {
+        if (searchTerm && filteredOrders.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-12">
+                    <i class="fas fa-search text-6xl text-gray-200 mb-4"></i>
+                    <p class="text-gray-500">ما فيه نتائج تطابق "${safeText(searchInput.value)}"</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = filteredOrders.map(order => {
             const orderId = order._id || order.id;
-            const orderSeq = seqMap[orderId] || '—';
+            const orderSeq = order.orderNumber || seqMap[orderId] || '—';
             const orderDate = order.date ? new Date(order.date).toLocaleString('ar-SA') : '-';
             const isPrePayment = PRE_PAYMENT_STATUSES.includes(order.status);
             const isCancelled = order.status === 'cancelled';
@@ -496,6 +536,7 @@ async function loadOrders() {
                 <div class="p-3 flex justify-between items-center gap-2 cursor-pointer select-none flex-wrap" onclick="toggleOrderDetails('${orderId}')">
                     <div class="flex items-center gap-3 flex-wrap">
                         <span class="font-bold text-gray-800">طلب #${orderSeq}</span>
+                        ${order.orderCode ? `<span class="text-xs font-mono text-gray-400">${order.orderCode}</span>` : ''}
                         <span class="text-sm text-gray-600">${safeText(order.customerName)}</span>
                         <span class="text-xs text-gray-400">${orderDate}</span>
                         ${order.customerCancelled ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-red-600 text-white"><i class="fas fa-ban ml-1"></i>ألغاه العميل</span>` : ''}
@@ -521,12 +562,12 @@ async function loadOrders() {
                         </button>
                     </div>` : ''}
                     <div class="grid md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <h4 class="font-bold text-gray-700 mb-2">معلومات العميل</h4>
-                            <p class="text-sm text-gray-600"><i class="fas fa-user ml-2 text-antika-gold"></i>${order.customerName}</p>
-                            <p class="text-sm text-gray-600"><i class="fas fa-phone ml-2 text-antika-gold"></i>${order.customerPhone}</p>
-                            <p class="text-sm text-gray-600"><i class="fas fa-envelope ml-2 text-antika-gold"></i>${safeText(order.customerEmail)}</p>
-                            <p class="text-sm text-gray-600"><i class="fas fa-map-marker-alt ml-2 text-antika-gold"></i>${safeText(order.customerAddress)}</p>
+                        <div class="bg-blue-50 border border-blue-100 rounded-xl p-3">
+                            <h4 class="font-bold text-blue-900 mb-2 flex items-center gap-2"><i class="fas fa-user-circle"></i> معلومات العميل</h4>
+                            <p class="text-sm text-gray-700"><i class="fas fa-user ml-2 text-antika-gold w-4 inline-block"></i>${order.customerName}</p>
+                            <p class="text-sm text-gray-700"><i class="fas fa-phone ml-2 text-antika-gold w-4 inline-block"></i>${order.customerPhone}</p>
+                            <p class="text-sm text-gray-700"><i class="fas fa-envelope ml-2 text-antika-gold w-4 inline-block"></i>${safeText(order.customerEmail)}</p>
+                            <p class="text-sm text-gray-700"><i class="fas fa-map-marker-alt ml-2 text-antika-gold w-4 inline-block"></i>${safeText(order.customerAddress)}</p>
                             ${order.location && order.location.coordinates ? `
                             <p class="text-sm mt-1">
                                 <a href="https://www.google.com/maps?q=${order.location.coordinates[1]},${order.location.coordinates[0]}" target="_blank" class="text-blue-600 hover:underline">
@@ -535,17 +576,18 @@ async function loadOrders() {
                             </p>` : `
                             <p class="text-xs text-gray-400 mt-1">لا يوجد موقع GPS محفوظ لهذا الطلب</p>`}
                         </div>
-                        <div>
-                            <h4 class="font-bold text-gray-700 mb-2">ملخص الطلب</h4>
-                            <p class="text-sm text-gray-600">عدد المنتجات: ${order.items.length}</p>
-                            <p class="text-sm text-gray-600">طريقة الدفع: ${order.paymentMethod}</p>
-                            <p class="text-sm text-gray-600">المدينة: ${order.shippingCity || 'غير محددة'}</p>
-                            <p class="text-sm text-gray-600">الوزن: ${order.weight ? order.weight + ' كجم' : '-'}</p>
-                            <p class="text-sm text-gray-600">رسوم الشحن: ${order.shippingCost != null ? Number(order.shippingCost).toFixed(2) + ' ر.س' : '-'}</p>
-                            <p class="text-sm text-gray-600">المدة المتوقعة: ${order.shippingEta || '-'}</p>
-                            <p class="text-sm text-gray-600">تتبع OTO: ${order.otoTrackingNumber || '-'}</p>
-                            <p class="text-sm text-gray-600">مرجع OTO: ${order.otoOrderId || '-'}</p>
-                            <p class="font-bold text-antika-gold text-lg mt-2">الإجمالي: ${order.total} ر.س</p>
+                        <div class="bg-amber-50 border border-amber-100 rounded-xl p-3">
+                            <h4 class="font-bold text-amber-900 mb-2 flex items-center gap-2"><i class="fas fa-receipt"></i> ملخص الطلب</h4>
+                            <p class="text-sm text-gray-700">رقم الطلب: <span class="font-bold">#${orderSeq}</span></p>
+                            ${order.orderCode ? `<p class="text-sm text-gray-700 flex items-center gap-2">كود التتبع: <span class="font-mono text-xs">${order.orderCode}</span> <button onclick="copyToClipboard('${order.orderCode}')" title="نسخ" class="text-blue-500 hover:text-blue-700"><i class="fas fa-copy"></i></button></p>` : ''}
+                            <p class="text-sm text-gray-700">عدد المنتجات: ${order.items.length}</p>
+                            <p class="text-sm text-gray-700">طريقة الدفع: ${order.paymentMethod}</p>
+                            <p class="text-sm text-gray-700">الوزن: ${order.weight ? order.weight + ' كجم' : '-'}</p>
+                            <p class="text-sm text-gray-700">رسوم الشحن: ${order.shippingCost != null ? Number(order.shippingCost).toFixed(2) + ' ر.س' : '-'}</p>
+                            <p class="text-sm text-gray-700">المدة المتوقعة: ${order.shippingEta || '-'}</p>
+                            ${order.otoTrackingNumber ? `<p class="text-sm text-gray-700 flex items-center gap-2">تتبع OTO: <span class="font-mono text-xs">${order.otoTrackingNumber}</span> <button onclick="copyToClipboard('${order.otoTrackingNumber}')" title="نسخ" class="text-blue-500 hover:text-blue-700"><i class="fas fa-copy"></i></button></p>` : `<p class="text-sm text-gray-700">تتبع OTO: -</p>`}
+                            <p class="text-sm text-gray-700">مرجع OTO: ${order.otoOrderId || '-'}</p>
+                            <p class="font-bold text-antika-gold text-lg mt-2 pt-2 border-t border-amber-200">الإجمالي: ${order.total} ر.س</p>
                         </div>
                     </div>
                     ${isPrePayment ? `
@@ -598,18 +640,29 @@ async function loadOrders() {
                         </ul>
                     </div>`) : ''}
                     <div class="border-t border-gray-100 pt-4">
-                        <h4 class="font-bold text-gray-700 mb-2">المنتجات</h4>
+                        <h4 class="font-bold text-gray-700 mb-2 flex items-center gap-2"><i class="fas fa-boxes-stacked text-antika-gold"></i> المنتجات المطلوبة</h4>
                         <div class="space-y-2">
                             ${order.items.map(item => `
-                                <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                                    <img src="${item.image}" alt="${item.name}" class="w-12 h-12 rounded-lg object-cover">
-                                    <div class="flex-1">
-                                        <p class="font-semibold text-sm">${item.name}</p>
-                                        <p class="text-xs text-gray-500">${item.quantity} × ${item.price} ر.س</p>
+                                <div class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
+                                    <img src="${item.image}" alt="${item.name}" ${item.productId ? `onclick="openProductModal('${item.productId}')" class="w-14 h-14 rounded-lg object-cover cursor-pointer hover:ring-2 hover:ring-antika-gold transition" title="عرض تفاصيل المنتج"` : `class="w-14 h-14 rounded-lg object-cover"`}>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-semibold text-sm truncate ${item.productId ? `cursor-pointer hover:text-antika-gold hover:underline" onclick="openProductModal('${item.productId}')" title="عرض تفاصيل المنتج` : ''}">${item.name}</p>
+                                        <p class="text-xs text-gray-500 mt-1">سعر القطعة: ${item.price} ر.س</p>
                                     </div>
-                                    <span class="font-bold text-antika-gold">${item.quantity * item.price} ر.س</span>
+                                    <div class="flex items-center gap-2 bg-white border-2 border-antika-gold/30 rounded-lg px-3 py-1.5">
+                                        <span class="text-xs text-gray-500">الكمية</span>
+                                        <span class="font-bold text-antika-gold text-lg">${item.quantity}</span>
+                                    </div>
+                                    <div class="text-left min-w-[90px]">
+                                        <p class="text-xs text-gray-400">الإجمالي</p>
+                                        <span class="font-bold text-antika-gold">${(item.quantity * item.price).toLocaleString('ar-SA')} ر.س</span>
+                                    </div>
                                 </div>
                             `).join('')}
+                        </div>
+                        <div class="flex justify-between items-center mt-3 pt-3 border-t-2 border-gray-200">
+                            <span class="font-bold text-gray-700">إجمالي المنتجات</span>
+                            <span class="font-bold text-antika-gold text-xl">${itemsSubtotal.toLocaleString('ar-SA')} ر.س</span>
                         </div>
                     </div>
                     <div class="border-t border-gray-100 pt-4 mt-4 flex flex-wrap gap-2">
