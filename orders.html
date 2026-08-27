@@ -121,6 +121,29 @@
         </div>
     </main>
 
+    <!-- Cancel Order Reason Modal -->
+    <div id="cancel-order-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[3000] hidden p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-red-600"><i class="fas fa-ban ml-2"></i>إلغاء الطلب</h3>
+                <button onclick="closeCancelOrderModal()" class="w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-100 text-xl flex items-center justify-center">&times;</button>
+            </div>
+            <div class="p-3 bg-yellow-50 border-2 border-yellow-300 rounded-xl mb-3">
+                <label class="block text-sm font-bold text-yellow-800 mb-2">
+                    <i class="fas fa-circle-info ml-1"></i>يرجى كتابة سبب إلغاء الطلب <span class="text-red-500">*</span>
+                </label>
+                <textarea id="cancel-order-reason" rows="3" class="w-full border-2 border-yellow-300 rounded-lg px-3 py-2 text-sm focus:border-yellow-500 focus:outline-none bg-white" placeholder="مثال: غيّرت رأيي، وجدت المنتج بمكان آخر، تأخر التوصيل..."></textarea>
+                <p id="cancel-order-reason-error" class="text-xs text-red-600 mt-1 hidden">الرجاء كتابة سبب الإلغاء قبل المتابعة</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="submitCancelOrder()" id="cancel-order-confirm-btn" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-lg text-sm">
+                    <i class="fas fa-check ml-1"></i>تأكيد إلغاء الطلب
+                </button>
+                <button onclick="closeCancelOrderModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg text-sm">تراجع</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Moyasar Payment Modal -->
     <div id="moyasar-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[3000] hidden p-4">
         <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
@@ -169,7 +192,10 @@
                 weight: order.weight,
                 awaitingPaymentSince: order.awaitingPaymentSince,
                 isPaid: Boolean(order.isPaid),
-                customerCancelled: Boolean(order.customerCancelled)
+                customerCancelled: Boolean(order.customerCancelled),
+                customerHidden: Boolean(order.customerHidden),
+                cancelReason: order.cancelReason || '',
+                cancelledBy: order.cancelledBy || ''
             };
         }
 
@@ -180,7 +206,7 @@
             if (status === 'awaiting_shipping_payment') return 'بانتظار الدفع';
             if (status === 'processing') return 'قيد التجهيز';
             if (status === 'confirming_availability' || status === 'pending') return 'تأكيد التوفر + احتساب الشحن';
-            if (status === 'cancelled') return 'ملغي';
+            if (status === 'cancelled') return 'تم إلغاء الطلب';
             return status || 'قيد المعالجة';
         }
 
@@ -351,6 +377,18 @@
                                         إلغاء الطلب
                                     </button>
                                 </div>` : ''}
+                                ${order.status === 'cancelled' ? `
+                                <div class="mt-4 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-xl">
+                                    ${order.cancelReason ? `
+                                    <p class="text-sm text-yellow-800">
+                                        <i class="fas fa-circle-info ml-1"></i>
+                                        <span class="font-bold">سبب الإلغاء:</span> ${order.cancelReason}
+                                    </p>` : `
+                                    <p class="text-sm text-yellow-800"><i class="fas fa-circle-info ml-1"></i>تم إلغاء هذا الطلب.</p>`}
+                                    <button onclick="hideOrderForCustomer('${order.id}')" class="block mx-auto mt-3 bg-white border-2 border-yellow-400 text-yellow-700 hover:bg-yellow-100 text-xs font-semibold py-1.5 px-5 rounded-full transition-colors">
+                                        <i class="fas fa-trash ml-1"></i>حذف الطلب من قائمتي
+                                    </button>
+                                </div>` : ''}
                             </div>
                             </div>
                         </div>
@@ -425,7 +463,7 @@
                     }
                 } catch (ne) { console.warn('Could not load notifications:', ne); }
 
-                const allNormalized = (Array.isArray(allOrders) ? allOrders : []).map(normalizeOrder).filter(o => !o.customerCancelled);
+                const allNormalized = (Array.isArray(allOrders) ? allOrders : []).map(normalizeOrder).filter(o => !o.customerCancelled && !o.customerHidden);
                 const seqMap = buildSeqMap(allNormalized);
                 if (allNormalized.length > 0) { renderOrders(allNormalized, seqMap, unreadOrderIds); focusOrderFromUrl(); return; }
                 renderEmptyState();
@@ -433,7 +471,7 @@
             } catch (e) { console.warn('Could not load orders from API:', e); }
 
             try {
-                const localAll = JSON.parse(localStorage.getItem('antika_orders') || '[]').map(normalizeOrder).filter(o => !o.customerCancelled);
+                const localAll = JSON.parse(localStorage.getItem('antika_orders') || '[]').map(normalizeOrder).filter(o => !o.customerCancelled && !o.customerHidden);
                 const seqMap = buildSeqMap(localAll);
                 const localOrders = localAll.filter(o => !email || o.customerEmail === email);
                 if (localOrders.length > 0) { renderOrders(localOrders, seqMap); } else { renderEmptyState(); }
@@ -512,30 +550,82 @@
             });
         }
 
-        async function cancelOrder(orderId) {
+        let _pendingCancelOrderId = null;
+
+        function cancelOrder(orderId) {
             if (String(orderId).startsWith('local_')) {
                 alert('هذا الطلب غير محفوظ على السيرفر، حدّث الصفحة وحاول مرة أخرى. إذا استمرت المشكلة تواصل معنا.');
                 return;
             }
-            if (!confirm('هل أنت متأكد من إلغاء هذا الطلب؟')) return;
+            _pendingCancelOrderId = orderId;
+            document.getElementById('cancel-order-reason').value = '';
+            document.getElementById('cancel-order-reason-error').classList.add('hidden');
+            document.getElementById('cancel-order-modal').classList.remove('hidden');
+        }
+
+        function closeCancelOrderModal() {
+            document.getElementById('cancel-order-modal').classList.add('hidden');
+            _pendingCancelOrderId = null;
+        }
+
+        async function submitCancelOrder() {
+            const orderId = _pendingCancelOrderId;
+            if (!orderId) return;
+            const reason = document.getElementById('cancel-order-reason').value.trim();
+            if (!reason) {
+                document.getElementById('cancel-order-reason-error').classList.remove('hidden');
+                document.getElementById('cancel-order-reason').focus();
+                return;
+            }
+            const btn = document.getElementById('cancel-order-confirm-btn');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i>جاري الإلغاء...';
             try {
                 const userRaw = localStorage.getItem('antika_user');
                 const user = userRaw ? JSON.parse(userRaw) : {};
                 const res = await fetch('/api/orders/' + orderId + '/cancel', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ customerEmail: user.email || '' })
+                    body: JSON.stringify({ customerEmail: user.email || '', reason })
                 });
                 const data = await res.json();
                 if (!res.ok || !data.success) {
                     alert(data.error || 'تعذر إلغاء الطلب');
                     return;
                 }
+                closeCancelOrderModal();
                 alert('تم إلغاء الطلب بنجاح');
                 await loadOrdersPage();
             } catch (err) {
                 console.error('Cancel order error:', err);
                 alert('حدث خطأ أثناء إلغاء الطلب');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
+        // 🙈 يحذف الطلب من قائمة العميل فقط — لا يمس سجل الطلب بالأدمن إطلاقاً (تحكم مستقل تماماً)
+        async function hideOrderForCustomer(orderId) {
+            if (!confirm('هل تريد حذف هذا الطلب من قائمة طلباتك؟ لن يظهر لك مرة أخرى.')) return;
+            try {
+                const userRaw = localStorage.getItem('antika_user');
+                const user = userRaw ? JSON.parse(userRaw) : {};
+                const res = await fetch('/api/orders/' + orderId + '/hide-for-customer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ customerEmail: user.email || '' })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) {
+                    alert(data.error || 'تعذر حذف الطلب من قائمتك');
+                    return;
+                }
+                await loadOrdersPage();
+            } catch (err) {
+                console.error('Hide order error:', err);
+                alert('حدث خطأ أثناء حذف الطلب من قائمتك');
             }
         }
 

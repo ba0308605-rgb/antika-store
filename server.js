@@ -716,12 +716,22 @@ app.put('/api/orders/:id', requireAdmin, async (req, res) => {
     updates.status = nextStatus;
     const statusChanged = before.status !== nextStatus;
     const trackingChanged = before.trackingNumber !== String(updates.trackingNumber || order.trackingNumber || '');
+    // 🔒 سبب الإلغاء إجباري لما الأدمن يلغي طلب — يضمن شفافية واضحة للعميل عن سبب الإلغاء
+    if (statusChanged && nextStatus === 'cancelled') {
+      const cancelReason = String((req.body && req.body.cancelReason) || '').trim();
+      if (!cancelReason) return res.status(400).json({ error: '\u064a\u062c\u0628 \u0643\u062a\u0627\u0628\u0629 \u0633\u0628\u0628 \u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0642\u0628\u0644 \u0627\u0644\u062a\u0623\u0643\u064a\u062f' });
+      updates.cancelReason = cancelReason;
+      updates.cancelledBy = 'admin';
+    }
     if (statusChanged) {
       if (nextStatus === 'shipped' && !order.shippedAt) updates.shippedAt = new Date().toISOString();
       if (nextStatus === 'out_for_delivery' && !order.outForDeliveryAt) updates.outForDeliveryAt = new Date().toISOString();
       if (nextStatus === 'delivered' && !order.deliveredAt) updates.deliveredAt = new Date().toISOString();
       const tl = order.statusTimeline || [];
-      tl.push({ status: nextStatus, title: '\u062a\u062d\u062f\u064a\u062b \u062d\u0627\u0644\u0629 \u0627\u0644\u0637\u0644\u0628', message: '\u062a\u0645 \u062a\u062d\u062f\u064a\u062b \u062d\u0627\u0644\u0629 \u0627\u0644\u0637\u0644\u0628 \u0625\u0644\u0649: ' + getOrderStatusTextAr(nextStatus), source: 'admin', at: new Date().toISOString() });
+      const tlMessage = nextStatus === 'cancelled'
+        ? '\u062a\u0645 \u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u2014 \u0627\u0644\u0633\u0628\u0628: ' + updates.cancelReason
+        : '\u062a\u0645 \u062a\u062d\u062f\u064a\u062b \u062d\u0627\u0644\u0629 \u0627\u0644\u0637\u0644\u0628 \u0625\u0644\u0649: ' + getOrderStatusTextAr(nextStatus);
+      tl.push({ status: nextStatus, title: '\u062a\u062d\u062f\u064a\u062b \u062d\u0627\u0644\u0629 \u0627\u0644\u0637\u0644\u0628', message: tlMessage, source: 'admin', at: new Date().toISOString() });
       updates.statusTimeline = tl;
     }
     // 🔁 إلغاء الطلب من الأدمن = إرجاع تلقائي وآمن للمخزون (ضمن نفس Transaction تحديث الحالة، ولا يتكرر لو سبق إرجاعه)
@@ -756,7 +766,10 @@ app.delete('/api/orders/:id', requireAdmin, async (req, res) => {
 // \u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0645\u0646 \u0637\u0631\u0641 \u0627\u0644\u0639\u0645\u064a\u0644 \u0642\u0628\u0644 \u0627\u0644\u062f\u0641\u0639 \u0641\u0642\u0637 (\u0644\u0627 \u064a\u062d\u0630\u0641 \u0627\u0644\u0637\u0644\u0628\u060c \u0641\u0642\u0637 \u064a\u062e\u0641\u064a\u0647 \u0639\u0646 \u0627\u0644\u0639\u0645\u064a\u0644 \u0648\u064a\u0638\u0647\u0631 \u0644\u0644\u0623\u062f\u0645\u0646 \u0623\u0646 \u0627\u0644\u0639\u0645\u064a\u0644 \u0623\u0644\u063a\u0627\u0647)
 app.post('/api/orders/:id/cancel', async (req, res) => {
   try {
-    const { customerEmail } = req.body || {};
+    const { customerEmail, reason } = req.body || {};
+    const cancelReason = String(reason || '').trim();
+    // 🔒 سبب الإلغاء إجباري — يمنع إلغاء طلب بدون توضيح السبب للطرفين
+    if (!cancelReason) return res.status(400).json({ error: '\u064a\u0631\u062c\u0649 \u0643\u062a\u0627\u0628\u0629 \u0633\u0628\u0628 \u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628' });
     const ref = db.collection('orders').doc(req.params.id);
     const doc = await ref.get();
     if (!doc.exists) return res.status(404).json({ error: '\u0627\u0644\u0637\u0644\u0628 \u063a\u064a\u0631 \u0645\u0648\u062c\u0648\u062f' });
@@ -771,11 +784,52 @@ app.post('/api/orders/:id/cancel', async (req, res) => {
       return res.status(400).json({ error: '\u0644\u0627 \u064a\u0645\u0643\u0646 \u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0641\u064a \u0647\u0630\u0647 \u0627\u0644\u0645\u0631\u062d\u0644\u0629' });
     }
     const tl = order.statusTimeline || [];
-    tl.push({ status: order.status, title: '\u0625\u0644\u063a\u0627\u0621 \u0645\u0646 \u0627\u0644\u0639\u0645\u064a\u0644', message: '\u0642\u0627\u0645 \u0627\u0644\u0639\u0645\u064a\u0644 \u0628\u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0642\u0628\u0644 \u0627\u0644\u062f\u0641\u0639', source: 'customer', at: new Date().toISOString() });
+    tl.push({ status: order.status, title: '\u0625\u0644\u063a\u0627\u0621 \u0645\u0646 \u0627\u0644\u0639\u0645\u064a\u0644', message: '\u0642\u0627\u0645 \u0627\u0644\u0639\u0645\u064a\u0644 \u0628\u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0642\u0628\u0644 \u0627\u0644\u062f\u0641\u0639 \u2014 \u0627\u0644\u0633\u0628\u0628: ' + cancelReason, source: 'customer', at: new Date().toISOString() });
     // 🔁 إرجاع كل قطعة بالطلب لمخزون منتجها الأصلي (Transaction آمنة + سجل تدقيق) — لا يُحذف الطلب، فقط يُعلَّم ويُرجَّع مخزونه
-    const stockResult = await restoreOrderStock(ref, order, { customerCancelled: true, customerCancelledAt: new Date().toISOString(), statusTimeline: tl });
+    const stockResult = await restoreOrderStock(ref, order, { customerCancelled: true, customerCancelledAt: new Date().toISOString(), cancelReason, cancelledBy: 'customer', statusTimeline: tl });
     res.json({ success: true, stockReturned: stockResult.success, stockReturnFailed: stockResult.failed || [] });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// 🙈 العميل يخفي طلباً ملغياً من قائمته الخاصة فقط — لا يمس سجل الطلب بالأدمن إطلاقاً (تحكم مستقل تماماً عن الأدمن)
+app.post('/api/orders/:id/hide-for-customer', async (req, res) => {
+  try {
+    const { customerEmail } = req.body || {};
+    const ref = db.collection('orders').doc(req.params.id);
+    const doc = await ref.get();
+    if (!doc.exists) return res.status(404).json({ error: '\u0627\u0644\u0637\u0644\u0628 \u063a\u064a\u0631 \u0645\u0648\u062c\u0648\u062f' });
+    const order = doc.data();
+    const email = String(customerEmail || '').trim().toLowerCase();
+    if (!email || email !== String(order.customerEmail || '').trim().toLowerCase()) {
+      return res.status(403).json({ error: '\u063a\u064a\u0631 \u0645\u0635\u0631\u062d \u0628\u0647\u0630\u0627 \u0627\u0644\u0625\u062c\u0631\u0627\u0621' });
+    }
+    if (order.status !== 'cancelled') {
+      return res.status(400).json({ error: '\u064a\u0645\u0643\u0646 \u0625\u062e\u0641\u0627\u0621 \u0627\u0644\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0645\u0644\u063a\u0627\u0629 \u0641\u0642\u0637' });
+    }
+    await ref.update({ customerHidden: true, customerHiddenAt: new Date().toISOString() });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// ===== أسباب الإلغاء الجاهزة (يديرها الأدمن) =====
+app.get('/api/cancel-reasons', requireAdmin, async (req, res) => {
+  try {
+    const snap = await db.collection('cancel_reasons').orderBy('createdAt', 'asc').get();
+    res.json(snap.docs.map(d => Object.assign({ id: d.id }, d.data())));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/cancel-reasons', requireAdmin, async (req, res) => {
+  try {
+    const text = String((req.body && req.body.text) || '').trim();
+    if (!text) return res.status(400).json({ error: '\u0627\u0644\u0646\u0635 \u0645\u0637\u0644\u0648\u0628' });
+    const dup = await db.collection('cancel_reasons').where('text', '==', text).get();
+    if (!dup.empty) return res.json(Object.assign({ id: dup.docs[0].id }, dup.docs[0].data()));
+    const ref = await db.collection('cancel_reasons').add({ text, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+    const doc = await ref.get();
+    res.json(Object.assign({ id: ref.id }, doc.data()));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.delete('/api/cancel-reasons/:id', requireAdmin, async (req, res) => {
+  try { await db.collection('cancel_reasons').doc(req.params.id).delete(); res.json({ success: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.post('/api/orders/:id/create-shipment', requireAdmin, async (req, res) => {
   try {

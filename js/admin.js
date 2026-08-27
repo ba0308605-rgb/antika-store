@@ -576,6 +576,11 @@ async function loadOrders() {
                             ✅ تأكيد استلام الدفع يدوياً
                         </button>
                     </div>` : ''}
+                    ${order.cancelReason ? `
+                    <div class="mb-4 p-3 bg-yellow-50 border-2 border-yellow-300 rounded-xl text-sm text-yellow-800">
+                        <p class="font-bold mb-1"><i class="fas fa-circle-info ml-1"></i>سبب الإلغاء (${order.cancelledBy === 'customer' ? 'من العميل' : 'من الإدارة'})</p>
+                        <p>${order.cancelReason}</p>
+                    </div>` : ''}
                     ${order.isPaid ? `
                     <div class="mb-4 p-2 px-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
                         <i class="fas fa-check-circle ml-1"></i>تم تأكيد دفع العميل${order.paidAt ? ' في ' + new Date(order.paidAt).toLocaleString('ar-SA') : ''}
@@ -703,6 +708,86 @@ async function updateOrderStatus(orderId, status) {
     }
 }
 
+// ============================================
+// مودال سبب إلغاء الطلب (أدمن) — أسباب جاهزة قابلة لإعادة الاستخدام + سبب مخصص
+// ============================================
+let _pendingCancelOrderId = null;
+
+function ensureCancelReasonModal() {
+    if (document.getElementById('cancel-reason-modal-overlay')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'cancel-reason-modal-overlay';
+    overlay.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[5000] hidden p-4';
+    overlay.innerHTML = `
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-red-600"><i class="fas fa-ban ml-2"></i>سبب إلغاء الطلب</h3>
+                <button onclick="closeCancelReasonModal()" class="w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-100 text-xl flex items-center justify-center">&times;</button>
+            </div>
+            <p class="text-sm text-gray-500 mb-3">اختر سبباً جاهزاً أو اكتب سبباً مخصصاً — السبب سيظهر للعميل بصفحة طلباته.</p>
+            <div id="cancel-reason-chips" class="flex flex-wrap gap-2 mb-3"></div>
+            <textarea id="cancel-reason-text" rows="3" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-red-400 focus:outline-none" placeholder="اكتب سبب الإلغاء هنا..."></textarea>
+            <label class="flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer">
+                <input type="checkbox" id="cancel-reason-save-flag" class="w-4 h-4">
+                احفظ هذا السبب كخيار جاهز للمرات القادمة
+            </label>
+            <div class="flex gap-2 mt-5">
+                <button onclick="submitCancelReason()" id="cancel-reason-confirm-btn" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-lg text-sm">
+                    <i class="fas fa-check ml-1"></i>تأكيد الإلغاء
+                </button>
+                <button onclick="closeCancelReasonModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg text-sm">تراجع</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+async function loadCancelReasonChips() {
+    const chipsContainer = document.getElementById('cancel-reason-chips');
+    chipsContainer.innerHTML = '<span class="text-xs text-gray-400">جاري تحميل الأسباب الجاهزة...</span>';
+    try {
+        const token = localStorage.getItem('antika_admin_token');
+        const res = await fetch('/api/cancel-reasons', { headers: { 'Authorization': 'Bearer ' + token } });
+        const reasons = await res.json().catch(() => []);
+        if (!Array.isArray(reasons) || reasons.length === 0) {
+            chipsContainer.innerHTML = '<span class="text-xs text-gray-400">لا توجد أسباب جاهزة بعد — اكتب سبباً وفعّل خيار الحفظ بالأسفل.</span>';
+            return;
+        }
+        chipsContainer.innerHTML = reasons.map(r => `
+            <span class="group inline-flex items-center gap-1.5 bg-gray-100 hover:bg-red-50 text-gray-700 hover:text-red-700 text-xs font-semibold px-3 py-1.5 rounded-full cursor-pointer border border-gray-200 hover:border-red-200 transition"
+                  onclick="document.getElementById('cancel-reason-text').value = ${JSON.stringify(r.text)}">
+                ${r.text}
+                <i class="fas fa-xmark text-gray-300 group-hover:text-red-400" onclick="event.stopPropagation(); deleteCancelReasonChip('${r.id}')" title="حذف هذا السبب من القائمة الجاهزة"></i>
+            </span>
+        `).join('');
+    } catch (e) {
+        chipsContainer.innerHTML = '<span class="text-xs text-red-400">تعذر تحميل الأسباب الجاهزة</span>';
+    }
+}
+
+async function deleteCancelReasonChip(reasonId) {
+    try {
+        const token = localStorage.getItem('antika_admin_token');
+        await fetch('/api/cancel-reasons/' + reasonId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+        await loadCancelReasonChips();
+    } catch (e) { console.error('Error deleting cancel reason:', e); }
+}
+
+function openCancelReasonModal(orderId) {
+    ensureCancelReasonModal();
+    _pendingCancelOrderId = orderId;
+    document.getElementById('cancel-reason-text').value = '';
+    document.getElementById('cancel-reason-save-flag').checked = false;
+    document.getElementById('cancel-reason-modal-overlay').classList.remove('hidden');
+    loadCancelReasonChips();
+}
+
+function closeCancelReasonModal() {
+    const overlay = document.getElementById('cancel-reason-modal-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    _pendingCancelOrderId = null;
+}
+
 function describeStockReturnResult(data) {
     if (data && data.stockReturned === true) {
         return { message: '✅ تم الإلغاء، وتم إرجاع جميع القطع إلى المخزون بنجاح بعد مراجعة دقيقة.', type: 'success' };
@@ -715,17 +800,36 @@ function describeStockReturnResult(data) {
     return null; // الطلب أصلاً ما كان فيه منتجات لإرجاعها أو تم إرجاع مخزونه مسبقاً — لا داعي لرسالة
 }
 
-async function cancelOrderAdmin(orderId) {
-    if (!confirm('هل أنت متأكد من إلغاء هذا الطلب؟ سيتم إرجاع كل القطع تلقائياً إلى المخزون بعد مراجعة دقيقة لكل منتج.')) return;
+async function submitCancelReason() {
+    const orderId = _pendingCancelOrderId;
+    if (!orderId) return;
+    const reasonText = document.getElementById('cancel-reason-text').value.trim();
+    if (!reasonText) {
+        document.getElementById('cancel-reason-text').classList.add('border-red-400');
+        showNotification('يرجى كتابة أو اختيار سبب الإلغاء أولاً', 'error');
+        return;
+    }
+    const shouldSave = document.getElementById('cancel-reason-save-flag').checked;
+    const confirmBtn = document.getElementById('cancel-reason-confirm-btn');
+    const originalHtml = confirmBtn.innerHTML;
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i>جاري الإلغاء...';
     try {
         const token = localStorage.getItem('antika_admin_token');
         const res = await fetch('/api/orders/' + orderId, {
             method: 'PUT',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'cancelled' })
+            body: JSON.stringify({ status: 'cancelled', cancelReason: reasonText })
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'فشل إلغاء الطلب');
+
+        if (shouldSave) {
+            try { await fetch('/api/cancel-reasons', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ text: reasonText }) }); }
+            catch (se) { console.warn('Failed to save reusable cancel reason:', se); }
+        }
+
+        closeCancelReasonModal();
         const stockInfo = describeStockReturnResult(data);
         showNotification(stockInfo ? stockInfo.message : 'تم إلغاء الطلب.', stockInfo ? stockInfo.type : undefined);
         await loadOrders();
@@ -733,7 +837,14 @@ async function cancelOrderAdmin(orderId) {
     } catch (error) {
         console.error('Error cancelling order:', error);
         showNotification(error.message || 'حدث خطأ أثناء إلغاء الطلب', 'error');
+    } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = originalHtml;
     }
+}
+
+async function cancelOrderAdmin(orderId) {
+    openCancelReasonModal(orderId);
 }
 
 async function confirmManualPayment(orderId) {
