@@ -146,7 +146,7 @@ async function getNextOrderNumber() {
   const counterRef = db.collection('counters').doc('orders');
   return await db.runTransaction(async (t) => {
     const doc = await t.get(counterRef);
-    const current = doc.exists ? Number(doc.data().value || 999) : 999;
+    const current = doc.exists ? Number(doc.data().value || 0) : 0;
     const next = current + 1;
     t.set(counterRef, { value: next }, { merge: true });
     return next;
@@ -574,11 +574,28 @@ app.delete('/api/cart', async (req, res) => {
 // يرجّع كل قطعة محفوظة داخل الطلب (order.items) إلى مخزون منتجها الأصلي عبر Firestore Transaction واحدة،
 // عشان نضمن دقة الأرقام حتى لو صار تزامن (concurrency) مع طلبات أو تعديلات ثانية بنفس اللحظة.
 // أي extraOrderUpdates (مثل تغيير status) تُكتب على وثيقة الطلب ضمن نفس الـ Transaction لضمان الذرية (atomicity).
+// رقم مرتجع/إشعار إلغاء تسلسلي ثابت (يبدأ من 1) — منفصل عن ترقيم الطلبات، ويبقى مربوطاً برقم الطلب الأصلي
+async function getNextReturnNumber() {
+  const counterRef = db.collection('counters').doc('returns');
+  return await db.runTransaction(async (t) => {
+    const doc = await t.get(counterRef);
+    const current = doc.exists ? Number(doc.data().value || 0) : 0;
+    const next = current + 1;
+    t.set(counterRef, { value: next }, { merge: true });
+    return next;
+  });
+}
+
 async function restoreOrderStock(ref, order, extraOrderUpdates) {
   // 🔒 حماية من الإرجاع المضاعف: لو الطلب سبق ورجّعنا مخزونه، لا نكرر العملية أبداً
   if (order && order.stockReturned) {
     if (extraOrderUpdates && Object.keys(extraOrderUpdates).length) await ref.update(extraOrderUpdates);
     return { alreadyReturned: true, success: true, restored: [], failed: [] };
+  }
+  // 🔢 رقم مرتجع ثابت يُولَّد مرة واحدة فقط لهذا الطلب، ويبقى مرتبطاً برقم الطلب الأصلي دايماً
+  if (!order || !order.returnNumber) {
+    const returnNumber = await getNextReturnNumber();
+    extraOrderUpdates = Object.assign({}, extraOrderUpdates, { returnNumber });
   }
   const items = Array.isArray(order && order.items) ? order.items : [];
   const qtyByProduct = {};

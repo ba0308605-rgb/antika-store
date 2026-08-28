@@ -410,8 +410,8 @@ function renderRecentOrders(orders) {
     };
 
     const sortedAllAsc = [...orders].sort((a, b) => {
-        const da = new Date(a.date || a.createdAt || 0).getTime();
-        const db = new Date(b.date || b.createdAt || 0).getTime();
+        const da = orderDateMs(a.date || a.createdAt);
+        const db = orderDateMs(b.date || b.createdAt);
         return da - db;
     });
     const recentSeqMap = {};
@@ -472,6 +472,30 @@ function copyToClipboard(text) {
     });
 }
 
+// يتعامل مع Firestore Timestamp (بعد تحويله لـ JSON يوصل كـ {_seconds, _nanoseconds} أو {seconds, nanoseconds})
+// بالإضافة لنصوص ISO والأرقام العادية، بدل new Date() المباشر اللي يفشل مع هذي الصيغة ويطلع "Invalid Date"
+function formatOrderDate(value) {
+    if (!value) return '-';
+    let d;
+    if (typeof value === 'object' && (value._seconds != null || value.seconds != null)) {
+        const secs = value._seconds != null ? value._seconds : value.seconds;
+        d = new Date(secs * 1000);
+    } else {
+        d = new Date(value);
+    }
+    return isNaN(d.getTime()) ? '-' : d.toLocaleString('ar-SA');
+}
+
+function orderDateMs(value) {
+    if (!value) return 0;
+    if (typeof value === 'object' && (value._seconds != null || value.seconds != null)) {
+        const secs = value._seconds != null ? value._seconds : value.seconds;
+        return secs * 1000;
+    }
+    const t = new Date(value).getTime();
+    return isNaN(t) ? 0 : t;
+}
+
 function filterOrdersFromSearch() {
     renderOrdersList(lastLoadedOrders || []);
 }
@@ -494,8 +518,8 @@ function renderOrdersList(orders) {
         
         // ترقيم احتياطي فقط للطلبات القديمة اللي ما فيها orderNumber ثابت من السيرفر
         const sortedByDateAsc = [...orders].sort((a, b) => {
-            const da = new Date(a.date || a.createdAt || 0).getTime();
-            const db_ = new Date(b.date || b.createdAt || 0).getTime();
+            const da = orderDateMs(a.date || a.createdAt);
+            const db_ = orderDateMs(b.date || b.createdAt);
             return da - db_;
         });
         const seqMap = {};
@@ -524,7 +548,7 @@ function renderOrdersList(orders) {
         container.innerHTML = filteredOrders.map(order => {
             const orderId = order._id || order.id;
             const orderSeq = order.orderNumber || seqMap[orderId] || '—';
-            const orderDate = order.date ? new Date(order.date).toLocaleString('ar-SA') : '-';
+            const orderDate = formatOrderDate(order.date);
             const isPrePayment = PRE_PAYMENT_STATUSES.includes(order.status);
             const isCancelled = order.status === 'cancelled';
             const isLocked = (isPrePayment && !order.isPaid) || isCancelled;
@@ -588,6 +612,10 @@ function renderOrdersList(orders) {
                             ${order.otoTrackingNumber ? `<p class="text-sm text-gray-700 flex items-center gap-2">تتبع OTO: <span class="font-mono text-xs">${order.otoTrackingNumber}</span> <button onclick="copyToClipboard('${order.otoTrackingNumber}')" title="نسخ" class="text-blue-500 hover:text-blue-700"><i class="fas fa-copy"></i></button></p>` : `<p class="text-sm text-gray-700">تتبع OTO: -</p>`}
                             <p class="text-sm text-gray-700">مرجع OTO: ${order.otoOrderId || '-'}</p>
                             <p class="font-bold text-antika-gold text-lg mt-2 pt-2 border-t border-amber-200">الإجمالي: ${order.total} ر.س</p>
+                            <div class="flex gap-2 mt-2">
+                                <button onclick="event.stopPropagation(); printOrderInvoice('${orderId}')" class="flex-1 text-xs bg-white border border-amber-300 text-amber-800 rounded-lg py-1.5 hover:bg-amber-100 transition"><i class="fas fa-print ml-1"></i> طباعة فاتورة الطلب</button>
+                                ${order.status === 'cancelled' ? `<button onclick="event.stopPropagation(); printReturnReceipt('${orderId}')" class="flex-1 text-xs bg-white border border-red-300 text-red-700 rounded-lg py-1.5 hover:bg-red-50 transition"><i class="fas fa-file-invoice ml-1"></i> طباعة إشعار المرتجع${order.returnNumber ? ' #R-' + order.returnNumber : ''}</button>` : ''}
+                            </div>
                         </div>
                     </div>
                     ${isPrePayment ? `
@@ -701,6 +729,87 @@ function renderOrdersList(orders) {
     } catch (error) {
         console.error('Error loading orders:', error);
     }
+}
+
+// ===== طباعة إيصال الطلب / إشعار المرتجع =====
+function buildReceiptHtml({ title, orderSeq, orderDate, order, refNote }) {
+    const itemsRows = (order.items || []).map(it => `
+        <tr>
+            <td style="padding:8px;border-bottom:1px solid #eee;">${it.name}</td>
+            <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${it.quantity}</td>
+            <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${it.price} ر.س</td>
+            <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${(it.quantity * it.price).toLocaleString('ar-SA')} ر.س</td>
+        </tr>
+    `).join('');
+    return `
+    <html dir="rtl" lang="ar">
+    <head>
+        <meta charset="UTF-8">
+        <title>${title} - طلب #${orderSeq}</title>
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 30px; color: #222; }
+            .header { text-align:center; border-bottom: 3px solid #C9A15D; padding-bottom: 16px; margin-bottom: 20px; }
+            .header h1 { color:#C9A15D; margin:0 0 4px; }
+            .badge { display:inline-block; background:#C9A15D; color:#fff; padding:4px 14px; border-radius:20px; font-size:13px; margin-top:8px; }
+            .meta { display:flex; justify-content:space-between; margin-bottom:20px; font-size:14px; }
+            .box { border:1px solid #eee; border-radius:8px; padding:14px; margin-bottom:16px; }
+            table { width:100%; border-collapse:collapse; margin-top:10px; }
+            th { background:#f8f5ef; padding:8px; text-align:center; font-size:13px; }
+            .total-row td { font-weight:bold; font-size:16px; padding-top:12px; }
+            @media print { body { padding: 10px; } }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>أنتيكا ستور</h1>
+            <p style="margin:0;color:#666;">Antika Store</p>
+            <span class="badge">${title}</span>
+        </div>
+        <div class="meta">
+            <div><strong>رقم الطلب:</strong> #${orderSeq}</div>
+            ${order.orderCode ? `<div><strong>كود التتبع:</strong> ${order.orderCode}</div>` : ''}
+            <div><strong>التاريخ:</strong> ${orderDate}</div>
+        </div>
+        ${refNote ? `<div class="box" style="background:#fff5f5;border-color:#fecaca;">${refNote}</div>` : ''}
+        <div class="box">
+            <strong>بيانات العميل</strong>
+            <p style="margin:6px 0 0;">${order.customerName || ''} — ${order.customerPhone || ''}</p>
+            <p style="margin:2px 0 0;color:#555;">${order.customerAddress || ''}</p>
+        </div>
+        <table>
+            <thead><tr><th>المنتج</th><th>الكمية</th><th>سعر القطعة</th><th>الإجمالي</th></tr></thead>
+            <tbody>${itemsRows}</tbody>
+            <tfoot>
+                <tr class="total-row"><td colspan="3" style="text-align:left;">الإجمالي الكلي</td><td style="text-align:center;">${order.total} ر.س</td></tr>
+            </tfoot>
+        </table>
+    </body>
+    </html>`;
+}
+
+function printOrderInvoice(orderId) {
+    const order = (lastLoadedOrders || []).find(o => (o._id || o.id) === orderId);
+    if (!order) return;
+    const orderSeq = order.orderNumber || orderId;
+    const orderDate = formatOrderDate(order.date);
+    const html = buildReceiptHtml({ title: 'فاتورة طلب', orderSeq, orderDate, order });
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => w.print(), 300);
+}
+
+function printReturnReceipt(orderId) {
+    const order = (lastLoadedOrders || []).find(o => (o._id || o.id) === orderId);
+    if (!order) return;
+    const orderSeq = order.orderNumber || orderId;
+    const orderDate = formatOrderDate(order.date);
+    const refNote = `<strong>رقم المرتجع: R-${order.returnNumber || '-'}</strong> — مرتبط بالطلب الأصلي #${orderSeq}${order.cancelReason ? `<br>سبب الإلغاء: ${order.cancelReason}` : ''}`;
+    const html = buildReceiptHtml({ title: 'إشعار إلغاء / مرتجع', orderSeq, orderDate, order, refNote });
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => w.print(), 300);
 }
 
 function toggleOrderDetails(orderId) {
