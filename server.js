@@ -683,7 +683,12 @@ async function restoreOrderStock(ref, order, extraOrderUpdates) {
 
 // ORDERS
 app.get('/api/orders', requireAdmin, async (req, res) => {
-  try { let s; try { s = await db.collection('orders').orderBy('date', 'desc').get(); } catch (e) { s = await db.collection('orders').get(); } res.json(docsToArr(s)); }
+  try {
+    let s;
+    try { s = await db.collection('orders').orderBy('date', 'desc').get(); } catch (e) { s = await db.collection('orders').get(); }
+    // 🔒 نستبعد الطلبات اللي "حذفها" الأدمن (soft delete) — الطلب يفضل موجود بالكامل عند العميل رغم اختفائه من هنا
+    res.json(docsToArr(s).filter(o => !o.adminDeleted));
+  }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 // \u062c\u0644\u0628 \u0637\u0644\u0628\u0627\u062a \u0639\u0645\u064a\u0644 \u0645\u0639\u064a\u0646 (\u0628\u062f\u0648\u0646 \u0635\u0644\u0627\u062d\u064a\u0629 \u0623\u062f\u0645\u0646) \u0644\u0627\u0633\u062a\u062e\u062f\u0627\u0645\u0647 \u0641\u064a \u0635\u0641\u062d\u0629 "\u0637\u0644\u0628\u0627\u062a\u064a"
@@ -792,17 +797,21 @@ app.delete('/api/orders/:id', requireAdmin, async (req, res) => {
   try {
     const ref = db.collection('orders').doc(req.params.id);
     const doc = await ref.get();
-    let stockResult = null;
-    // 🛡️ شبكة أمان: لو الأدمن حذف الطلب نهائياً بدون ما يمر بحالة "ملغي" أولاً، نرجّع المخزون هنا قبل الحذف
-    if (doc.exists) {
-      const order = Object.assign({ id: doc.id }, doc.data());
-      if (!order.stockReturned) {
-        try { stockResult = await restoreOrderStock(ref, order, {}); }
-        catch (se) { console.error('Stock restore before delete error:', se.message); }
-      }
+    if (!doc.exists) return res.status(404).json({ error: '\u0627\u0644\u0637\u0644\u0628 \u063a\u064a\u0631 \u0645\u0648\u062c\u0648\u062f' });
+    const order = Object.assign({ id: doc.id }, doc.data());
+    // 🔒 لا يمكن حذف الطلب إلا بعد إلغائه أولاً (سواء من العميل أو الأدمن)
+    if (order.status !== 'cancelled') {
+      return res.status(400).json({ error: '\u064a\u062c\u0628 \u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0623\u0648\u0644\u0627\u064b \u0642\u0628\u0644 \u062d\u0630\u0641\u0647 \u0646\u0647\u0627\u0626\u064a\u0627\u064b' });
     }
-    await ref.delete();
-    res.json({ message: 'Order deleted', stockReturned: stockResult ? stockResult.success : undefined, stockReturnFailed: stockResult ? stockResult.failed : undefined });
+    let stockResult = null;
+    // 🛡️ شبكة أمان: لو لأي سبب المخزون ما ارتجع وقت الإلغاء، نرجّعه هنا قبل الحذف
+    if (!order.stockReturned) {
+      try { stockResult = await restoreOrderStock(ref, order, {}); }
+      catch (se) { console.error('Stock restore before delete error:', se.message); }
+    }
+    // 🔀 حذف من عند الأدمن فقط (soft delete) — الطلب يبقى موجوداً بالكامل عند العميل، مستقل تماماً عن قرار الأدمن
+    await ref.update({ adminDeleted: true, adminDeletedAt: new Date().toISOString() });
+    res.json({ message: 'Order deleted (admin view only)', stockReturned: stockResult ? stockResult.success : undefined, stockReturnFailed: stockResult ? stockResult.failed : undefined });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // \u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0645\u0646 \u0637\u0631\u0641 \u0627\u0644\u0639\u0645\u064a\u0644 \u0642\u0628\u0644 \u0627\u0644\u062f\u0641\u0639 \u0641\u0642\u0637 (\u0644\u0627 \u064a\u062d\u0630\u0641 \u0627\u0644\u0637\u0644\u0628\u060c \u0641\u0642\u0637 \u064a\u062e\u0641\u064a\u0647 \u0639\u0646 \u0627\u0644\u0639\u0645\u064a\u0644 \u0648\u064a\u0638\u0647\u0631 \u0644\u0644\u0623\u062f\u0645\u0646 \u0623\u0646 \u0627\u0644\u0639\u0645\u064a\u0644 \u0623\u0644\u063a\u0627\u0647)
