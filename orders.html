@@ -349,7 +349,7 @@
                                 <div class="border-t pt-3 grid grid-cols-2 gap-2 text-sm text-gray-600 mb-2">
                                     <div>عدد المنتجات: ${order.items.length}</div>
                                     <div>الوزن: ${order.weight ? order.weight + ' كجم' : '-'}</div>
-                                    <div>${(order.customerAddress || order.shippingCity) ? `<i class="fas fa-map-marker-alt ml-1 text-antika-gold"></i>${order.customerAddress || order.shippingCity}` : ''}</div>
+                                    <div>${(order.lat && order.lng) ? `<a href="https://www.google.com/maps?q=${order.lat},${order.lng}" target="_blank" class="text-antika-gold hover:text-antika-gold-dark"><i class="fas fa-location-dot ml-1"></i>عرض موقع العميل</a>` : ''}</div>
                                     <div>الشحن: ${order.shippingCost != null ? Number(order.shippingCost).toFixed(2) + ' ر.س' : '-'}</div>
                                 </div>
                                 <div class="border-t pt-3 flex items-center justify-between">
