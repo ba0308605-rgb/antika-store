@@ -453,6 +453,24 @@ function renderRecentOrders(orders) {
 // ORDERS MANAGEMENT - إدارة الطلبات
 // ============================================
 
+// ========== 🧪 مؤقت للاختبار فقط — احذف هذي الدالة بالكامل قبل الإطلاق الفعلي ==========
+async function resetOrderCounterForTesting() {
+    if (!confirm('تصفير عداد ترقيم الطلبات؟ الطلب الجاي بيبدأ من #1. هذا للاختبار فقط ولازم يُحذف قبل الإطلاق الفعلي.')) return;
+    try {
+        const token = localStorage.getItem('antika_admin_token');
+        const res = await fetch('/api/admin/reset-order-counter', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ includeReturns: false })
+        });
+        const data = await res.json();
+        alert(data.message || 'تم التصفير');
+    } catch (err) {
+        alert('حدث خطأ: ' + err.message);
+    }
+}
+// ========== نهاية الكود المؤقت للاختبار ==========
+
 async function loadOrders() {
     try {
         const orders = await API.getOrders ? await API.getOrders() : [];

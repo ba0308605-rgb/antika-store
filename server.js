@@ -280,6 +280,19 @@ app.get('/api/admin/session', requireAdmin, (req, res) => res.json({ ok: true, u
 app.get('/api/admin/maintenance', requireAdmin, (req, res) => {
   res.json({ enabled: maintenanceMode, key: maintenanceKey });
 });
+// ========== 🧪 مؤقت للاختبار فقط — احذف هذا الراوت بالكامل قبل الإطلاق الفعلي ==========
+// يصفّر عداد ترقيم الطلبات (والمرتجعات اختيارياً) للسماح بإعادة الاختبار من الرقم 1 بسهولة
+app.post('/api/admin/reset-order-counter', requireAdmin, async (req, res) => {
+  try {
+    await db.collection('counters').doc('orders').set({ value: 0 });
+    if (req.body && req.body.includeReturns) {
+      await db.collection('counters').doc('returns').set({ value: 0 });
+    }
+    res.json({ success: true, message: 'تم تصفير العداد — الطلب الجاي بيبدأ من #1' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// ========== نهاية الكود المؤقت للاختبار ==========
+
 app.post('/api/admin/maintenance', requireAdmin, async (req, res) => {
   const { enabled, key } = req.body;
   if (typeof enabled === 'boolean') maintenanceMode = enabled;
