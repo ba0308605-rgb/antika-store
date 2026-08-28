@@ -937,13 +937,30 @@ async function loadCancelReasonChips() {
             chipsContainer.innerHTML = '<span class="text-xs text-gray-400">لا توجد أسباب جاهزة بعد — اكتب سبباً وفعّل خيار الحفظ بالأسفل.</span>';
             return;
         }
-        chipsContainer.innerHTML = reasons.map(r => `
-            <span class="group inline-flex items-center gap-1.5 bg-gray-100 hover:bg-red-50 text-gray-700 hover:text-red-700 text-xs font-semibold px-3 py-1.5 rounded-full cursor-pointer border border-gray-200 hover:border-red-200 transition"
-                  onclick="document.getElementById('cancel-reason-text').value = ${JSON.stringify(r.text)}">
-                ${r.text}
-                <i class="fas fa-xmark text-gray-300 group-hover:text-red-400" onclick="event.stopPropagation(); deleteCancelReasonChip('${r.id}')" title="حذف هذا السبب من القائمة الجاهزة"></i>
-            </span>
-        `).join('');
+        chipsContainer.innerHTML = '';
+        reasons.forEach(r => {
+            const chip = document.createElement('span');
+            chip.className = 'group inline-flex items-center gap-1.5 bg-gray-100 hover:bg-red-50 text-gray-700 hover:text-red-700 text-xs font-semibold px-3 py-1.5 rounded-full cursor-pointer border border-gray-200 hover:border-red-200 transition';
+
+            const label = document.createElement('span');
+            label.textContent = r.text; // نص عادي — بدون أي مشاكل تنصيص مهما كان محتواه
+            chip.appendChild(label);
+
+            const xBtn = document.createElement('i');
+            xBtn.className = 'fas fa-xmark text-gray-300 group-hover:text-red-400';
+            xBtn.title = 'حذف هذا السبب من القائمة الجاهزة';
+            xBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteCancelReasonChip(r.id); });
+            chip.appendChild(xBtn);
+
+            chip.addEventListener('click', () => {
+                document.getElementById('cancel-reason-text').value = r.text;
+                document.getElementById('cancel-reason-text').classList.remove('border-red-400');
+                chipsContainer.querySelectorAll('span.group').forEach(c => c.classList.remove('bg-red-100', 'border-red-300', 'text-red-700'));
+                chip.classList.add('bg-red-100', 'border-red-300', 'text-red-700');
+            });
+
+            chipsContainer.appendChild(chip);
+        });
     } catch (e) {
         chipsContainer.innerHTML = '<span class="text-xs text-red-400">تعذر تحميل الأسباب الجاهزة</span>';
     }
