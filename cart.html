@@ -1436,8 +1436,6 @@
                 const customerEmail = (document.getElementById('customer-email')?.value || '').trim();
                 const selSavedAddr = window.__selectedSavedAddress;
                 const customerAddress = (selSavedAddr && selSavedAddr.address ? selSavedAddr.address : (document.getElementById('customer-address')?.value || '')).trim();
-                console.log('🔍 DEBUG selectedSavedAddress:', selSavedAddr);
-                console.log('🔍 DEBUG customerAddress value:', customerAddress);
                 const totals = recalculateCheckoutTotals();
 
                 if (!customerName || !customerPhone || !customerAddress) {
