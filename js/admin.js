@@ -734,9 +734,13 @@ function renderOrdersList(orders) {
                         <button onclick="cancelOrderAdmin('${orderId}')" class="px-4 bg-red-50 text-red-700 border border-red-200 py-2 rounded-lg hover:bg-red-100 transition text-sm font-semibold">
                             <i class="fas fa-ban ml-1"></i>إلغاء الطلب
                         </button>`}
+                        ${isCancelled ? `
                         <button onclick="deleteOrder('${orderId}')" class="px-4 bg-red-100 text-red-600 py-2 rounded-lg hover:bg-red-200 transition text-sm">
                             <i class="fas fa-trash"></i>
-                        </button>
+                        </button>` : `
+                        <button disabled title="لازم تُلغى الطلب أولاً قبل ما تقدر تحذفه" class="px-4 bg-gray-100 text-gray-300 py-2 rounded-lg text-sm cursor-not-allowed">
+                            <i class="fas fa-trash"></i>
+                        </button>`}
                     </div>
                     ${isLocked ? `<p class="text-xs text-gray-400 mt-2"><i class="fas fa-lock ml-1"></i>مراحل الشحن مقفلة لحين تأكيد الدفع من العميل</p>` : ''}
                 </div>
