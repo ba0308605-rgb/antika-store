@@ -349,7 +349,7 @@
                                 <div class="border-t pt-3 grid grid-cols-2 gap-2 text-sm text-gray-600 mb-2">
                                     <div>عدد المنتجات: ${order.items.length}</div>
                                     <div>الوزن: ${order.weight ? order.weight + ' كجم' : '-'}</div>
-                                    <div>${(order.lat && order.lng) ? `<a href="https://www.google.com/maps?q=${order.lat},${order.lng}" target="_blank" class="text-gray-600 hover:text-antika-gold-dark"><i class="fas fa-map-marker-alt ml-1"></i>عرض موقع العميل على الخريطة</a>` : (order.shippingCity || 'غير محدد')}</div>
+                                    <div class="col-span-2">${order.customerAddress ? `<i class="fas fa-map-marker-alt ml-1"></i>${order.customerAddress}` : (order.shippingCity || 'غير محدد')}${(order.lat && order.lng) ? `<a href="https://www.google.com/maps?q=${order.lat},${order.lng}" target="_blank" class="block mt-1 text-antika-gold hover:text-antika-gold-dark text-xs"><i class="fas fa-location-dot ml-1"></i>عرض موقع العميل على الخريطة</a>` : ''}</div>
                                     <div>الشحن: ${order.shippingCost != null ? Number(order.shippingCost).toFixed(2) + ' ر.س' : '-'}</div>
                                 </div>
                                 <div class="border-t pt-3 flex items-center justify-between">
