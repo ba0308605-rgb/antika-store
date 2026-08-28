@@ -1456,7 +1456,8 @@
                 const customerName = (document.getElementById('customer-name')?.value || '').trim();
                 const customerPhone = (document.getElementById('customer-phone')?.value || '').trim();
                 const customerEmail = (document.getElementById('customer-email')?.value || '').trim();
-                const customerAddress = (document.getElementById('customer-address')?.value || '').trim();
+                const selSavedAddr = window.__selectedSavedAddress;
+                const customerAddress = (selSavedAddr && selSavedAddr.address ? selSavedAddr.address : (document.getElementById('customer-address')?.value || '')).trim();
                 const totals = recalculateCheckoutTotals();
 
                 if (!customerName || !customerPhone || !customerAddress) {
@@ -1839,6 +1840,7 @@
             const details = addr.address || '';
             const label = addr.label || `العنوان ${idx+1}`;
 
+            window.__selectedSavedAddress = addr;
             document.getElementById('customer-address').value = details;
             document.getElementById('selected-address-text').textContent = `${label} — ${details}`;
             document.getElementById('address-selected-display').classList.remove('hidden');
