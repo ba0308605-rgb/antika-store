@@ -518,17 +518,87 @@ function filterOrdersFromSearch() {
     renderOrdersList(lastLoadedOrders || []);
 }
 
+// 🗂️ فلتر حالة الطلبات بلوحة الأدمن: الكل / نشطة (غير ملغية) / ملغية
+let _ordersStatusFilter = 'all'; // 'all' | 'active' | 'cancelled'
+
+function setOrdersStatusFilter(filter) {
+    _ordersStatusFilter = filter;
+    renderOrdersList(lastLoadedOrders || []);
+}
+
+// ينشئ شريط تبويبات الفلترة مرة وحدة فوق قائمة الطلبات (لو ما كان موجود أصلاً بـ admin.html)
+function ensureOrdersFilterBar() {
+    if (document.getElementById('orders-status-filter-bar')) return;
+    const container = document.getElementById('orders-list');
+    if (!container || !container.parentNode) return;
+    const bar = document.createElement('div');
+    bar.id = 'orders-status-filter-bar';
+    bar.className = 'flex flex-wrap items-center gap-2 mb-4';
+    bar.innerHTML = `
+        <button data-filter="all" class="orders-filter-btn px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">الكل</button>
+        <button data-filter="active" class="orders-filter-btn px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">نشطة</button>
+        <button data-filter="cancelled" class="orders-filter-btn px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">ملغية</button>
+        <button id="delete-all-cancelled-btn" onclick="deleteAllCancelledOrders()" class="hidden mr-auto px-4 py-1.5 rounded-lg text-sm font-bold bg-red-600 hover:bg-red-700 text-white transition-colors">
+            <i class="fas fa-trash ml-1"></i>حذف جميع الطلبات الملغية
+        </button>
+    `;
+    container.parentNode.insertBefore(bar, container);
+    bar.querySelectorAll('.orders-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => setOrdersStatusFilter(btn.dataset.filter));
+    });
+    updateOrdersFilterBarUI();
+}
+
+function updateOrdersFilterBarUI() {
+    const bar = document.getElementById('orders-status-filter-bar');
+    if (!bar) return;
+    bar.querySelectorAll('.orders-filter-btn').forEach(btn => {
+        const active = btn.dataset.filter === _ordersStatusFilter;
+        btn.className = 'orders-filter-btn px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors ' + (active ? 'bg-antika-gold text-white border-antika-gold' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50');
+    });
+    const cancelledCount = (lastLoadedOrders || []).filter(o => o.status === 'cancelled').length;
+    const delBtn = document.getElementById('delete-all-cancelled-btn');
+    if (delBtn) delBtn.classList.toggle('hidden', !(_ordersStatusFilter === 'cancelled' && cancelledCount > 0));
+}
+
+// 🗑️ اختصار: حذف كل الطلبات الملغية دفعة وحدة (يعيد استخدام نفس منطق/تحققات راوت الحذف الفردي لكل طلب)
+async function deleteAllCancelledOrders() {
+    const cancelled = (lastLoadedOrders || []).filter(o => o.status === 'cancelled');
+    if (!cancelled.length) { showNotification('لا توجد طلبات ملغية للحذف', 'error'); return; }
+    if (!confirm(`هل أنت متأكد من حذف جميع الطلبات الملغية (${cancelled.length} طلب)؟ هذا الإجراء لا يمكن التراجع عنه.`)) return;
+    const token = localStorage.getItem('antika_admin_token');
+    let success = 0, failed = 0;
+    for (const o of cancelled) {
+        const orderId = o._id || o.id;
+        try {
+            const res = await fetch('/api/orders/' + orderId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+            if (res.ok) success++; else failed++;
+        } catch (e) { failed++; }
+    }
+    showNotification(failed === 0 ? `تم حذف ${success} طلب ملغي بنجاح` : `تم حذف ${success}، وفشل حذف ${failed} — راجعها يدوياً`, failed ? 'error' : undefined);
+    await loadOrders();
+    if (typeof updateStats === 'function') await updateStats();
+}
+
 function renderOrdersList(orders) {
     try {
         const container = document.getElementById('orders-list');
         
         if (!container) return;
-        
-        if (orders.length === 0) {
+
+        ensureOrdersFilterBar();
+        updateOrdersFilterBarUI();
+
+        const statusFiltered = _ordersStatusFilter === 'all' ? orders
+            : _ordersStatusFilter === 'cancelled' ? orders.filter(o => o.status === 'cancelled')
+            : orders.filter(o => o.status !== 'cancelled');
+
+        if (statusFiltered.length === 0) {
+            const emptyMsg = _ordersStatusFilter === 'cancelled' ? 'لا توجد طلبات ملغية' : (_ordersStatusFilter === 'active' ? 'لا توجد طلبات نشطة' : 'لا توجد طلبات حالياً');
             container.innerHTML = `
                 <div class="text-center py-12">
                     <i class="fas fa-shopping-bag text-6xl text-gray-200 mb-4"></i>
-                    <p class="text-gray-500">لا توجد طلبات حالياً</p>
+                    <p class="text-gray-500">${emptyMsg}</p>
                 </div>
             `;
             return;
@@ -545,7 +615,7 @@ function renderOrdersList(orders) {
 
         const searchInput = document.getElementById('orders-search-input');
         const searchTerm = (searchInput && searchInput.value || '').trim().toLowerCase();
-        const filteredOrders = !searchTerm ? orders : orders.filter(o => {
+        const filteredOrders = !searchTerm ? statusFiltered : statusFiltered.filter(o => {
             const haystack = [
                 o.orderNumber, o.orderCode, o.customerName, o.customerPhone,
                 o.customerEmail, o.otoTrackingNumber

@@ -109,6 +109,14 @@
                 </aside>
 
                 <div class="flex-1">
+                    <div id="orders-filter-bar" class="mb-4 flex flex-wrap items-center gap-2 hidden">
+                        <button data-filter="all" onclick="setCustomerOrdersFilter('all')" class="orders-filter-tab px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">جميع الطلبات</button>
+                        <button data-filter="active" onclick="setCustomerOrdersFilter('active')" class="orders-filter-tab px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">النشطة</button>
+                        <button data-filter="cancelled" onclick="setCustomerOrdersFilter('cancelled')" class="orders-filter-tab px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">الملغية</button>
+                        <button id="delete-all-cancelled-mine-btn" onclick="deleteAllCancelledForCustomer()" class="hidden mr-auto px-4 py-1.5 rounded-lg text-sm font-bold bg-red-50 border border-red-300 text-red-700 hover:bg-red-100 transition-colors">
+                            <i class="fas fa-trash ml-1"></i>حذف جميع الطلبات الملغية من قائمتي
+                        </button>
+                    </div>
                     <div id="orders-container" class="bg-white rounded-xl shadow-sm border p-12 text-center min-h-[400px] flex flex-col items-center justify-center">
                         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
                             <i class="fas fa-spinner fa-spin text-4xl text-gray-300"></i>
@@ -328,6 +336,7 @@
                                 <div class="flex items-center gap-3 flex-wrap">
                                     <span class="font-bold text-gray-800">طلب #${orderSeq}</span>
                                     <span class="text-xs text-gray-400">${formatDate(order.date)}</span>
+                                    ${order.status === 'cancelled' ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold ${order.cancelledBy === 'customer' ? 'bg-gray-200 text-gray-700' : 'bg-red-600 text-white'}"><i class="fas fa-ban ml-1"></i>${order.cancelledBy === 'customer' ? 'ألغيته أنت' : 'ألغته الإدارة'}</span>` : ''}
                                 </div>
                                 <div class="flex items-center gap-3">
                                     <span class="px-3 py-1 rounded-full text-sm font-semibold ${getStatusClass(order.status)}">${getStatusText(order.status)}</span>
@@ -380,14 +389,17 @@
                                         إلغاء الطلب
                                     </button>
                                 </div>` : ''}
-                                ${order.status === 'cancelled' ? `
+                ${order.status === 'cancelled' ? `
                                 <div class="mt-4 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-xl">
+                                    <p class="text-sm text-yellow-800 font-bold mb-1">
+                                        <i class="fas fa-ban ml-1"></i>
+                                        ${order.cancelledBy === 'customer' ? 'أنت قمت بإلغاء هذا الطلب' : (order.cancelledBy === 'admin' ? 'تم إلغاء هذا الطلب من قِبل الإدارة' : 'تم إلغاء هذا الطلب')}
+                                    </p>
                                     ${order.cancelReason ? `
                                     <p class="text-sm text-yellow-800">
                                         <i class="fas fa-circle-info ml-1"></i>
                                         <span class="font-bold">سبب الإلغاء:</span> ${order.cancelReason}
-                                    </p>` : `
-                                    <p class="text-sm text-yellow-800"><i class="fas fa-circle-info ml-1"></i>تم إلغاء هذا الطلب.</p>`}
+                                    </p>` : ''}
                                     <button onclick="hideOrderForCustomer('${order.id}')" class="block mx-auto mt-3 bg-white border-2 border-yellow-400 text-yellow-700 hover:bg-yellow-100 text-xs font-semibold py-1.5 px-5 rounded-full transition-colors">
                                         <i class="fas fa-trash ml-1"></i>حذف الطلب من قائمتي
                                     </button>
@@ -443,6 +455,72 @@
         }
 
         let currentCustomerEmail = '';
+        // 🗂️ حالة القائمة الكاملة بعد آخر تحميل — تُستخدم لتطبيق فلتر الحالة (الكل/نشطة/ملغية) بدون إعادة الطلب من السيرفر
+        let _lastAllOrders = [];
+        let _lastSeqMap = {};
+        let _lastUnreadOrderIds = new Set();
+        let _customerOrdersFilter = 'all'; // 'all' | 'active' | 'cancelled'
+
+        function setCustomerOrdersFilter(filter) {
+            _customerOrdersFilter = filter;
+            renderOrdersFilteredList();
+        }
+
+        function updateOrdersFilterTabsUI() {
+            const bar = document.getElementById('orders-filter-bar');
+            if (!bar) return;
+            if (!_lastAllOrders.length) { bar.classList.add('hidden'); return; }
+            bar.classList.remove('hidden');
+            bar.querySelectorAll('.orders-filter-tab').forEach(btn => {
+                const active = btn.dataset.filter === _customerOrdersFilter;
+                btn.className = 'orders-filter-tab px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors ' + (active ? 'bg-antika-gold text-white border-antika-gold' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50');
+            });
+            const cancelledCount = _lastAllOrders.filter(o => o.status === 'cancelled').length;
+            const delBtn = document.getElementById('delete-all-cancelled-mine-btn');
+            if (delBtn) delBtn.classList.toggle('hidden', !(_customerOrdersFilter === 'cancelled' && cancelledCount > 0));
+        }
+
+        function renderEmptyFilteredState() {
+            const container = document.getElementById('orders-container');
+            container.className = 'bg-white rounded-xl shadow-sm border p-12 text-center min-h-[300px] flex flex-col items-center justify-center';
+            const msg = _customerOrdersFilter === 'cancelled' ? 'لا توجد طلبات ملغية' : 'لا توجد طلبات نشطة حالياً';
+            container.innerHTML = `
+                <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                    <i class="fas fa-filter text-3xl text-gray-300"></i>
+                </div>
+                <h2 class="text-lg font-bold text-gray-800 mb-1">${msg}</h2>
+                <button onclick="setCustomerOrdersFilter('all')" class="text-antika-gold hover:underline text-sm mt-2">عرض جميع الطلبات</button>
+            `;
+        }
+
+        // 🙈 حذف كل الطلبات الملغية دفعة وحدة من قائمة العميل فقط (لا يمس سجل الأدمن) — اختصار بدل الحذف واحداً واحداً
+        async function deleteAllCancelledForCustomer() {
+            const cancelled = _lastAllOrders.filter(o => o.status === 'cancelled');
+            if (!cancelled.length) return;
+            if (!confirm(`هل تريد حذف كل الطلبات الملغية (${cancelled.length}) من قائمتك؟ لن تظهر لك مرة أخرى.`)) return;
+            let success = 0;
+            for (const o of cancelled) {
+                try {
+                    const res = await fetch('/api/orders/' + o.id + '/hide-for-customer', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ customerEmail: currentCustomerEmail })
+                    });
+                    if (res.ok) success++;
+                } catch (e) { /* تجاهل وتكملة الباقي */ }
+            }
+            alert(success === cancelled.length ? 'تم حذف جميع الطلبات الملغية من قائمتك' : `تم حذف ${success} من ${cancelled.length} طلب`);
+            await loadOrdersPage();
+        }
+
+        function renderOrdersFilteredList() {
+            updateOrdersFilterTabsUI();
+            const filtered = _customerOrdersFilter === 'all' ? _lastAllOrders
+                : _customerOrdersFilter === 'cancelled' ? _lastAllOrders.filter(o => o.status === 'cancelled')
+                : _lastAllOrders.filter(o => o.status !== 'cancelled');
+            if (filtered.length === 0) { renderEmptyFilteredState(); return; }
+            renderOrders(filtered, _lastSeqMap, _lastUnreadOrderIds);
+        }
 
         async function loadOrdersPage() {
             const userRaw = localStorage.getItem('antika_user');
@@ -466,18 +544,27 @@
                     }
                 } catch (ne) { console.warn('Could not load notifications:', ne); }
 
-                const allNormalized = (Array.isArray(allOrders) ? allOrders : []).map(normalizeOrder).filter(o => !o.customerCancelled && !o.customerHidden);
+                // 🔒 إزالة استبعاد customerCancelled: الطلب اللي يلغيه العميل يبقى ظاهراً بحالة "ملغي" (زي إلغاء الأدمن تماماً)
+                // ولا يختفي إلا لو العميل حذفه صراحة من قائمته (customerHidden) عبر hideOrderForCustomer/deleteAllCancelledForCustomer
+                const allNormalized = (Array.isArray(allOrders) ? allOrders : []).map(normalizeOrder).filter(o => !o.customerHidden);
                 const seqMap = buildSeqMap(allNormalized);
-                if (allNormalized.length > 0) { renderOrders(allNormalized, seqMap, unreadOrderIds); focusOrderFromUrl(); return; }
+                _lastAllOrders = allNormalized;
+                _lastSeqMap = seqMap;
+                _lastUnreadOrderIds = unreadOrderIds;
+                if (allNormalized.length > 0) { renderOrdersFilteredList(); focusOrderFromUrl(); return; }
+                updateOrdersFilterTabsUI();
                 renderEmptyState();
                 return;
             } catch (e) { console.warn('Could not load orders from API:', e); }
 
             try {
-                const localAll = JSON.parse(localStorage.getItem('antika_orders') || '[]').map(normalizeOrder).filter(o => !o.customerCancelled && !o.customerHidden);
+                const localAll = JSON.parse(localStorage.getItem('antika_orders') || '[]').map(normalizeOrder).filter(o => !o.customerHidden);
                 const seqMap = buildSeqMap(localAll);
                 const localOrders = localAll.filter(o => !email || o.customerEmail === email);
-                if (localOrders.length > 0) { renderOrders(localOrders, seqMap); } else { renderEmptyState(); }
+                _lastAllOrders = localOrders;
+                _lastSeqMap = seqMap;
+                _lastUnreadOrderIds = new Set();
+                if (localOrders.length > 0) { renderOrdersFilteredList(); } else { updateOrdersFilterTabsUI(); renderEmptyState(); }
             } catch (e) { renderEmptyState(); }
         }
 
