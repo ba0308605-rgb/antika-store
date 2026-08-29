@@ -195,6 +195,7 @@
                 total: Number(order.total || 0),
                 items: Array.isArray(order.items) ? order.items : [],
                 customerEmail: (order.customerEmail || '').toLowerCase(),
+                orderNumber: order.orderNumber,
                 shippingCity: order.shippingCity || '',
                 shippingCost: order.shippingCost,
                 weight: order.weight,
@@ -324,7 +325,7 @@
             container.innerHTML = `
                 <div class="space-y-3">
                     ${orders.map(order => {
-                        const orderSeq = seqMap[order.id] || '—';
+                        const orderSeq = order.orderNumber || seqMap[order.id] || '—';
                         return `
                         <div class="relative border ${order.status === 'awaiting_shipping_payment' ? 'border-orange-300' : 'border-gray-200'} rounded-xl">
                             ${unreadOrderIds.has(order.id) ? `
@@ -498,19 +499,26 @@
             const cancelled = _lastAllOrders.filter(o => o.status === 'cancelled');
             if (!cancelled.length) return;
             if (!confirm(`هل تريد حذف كل الطلبات الملغية (${cancelled.length}) من قائمتك؟ لن تظهر لك مرة أخرى.`)) return;
+            const btn = document.getElementById('delete-all-cancelled-mine-btn');
+            const originalHtml = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.classList.add('opacity-70', 'cursor-not-allowed'); btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i>جارٍ الحذف...'; }
             let success = 0;
-            for (const o of cancelled) {
-                try {
-                    const res = await fetch('/api/orders/' + o.id + '/hide-for-customer', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ customerEmail: currentCustomerEmail })
-                    });
-                    if (res.ok) success++;
-                } catch (e) { /* تجاهل وتكملة الباقي */ }
+            try {
+                for (const o of cancelled) {
+                    try {
+                        const res = await fetch('/api/orders/' + o.id + '/hide-for-customer', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ customerEmail: currentCustomerEmail })
+                        });
+                        if (res.ok) success++;
+                    } catch (e) { /* تجاهل وتكملة الباقي */ }
+                }
+                alert(success === cancelled.length ? 'تم حذف جميع الطلبات الملغية من قائمتك' : `تم حذف ${success} من ${cancelled.length} طلب`);
+                await loadOrdersPage();
+            } finally {
+                if (btn) { btn.disabled = false; btn.classList.remove('opacity-70', 'cursor-not-allowed'); btn.innerHTML = originalHtml; }
             }
-            alert(success === cancelled.length ? 'تم حذف جميع الطلبات الملغية من قائمتك' : `تم حذف ${success} من ${cancelled.length} طلب`);
-            await loadOrdersPage();
         }
 
         function renderOrdersFilteredList() {

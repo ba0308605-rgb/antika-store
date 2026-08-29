@@ -566,18 +566,26 @@ async function deleteAllCancelledOrders() {
     const cancelled = (lastLoadedOrders || []).filter(o => o.status === 'cancelled');
     if (!cancelled.length) { showNotification('لا توجد طلبات ملغية للحذف', 'error'); return; }
     if (!confirm(`هل أنت متأكد من حذف جميع الطلبات الملغية (${cancelled.length} طلب)؟ هذا الإجراء لا يمكن التراجع عنه.`)) return;
+    const btn = document.getElementById('delete-all-cancelled-btn');
+    const originalHtml = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.classList.add('opacity-70', 'cursor-not-allowed'); btn.innerHTML = `<i class="fas fa-spinner fa-spin ml-1"></i>جارٍ حذف ${cancelled.length} طلب...`; }
     const token = localStorage.getItem('antika_admin_token');
     let success = 0, failed = 0;
-    for (const o of cancelled) {
-        const orderId = o._id || o.id;
-        try {
-            const res = await fetch('/api/orders/' + orderId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
-            if (res.ok) success++; else failed++;
-        } catch (e) { failed++; }
+    try {
+        for (const o of cancelled) {
+            const orderId = o._id || o.id;
+            try {
+                const res = await fetch('/api/orders/' + orderId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+                if (res.ok) success++; else failed++;
+            } catch (e) { failed++; }
+        }
+        showNotification(failed === 0 ? `تم حذف ${success} طلب ملغي بنجاح` : `تم حذف ${success}، وفشل حذف ${failed} — راجعها يدوياً`, failed ? 'error' : undefined);
+        await loadOrders();
+        if (typeof updateStats === 'function') await updateStats();
+    } finally {
+        // ما نعيد تفعيل الزر يدوياً هنا لأن renderOrdersList (داخل loadOrders) بيعيد إنشاءه من الصفر عبر ensureOrdersFilterBar/updateOrdersFilterBarUI
+        if (btn && document.body.contains(btn)) { btn.disabled = false; btn.classList.remove('opacity-70', 'cursor-not-allowed'); btn.innerHTML = originalHtml; }
     }
-    showNotification(failed === 0 ? `تم حذف ${success} طلب ملغي بنجاح` : `تم حذف ${success}، وفشل حذف ${failed} — راجعها يدوياً`, failed ? 'error' : undefined);
-    await loadOrders();
-    if (typeof updateStats === 'function') await updateStats();
 }
 
 function renderOrdersList(orders) {
