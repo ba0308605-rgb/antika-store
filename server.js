@@ -835,9 +835,11 @@ app.post('/api/orders/:id/cancel', async (req, res) => {
       return res.status(400).json({ error: '\u0644\u0627 \u064a\u0645\u0643\u0646 \u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0641\u064a \u0647\u0630\u0647 \u0627\u0644\u0645\u0631\u062d\u0644\u0629' });
     }
     const tl = order.statusTimeline || [];
-    tl.push({ status: order.status, title: '\u0625\u0644\u063a\u0627\u0621 \u0645\u0646 \u0627\u0644\u0639\u0645\u064a\u0644', message: '\u0642\u0627\u0645 \u0627\u0644\u0639\u0645\u064a\u0644 \u0628\u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0642\u0628\u0644 \u0627\u0644\u062f\u0641\u0639 \u2014 \u0627\u0644\u0633\u0628\u0628: ' + cancelReason, source: 'customer', at: new Date().toISOString() });
+    tl.push({ status: 'cancelled', title: '\u0625\u0644\u063a\u0627\u0621 \u0645\u0646 \u0627\u0644\u0639\u0645\u064a\u0644', message: '\u0642\u0627\u0645 \u0627\u0644\u0639\u0645\u064a\u0644 \u0628\u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0642\u0628\u0644 \u0627\u0644\u062f\u0641\u0639 \u2014 \u0627\u0644\u0633\u0628\u0628: ' + cancelReason, source: 'customer', at: new Date().toISOString() });
     // 🔁 إرجاع كل قطعة بالطلب لمخزون منتجها الأصلي (Transaction آمنة + سجل تدقيق) — لا يُحذف الطلب، فقط يُعلَّم ويُرجَّع مخزونه
-    const stockResult = await restoreOrderStock(ref, order, { customerCancelled: true, customerCancelledAt: new Date().toISOString(), cancelReason, cancelledBy: 'customer', statusTimeline: tl });
+    // 🔒 لازم status تتحول فعلياً لـ 'cancelled' هنا (نفس ما يصير بإلغاء الأدمن) — وإلا يفضل الطلب "غير ملغي" رسمياً
+    // ويمنع زر الحذف بالأدمن من الفتح، ويرفضه راوت الحذف نفسه رغم ظهور علامة "ألغاه العميل"
+    const stockResult = await restoreOrderStock(ref, order, { status: 'cancelled', customerCancelled: true, customerCancelledAt: new Date().toISOString(), cancelReason, cancelledBy: 'customer', statusTimeline: tl });
     res.json({ success: true, stockReturned: stockResult.success, stockReturnFailed: stockResult.failed || [] });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
