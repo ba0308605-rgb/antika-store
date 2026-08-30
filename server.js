@@ -87,7 +87,9 @@ const ADMIN_TOKEN_TTL = process.env.ADMIN_TOKEN_TTL || '8h';
 const GOOGLE_MAPS_API_KEY = (process.env.GOOGLE_MAPS_API_KEY || '').trim();
 const GOOGLE_GEOCODING_KEY = (process.env.GOOGLE_GEOCODING_KEY || '').trim();
 const OTO_API_BASE_URL = (process.env.OTO_API_BASE_URL || 'https://api.tryoto.com/rest/v2').trim();
-const OTO_API_TOKEN = (process.env.OTO_API_TOKEN || '').trim();
+// ⚠️ OTO ما يستخدم مفتاح API ثابت — يستخدم refresh_token دائم (تجيبه مرة وحدة من لوحة OTO: Settings → API Integrations → Connect)
+// وتستبدله كل ساعة بـ access_token مؤقت عبر POST /rest/v2/refreshToken. الكاش تحت يسوي هذا تلقائيًا فما تحتاج تحدّث أي متغير بيئة يدويًا كل ساعة.
+const OTO_REFRESH_TOKEN = (process.env.OTO_REFRESH_TOKEN || process.env.OTO_API_TOKEN || '').trim();
 const OTO_PICKUP_LOCATION_CODE = (process.env.OTO_PICKUP_LOCATION_CODE || '').trim();
 const OTO_DEFAULT_DELIVERY_OPTION_ID = (process.env.OTO_DEFAULT_DELIVERY_OPTION_ID || '').trim();
 const OTO_ORDER_PREFIX = (process.env.OTO_ORDER_PREFIX || 'ANTIKA').trim();
@@ -104,7 +106,21 @@ const MAX_OTP_ATTEMPTS = 5;
 // HELPERS
 // ============================================
 function generateOTP() { return Math.floor(100000 + Math.random() * 900000).toString(); }
-function isOTOConfigured() { return Boolean(OTO_API_TOKEN && OTO_PICKUP_LOCATION_CODE); }
+function isOTOConfigured() { return Boolean(OTO_REFRESH_TOKEN && OTO_PICKUP_LOCATION_CODE); }
+// 🔁 كاش access_token بالذاكرة — OTO يعطيه صلاحية ساعة وحدة بس، فنجدده تلقائيًا قبل ما ينتهي بـ5 دقايق أمان
+let _otoAccessTokenCache = { token: '', expiresAt: 0 };
+async function getOTOAccessToken() {
+  if (_otoAccessTokenCache.token && Date.now() < _otoAccessTokenCache.expiresAt) return _otoAccessTokenCache.token;
+  if (!OTO_REFRESH_TOKEN) throw new Error('OTO_REFRESH_TOKEN \u063a\u064a\u0631 \u0645\u0636\u0628\u0648\u0637');
+  const url = OTO_API_BASE_URL.replace(/\/$/, '') + '/refreshToken';
+  const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: OTO_REFRESH_TOKEN }) });
+  const text = await response.text();
+  let data = {};
+  try { data = text ? JSON.parse(text) : {}; } catch (_) { data = {}; }
+  if (!response.ok || !data.access_token) { const err = new Error((data && data.message) || 'OTO refreshToken failed'); err.status = response.status || 500; throw err; }
+  _otoAccessTokenCache = { token: data.access_token, expiresAt: Date.now() + 55 * 60 * 1000 };
+  return _otoAccessTokenCache.token;
+}
 function sanitizePhone(raw) {
   const digits = String(raw || '').replace(/[^\d]/g, '');
   if (!digits) return '';
@@ -195,8 +211,9 @@ function requireAdmin(req, res, next) {
 }
 
 async function callOTO(path, payload) {
+  const accessToken = await getOTOAccessToken();
   const url = OTO_API_BASE_URL.replace(/\/$/, '') + '/' + String(path || '').replace(/^\//, '');
-  const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + OTO_API_TOKEN }, body: JSON.stringify(payload) });
+  const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + accessToken }, body: JSON.stringify(payload) });
   const text = await response.text();
   let data = {};
   try { data = text ? JSON.parse(text) : {}; } catch (_) { data = { raw: text }; }
@@ -894,10 +911,11 @@ app.post('/api/orders/:id/create-shipment', requireAdmin, async (req, res) => {
     if (order.otoOrderId) return res.json({ success: true, order });
     const cod = String(order.paymentMethod || '').toLowerCase() === 'cash';
     const genId = OTO_ORDER_PREFIX + '-' + order.id;
-    const payload = stripUndefinedDeep({ orderId: genId, createShipment: true, pickupLocationCode: OTO_PICKUP_LOCATION_CODE, payment_method: cod ? 'cod' : 'paid', amount: Number(order.total || 0), amount_due: cod ? Number(order.total || 0) : 0, currency: 'SAR', packageWeight: 1, customer: { name: String(order.customerName || '').trim(), mobile: sanitizePhone(order.customerPhone), email: String(order.customerEmail || '').trim(), country: 'SA', city: String(order.shippingCity || '').trim() || 'Riyadh', district: String(order.customerDistrict || '').trim(), address1: String(order.customerAddress || '').trim(),
-      // 🎯 إحداثيات GPS الدقيقة (عندنا إجبارية على كل طلب) — بدونها OTO يعتمد على النص فقط، وهذا سبب ضعف الدقة اللي كان يحصل بالإدخال اليدوي بلوحة OTO
+    const payload = stripUndefinedDeep({ orderId: genId, createShipment: true, pickupLocationCode: OTO_PICKUP_LOCATION_CODE, payment_method: cod ? 'cod' : 'paid', amount: Number(order.total || 0), amount_due: cod ? Number(order.total || 0) : 0, currency: 'SAR', packageWeight: 1, customer: { name: String(order.customerName || '').trim(), mobile: sanitizePhone(order.customerPhone), email: String(order.customerEmail || '').trim(), country: 'SA', city: String(order.shippingCity || '').trim() || 'Riyadh', district: String(order.customerDistrict || '').trim(), street: String(order.customerStreet || '').trim(), buildingNo: String(order.customerBuilding || '').trim(), postcode: String(order.customerPostal || '').trim(), address: String(order.customerAddress || '').trim(),
+      // 🎯 إحداثيات GPS الدقيقة (عندنا إجبارية على كل طلب) — أسماء الحقول lat/lon مطابقة تمامًا لتوثيق OTO الرسمي (مو lng)
+      // بدونها OTO يعتمد على النص فقط، وهذا سبب ضعف الدقة اللي كان يحصل بالإدخال اليدوي بلوحة OTO
       lat: (order.lat !== undefined && order.lat !== null) ? Number(order.lat) : undefined,
-      lng: (order.lng !== undefined && order.lng !== null) ? Number(order.lng) : undefined }, items: (order.items || []).map((item, i) => ({ productId: String(item.productId || 'item-' + i), name: String(item.name || 'Item'), price: Number(item.price || 0), rowTotal: Number(item.price || 0) * Number(item.quantity || 1), quantity: Number(item.quantity || 1), sku: String(item.productId || 'SKU-' + i) })) });
+      lon: (order.lng !== undefined && order.lng !== null) ? Number(order.lng) : undefined }, items: (order.items || []).map((item, i) => ({ productId: String(item.productId || 'item-' + i), name: String(item.name || 'Item'), price: Number(item.price || 0), rowTotal: Number(item.price || 0) * Number(item.quantity || 1), quantity: Number(item.quantity || 1), sku: String(item.productId || 'SKU-' + i) })) });
     const otoResult = await callOTO('createOrder', payload);
     const updates = { otoOrderId: String((otoResult && otoResult.orderId) || genId), otoTrackingNumber: String((otoResult && otoResult.trackingNumber) || ''), otoAwbUrl: String((otoResult && otoResult.printAWBURL) || ''), otoStatus: String((otoResult && otoResult.status) || 'shipmentCreated'), status: mapOTOStatusToOrderStatus(String((otoResult && otoResult.status) || ''), ''), shippingCarrier: 'OTO' };
     if (updates.otoTrackingNumber) updates.trackingNumber = updates.otoTrackingNumber;

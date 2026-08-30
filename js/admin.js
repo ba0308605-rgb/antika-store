@@ -719,6 +719,12 @@ function renderOrdersList(orders) {
                                 <a href="https://www.google.com/maps?q=${order.location.coordinates[1]},${order.location.coordinates[0]}" target="_blank" class="text-blue-600 hover:underline">
                                     <i class="fas fa-location-dot ml-1"></i> عرض موقع العميل على الخريطة
                                 </a>
+                            </p>
+                            <p class="text-sm mt-1 flex items-center gap-2">
+                                <span class="font-mono text-xs text-gray-500">${order.location.coordinates[1]}, ${order.location.coordinates[0]}</span>
+                                <button onclick="event.stopPropagation(); copyToClipboard('${order.location.coordinates[1]}, ${order.location.coordinates[0]}')" title="نسخ الإحداثيات للصقها بخريطة OTO" class="text-blue-500 hover:text-blue-700 text-xs">
+                                    <i class="fas fa-copy ml-1"></i>نسخ الإحداثيات لـ OTO
+                                </button>
                             </p>` : `
                             <p class="text-xs text-gray-400 mt-1">لا يوجد موقع GPS محفوظ لهذا الطلب</p>`}
                         </div>
