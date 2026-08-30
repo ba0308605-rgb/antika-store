@@ -561,6 +561,32 @@ function updateOrdersFilterBarUI() {
     if (delBtn) delBtn.classList.toggle('hidden', !(_ordersStatusFilter === 'cancelled' && cancelledCount > 0));
 }
 
+// 🚚 إنشاء شحنة OTO تلقائيًا عبر API بدل الدخول يدويًا للوحة OTO ونسخ/لصق العنوان
+// يرسل الإحداثيات (lat/lng) المحفوظة بالطلب مباشرة، فتكون دقة الموقع مضمونة بدون أي تدخل يدوي
+async function createOTOShipment(orderId) {
+    const btn = document.getElementById('oto-create-btn-' + orderId);
+    const originalHtml = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.classList.add('opacity-70', 'cursor-not-allowed'); btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i>جارٍ إنشاء الشحنة...'; }
+    try {
+        const token = localStorage.getItem('antika_admin_token');
+        const res = await fetch('/api/orders/' + orderId + '/create-shipment', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            showNotification(data.error || 'فشل إنشاء شحنة OTO', 'error');
+            if (btn) { btn.disabled = false; btn.classList.remove('opacity-70', 'cursor-not-allowed'); btn.innerHTML = originalHtml; }
+            return;
+        }
+        showNotification('تم إنشاء شحنة OTO بنجاح', 'success');
+        await loadOrders();
+    } catch (e) {
+        showNotification('تعذر الاتصال بالسيرفر', 'error');
+        if (btn) { btn.disabled = false; btn.classList.remove('opacity-70', 'cursor-not-allowed'); btn.innerHTML = originalHtml; }
+    }
+}
+
 // 🗑️ اختصار: حذف كل الطلبات الملغية دفعة وحدة (يعيد استخدام نفس منطق/تحققات راوت الحذف الفردي لكل طلب)
 async function deleteAllCancelledOrders() {
     const cancelled = (lastLoadedOrders || []).filter(o => o.status === 'cancelled');
@@ -707,6 +733,8 @@ function renderOrdersList(orders) {
                             <p class="text-sm text-gray-700">المدة المتوقعة: ${order.shippingEta || '-'}</p>
                             ${order.otoTrackingNumber ? `<p class="text-sm text-gray-700 flex items-center gap-2">تتبع OTO: <span class="font-mono text-xs">${order.otoTrackingNumber}</span> <button onclick="copyToClipboard('${order.otoTrackingNumber}')" title="نسخ" class="text-blue-500 hover:text-blue-700"><i class="fas fa-copy"></i></button></p>` : `<p class="text-sm text-gray-700">تتبع OTO: -</p>`}
                             <p class="text-sm text-gray-700">مرجع OTO: ${order.otoOrderId || '-'}</p>
+                            ${order.otoAwbUrl ? `<p class="text-sm"><a href="${order.otoAwbUrl}" target="_blank" class="text-blue-600 hover:underline"><i class="fas fa-file-lines ml-1"></i>طباعة بوليصة الشحن (AWB)</a></p>` : ''}
+                            ${!order.otoOrderId ? `<button onclick="event.stopPropagation(); createOTOShipment('${orderId}')" id="oto-create-btn-${orderId}" class="w-full mt-2 text-xs bg-antika-gold text-white rounded-lg py-1.5 hover:opacity-90 transition"><i class="fas fa-truck-fast ml-1"></i> إنشاء شحنة OTO تلقائياً (بإحداثيات GPS المحفوظة)</button>` : ''}
                             <p class="font-bold text-antika-gold text-lg mt-2 pt-2 border-t border-amber-200">الإجمالي: ${order.total} ر.س</p>
                             <div class="flex gap-2 mt-2">
                                 <button onclick="event.stopPropagation(); printOrderInvoice('${orderId}')" class="flex-1 text-xs bg-white border border-amber-300 text-amber-800 rounded-lg py-1.5 hover:bg-amber-100 transition"><i class="fas fa-print ml-1"></i> طباعة فاتورة الطلب</button>
