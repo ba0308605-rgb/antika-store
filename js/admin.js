@@ -561,6 +561,37 @@ function updateOrdersFilterBarUI() {
     if (delBtn) delBtn.classList.toggle('hidden', !(_ordersStatusFilter === 'cancelled' && cancelledCount > 0));
 }
 
+// ✏️ إظهار/إخفاء فورم إدخال رقم التتبع يدوياً (لطلبات تم إنشاء شحنتها مباشرة من لوحة OTO بدون زر الإنشاء التلقائي)
+function toggleManualTrackingForm(orderId) {
+    const el = document.getElementById('manual-tracking-form-' + orderId);
+    if (el) el.classList.toggle('hidden');
+}
+
+async function saveManualTracking(orderId) {
+    const dcName = (document.getElementById('manual-dc-name-' + orderId).value || '').trim();
+    const dcNumber = (document.getElementById('manual-dc-number-' + orderId).value || '').trim();
+    const dcUrl = (document.getElementById('manual-dc-url-' + orderId).value || '').trim();
+    if (!dcNumber) { showNotification('اكتب رقم التتبع على الأقل', 'error'); return; }
+    const btn = document.getElementById('manual-tracking-save-' + orderId);
+    const originalHtml = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i>جارٍ الحفظ...'; }
+    try {
+        const token = localStorage.getItem('antika_admin_token');
+        const res = await fetch('/api/orders/' + orderId, {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dcTrackingNumber: dcNumber, deliveryCompany: dcName, otoTrackingUrl: dcUrl })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'فشل حفظ رقم التتبع');
+        showNotification('تم حفظ رقم التتبع، وبيظهر للعميل تلقائياً بصفحة طلباته', 'success');
+        await loadOrders();
+    } catch (e) {
+        showNotification(e.message || 'تعذر حفظ رقم التتبع', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
+    }
+}
+
 // 🚚 إنشاء شحنة OTO تلقائيًا عبر API بدل الدخول يدويًا للوحة OTO ونسخ/لصق العنوان
 // يرسل الإحداثيات (lat/lng) المحفوظة بالطلب مباشرة، فتكون دقة الموقع مضمونة بدون أي تدخل يدوي
 async function createOTOShipment(orderId) {
@@ -651,7 +682,7 @@ function renderOrdersList(orders) {
         const searchTerm = (searchInput && searchInput.value || '').trim().toLowerCase();
         const filteredOrders = !searchTerm ? statusFiltered : statusFiltered.filter(o => {
             const haystack = [
-                o.orderNumber, o.orderCode, o.customerName, o.customerPhone,
+                o.orderNumber, o.customerName, o.customerPhone,
                 o.customerEmail, o.otoTrackingNumber
             ].filter(Boolean).join(' ').toLowerCase();
             return haystack.includes(searchTerm);
@@ -682,7 +713,6 @@ function renderOrdersList(orders) {
                 <div class="p-3 flex justify-between items-center gap-2 cursor-pointer select-none flex-wrap" onclick="toggleOrderDetails('${orderId}')">
                     <div class="flex items-center gap-3 flex-wrap">
                         <span class="font-bold text-gray-800">طلب #${orderSeq}</span>
-                        ${order.orderCode ? `<span class="text-xs font-mono text-gray-400">${order.orderCode}</span>` : ''}
                         <span class="text-sm text-gray-600">${safeText(order.customerName)}</span>
                         <span class="text-xs text-gray-400">${orderDate}</span>
                         ${order.customerCancelled ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-red-600 text-white"><i class="fas fa-ban ml-1"></i>ألغاه العميل</span>` : ''}
@@ -731,7 +761,6 @@ function renderOrdersList(orders) {
                         <div class="bg-amber-50 border border-amber-100 rounded-xl p-3">
                             <h4 class="font-bold text-amber-900 mb-2 flex items-center gap-2"><i class="fas fa-receipt"></i> ملخص الطلب</h4>
                             <p class="text-sm text-gray-700">رقم الطلب: <span class="font-bold">#${orderSeq}</span></p>
-                            ${order.orderCode ? `<p class="text-sm text-gray-700 flex items-center gap-2">كود التتبع: <span class="font-mono text-xs">${order.orderCode}</span> <button onclick="copyToClipboard('${order.orderCode}')" title="نسخ" class="text-blue-500 hover:text-blue-700"><i class="fas fa-copy"></i></button></p>` : ''}
                             <p class="text-sm text-gray-700">عدد المنتجات: ${order.items.length}</p>
                             <p class="text-sm text-gray-700">طريقة الدفع: ${order.paymentMethod}</p>
                             <p class="text-sm text-gray-700">الوزن: ${order.weight ? order.weight + ' كجم' : '-'}</p>
@@ -742,6 +771,15 @@ function renderOrdersList(orders) {
                             <p class="text-xs text-gray-400">مرجع OTO الداخلي: ${order.otoTrackingNumber || '-'} • ${order.otoOrderId || '-'}</p>
                             ${order.otoAwbUrl ? `<p class="text-sm"><a href="${order.otoAwbUrl}" target="_blank" class="text-blue-600 hover:underline"><i class="fas fa-file-lines ml-1"></i>طباعة بوليصة الشحن (AWB)</a></p>` : ''}
                             ${!order.otoOrderId ? `<button onclick="event.stopPropagation(); createOTOShipment('${orderId}')" id="oto-create-btn-${orderId}" class="w-full mt-2 text-xs bg-antika-gold text-white rounded-lg py-1.5 hover:opacity-90 transition"><i class="fas fa-truck-fast ml-1"></i> إنشاء شحنة OTO تلقائياً (بإحداثيات GPS المحفوظة)</button>` : ''}
+                            <button onclick="event.stopPropagation(); toggleManualTrackingForm('${orderId}')" class="w-full mt-2 text-xs text-gray-500 hover:text-gray-700 underline">
+                                <i class="fas fa-pen ml-1"></i>${order.dcTrackingNumber ? 'تعديل' : 'إدخال'} رقم تتبع يدوياً (لو سويت الشحنة مباشرة من لوحة OTO)
+                            </button>
+                            <div id="manual-tracking-form-${orderId}" class="hidden mt-2 p-3 bg-white border border-gray-200 rounded-lg space-y-2" onclick="event.stopPropagation()">
+                                <input type="text" id="manual-dc-name-${orderId}" placeholder="اسم شركة الشحن (مثال: سمسا)" value="${order.deliveryCompany || ''}" class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5">
+                                <input type="text" id="manual-dc-number-${orderId}" placeholder="رقم التتبع الحقيقي من شركة الشحن" value="${order.dcTrackingNumber || ''}" class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 font-mono">
+                                <input type="text" id="manual-dc-url-${orderId}" placeholder="رابط تتبع الشحنة (اختياري)" value="${order.otoTrackingUrl || ''}" class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5">
+                                <button onclick="saveManualTracking('${orderId}')" id="manual-tracking-save-${orderId}" class="w-full text-xs bg-antika-gold text-white rounded-lg py-1.5 hover:opacity-90 transition"><i class="fas fa-save ml-1"></i>حفظ رقم التتبع</button>
+                            </div>
                             <p class="font-bold text-antika-gold text-lg mt-2 pt-2 border-t border-amber-200">الإجمالي: ${order.total} ر.س</p>
                             <div class="flex gap-2 mt-2">
                                 <button onclick="event.stopPropagation(); printOrderInvoice('${orderId}')" class="flex-1 text-xs bg-white border border-amber-300 text-amber-800 rounded-lg py-1.5 hover:bg-amber-100 transition"><i class="fas fa-print ml-1"></i> طباعة فاتورة الطلب</button>
@@ -902,7 +940,6 @@ function buildReceiptHtml({ title, orderSeq, orderDate, order, refNote }) {
         </div>
         <div class="meta">
             <div><strong>رقم الطلب:</strong> #${orderSeq}</div>
-            ${order.orderCode ? `<div><strong>كود التتبع:</strong> ${order.orderCode}</div>` : ''}
             <div><strong>التاريخ:</strong> ${orderDate}</div>
         </div>
         ${refNote ? `<div class="box" style="background:#fff5f5;border-color:#fecaca;">${refNote}</div>` : ''}

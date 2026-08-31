@@ -157,6 +157,7 @@ function generateOrderCode(orderId, date) {
   const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
   return 'ANT-' + y + m + dd + '-' + String(orderId || '').slice(-6).toUpperCase();
 }
+// ⚠️ generateOrderCode أصبحت غير مستخدمة (كانت تولّد كود ثانوي "كود التتبع" بدون فائدة حقيقية، وكانت تسبب لخبطة مع رقم الطلب الحقيقي orderNumber ومع رقم تتبع الشحن الفعلي dcTrackingNumber) — أبقيناها معرّفة فقط تحسبًا لأي كود قديم يستدعيها، بدون أي استخدام فعلي جديد.
 // رقم طلب تسلسلي ثابت (يبدأ من 1000) — لا يتغيّر أبداً حتى لو حُذفت طلبات لاحقاً، عكس الترقيم المحسوب بالفرونت
 async function getNextOrderNumber() {
   const counterRef = db.collection('counters').doc('orders');
@@ -182,8 +183,9 @@ async function sendEmailViaResend({ to, subject, html }) {
 async function sendOrderCustomerNotification(order, { title, message, subject } = {}) {
   const toEmail = String((order && order.customerEmail) || '').trim();
   if (!toEmail || !toEmail.includes('@')) return { sent: false };
-  const orderCode = String((order && order.orderCode) || (order && order.id) || '');
-  const safeSubject = subject || ('\u062a\u062d\u062f\u064a\u062b \u0637\u0644\u0628\u0643 ' + (orderCode ? '#' + orderCode : '')).trim();
+  // 📧 نستخدم رقم الطلب الحقيقي (orderNumber) بعنوان الإيميل بدل أي كود ثانوي — نفس الرقم اللي يشوفه العميل بكل مكان، بدون أي لخبطة
+  const orderRef = (order && order.orderNumber) ? String(order.orderNumber) : String((order && order.id) || '');
+  const safeSubject = subject || ('\u062a\u062d\u062f\u064a\u062b \u0637\u0644\u0628\u0643 ' + (orderRef ? '#' + orderRef : '')).trim();
   const safeTitle = title || '\u062a\u062d\u062f\u064a\u062b \u062c\u062f\u064a\u062f \u0639\u0644\u0649 \u0637\u0644\u0628\u0643';
   const safeMessage = message || ('\u062d\u0627\u0644\u0629 \u0627\u0644\u0637\u0644\u0628: ' + getOrderStatusTextAr(order && order.status));
   // \u0625\u0634\u0639\u0627\u0631 \u062f\u0627\u062e\u0644 \u0627\u0644\u062a\u0637\u0628\u064a\u0642 (\u064a\u063a\u0630\u064a \u0627\u0644\u062c\u0631\u0633 \u0641\u0648\u0642 \u0623\u064a\u0642\u0648\u0646\u0629 \u0627\u0644\u0637\u0644\u0628\u0627\u062a)
@@ -686,7 +688,7 @@ async function restoreOrderStock(ref, order, extraOrderUpdates) {
   try {
     await db.collection('stock_return_logs').add(stripUndefinedDeep({
       orderId: ref.id,
-      orderCode: (order && order.orderCode) || null,
+      orderNumber: (order && order.orderNumber) || null,
       customerEmail: (order && order.customerEmail) || null,
       success: txResult.success,
       restoredItems: txResult.restored,
@@ -752,7 +754,7 @@ app.post('/api/orders', async (req, res) => {
     payload.statusTimeline = [{ status: payload.status, title: '\u062a\u0645 \u0627\u0633\u062a\u0644\u0627\u0645 \u0627\u0644\u0637\u0644\u0628', message: '\u0627\u0633\u062a\u0644\u0645\u0646\u0627 \u0637\u0644\u0628\u0643 \u0628\u0646\u062c\u0627\u062d.', source: 'system', at: new Date().toISOString() }];
     payload.orderNumber = await getNextOrderNumber();
     const ref = await db.collection('orders').add(payload);
-    if (!payload.orderCode) await ref.update({ orderCode: generateOrderCode(ref.id, new Date()) });
+    if (!payload.orderCode) { /* 🗑️ توليد orderCode أُلغي — رقم الطلب الحقيقي orderNumber (أعلاه) هو المرجع الوحيد المعروض للعميل من الآن */ }
     try { for (const item of (payload.items || [])) { const qty = Number(item.quantity || 1); if (!item.productId) continue; const pd = await db.collection('products').doc(item.productId).get(); if (pd.exists) await pd.ref.update({ stock: Math.max(0, (pd.data().stock || 0) - qty) }); } } catch (se) { console.error('Stock error:', se.message); }
     const doc = await ref.get();
     const order = Object.assign({ id: ref.id }, doc.data());
@@ -766,7 +768,10 @@ app.put('/api/orders/:id', requireAdmin, async (req, res) => {
     const doc = await ref.get();
     if (!doc.exists) return res.status(404).json({ error: 'Order not found' });
     const order = Object.assign({ id: doc.id }, doc.data());
-    const allowed = ['status','shippingCarrier','trackingNumber','trackingUrl','shipmentReference','shippingMethod','shippingMethodLabel','shippingCity','shippingRegion','shippingEta','shippingCost','shippingBaseFee','shippingMethodExtraFee','codFee','paymentMethod','otoTrackingNumber','otoAwbUrl','otoStatus','otoDcStatus','total','weight','awaitingPaymentSince','isPaid','paidAt'];
+    const allowed = ['status','shippingCarrier','trackingNumber','trackingUrl','shipmentReference','shippingMethod','shippingMethodLabel','shippingCity','shippingRegion','shippingEta','shippingCost','shippingBaseFee','shippingMethodExtraFee','codFee','paymentMethod','otoTrackingNumber','otoAwbUrl','otoStatus','otoDcStatus',
+      // 🚚 إدخال يدوي لرقم تتبع شركة الشحن الحقيقية لما الأدمن ينشئ الشحنة بنفسه مباشرة من لوحة OTO (بدون المرور بزر الإنشاء التلقائي)
+      'dcTrackingNumber','deliveryCompany','otoTrackingUrl',
+      'total','weight','awaitingPaymentSince','isPaid','paidAt'];
     const updates = {};
     const before = { status: String(order.status || ''), trackingNumber: String(order.trackingNumber || '') };
     for (const field of allowed) { if (Object.prototype.hasOwnProperty.call(req.body, field) && req.body[field] !== undefined) updates[field] = req.body[field]; }
