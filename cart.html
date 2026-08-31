@@ -1498,7 +1498,10 @@
 
                 // ---- RESERVATION: create order directly, no payment collected here ----
                 const createdOrder = await API.createOrder(orderData);
-                const newOrderNumber = (createdOrder && (createdOrder.id || createdOrder.orderId || (createdOrder.order && createdOrder.order.id))) || null;
+                // 🔢 نعرض رقم الطلب الحقيقي التسلسلي (orderNumber) دائماً — مو معرّف قاعدة البيانات الخام (createdOrder.id)
+                // اللي كان يطلع بصيغة عشوائية طويلة (زي Cfj9tupMYThWv3qxWrvs) ومختلف تماماً عن رقم الطلب الحقيقي اللي يشوفه العميل بصفحة طلباته وعند الأدمن
+                const rawOrderNumber = (createdOrder && (createdOrder.orderNumber || (createdOrder.order && createdOrder.order.orderNumber))) || null;
+                const newOrderNumber = rawOrderNumber ? ('#' + rawOrderNumber) : null;
                 // سجّل استخدام الكوبون إن وُجد
                 if (checkoutAppliedCoupon && checkoutAppliedCoupon.code) {
                     try { await fetch('/api/coupons/use', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: checkoutAppliedCoupon.code }) }); } catch(e) {}
