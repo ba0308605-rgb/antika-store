@@ -1576,6 +1576,14 @@ async function loadProductForEdit(productId) {
             skuInput.value = product.sku || '';
             console.log('📝 SKU loaded:', product.sku, 'Input value:', skuInput.value);
         }
+        // منتج موجود مسبقاً — الرمز يُعامل كيدوي افتراضياً (ما يتغير إلا لو ضغط الأدمن "توليد رمز جديد")
+        const skuAutoInput = document.getElementById('product-sku-auto');
+        const skuCategoryInput = document.getElementById('product-sku-category');
+        if (skuAutoInput) skuAutoInput.value = '0';
+        if (skuCategoryInput) {
+            const firstCatId = (product.categories || [])[0];
+            skuCategoryInput.value = firstCatId ? (resolveSkuMainCategoryId(firstCatId) || '') : '';
+        }
         if (originalPriceInput) originalPriceInput.value = product.price || '';
         if (salePriceInput) salePriceInput.value = product.salePrice || product.discountPrice || product.price || '';
         const beforeDiscountInput = document.getElementById('product-before-discount');
@@ -2217,6 +2225,7 @@ async function deleteCategory(id) {
 async function populateCategorySelects() {
     try {
         const categories = await API.getCategories();
+        _allAdminCategories = categories; // تحديث الكاش المستخدم بتوليد رمز SKU
         
         // Product categories container — hierarchical
         const container = document.getElementById('product-categories');
@@ -2285,6 +2294,74 @@ async function populateCategorySelects() {
         console.error('Error populating categories:', error);
     }
 }
+
+// ============================================
+// SKU تلقائي حسب القسم الرئيسي
+// ============================================
+
+// يرجّع القسم الرئيسي المسؤول عن توليد الـSKU: أول قسم مختار بالترتيب، ولو كان فرعي نطلع لأبيه الرئيسي
+function resolveSkuMainCategoryId(checkedCategoryId) {
+    const cat = (_allAdminCategories || []).find(c => String(c.id) === String(checkedCategoryId));
+    if (!cat) return null;
+    return cat.parentId ? cat.parentId : cat.id;
+}
+
+async function fetchSkuPreview(categoryId) {
+    const token = localStorage.getItem('antika_admin_token');
+    const res = await fetch('/api/categories/' + encodeURIComponent(categoryId) + '/preview-sku', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) throw new Error('تعذر توليد رمز المنتج');
+    return res.json();
+}
+
+async function updateSkuFromCategories() {
+    const checked = Array.from(document.querySelectorAll('.category-checkbox:checked'));
+    const skuInput = document.getElementById('product-sku');
+    const autoFlag = document.getElementById('product-sku-auto');
+    const catField = document.getElementById('product-sku-category');
+    if (!skuInput || !autoFlag || !catField || checked.length === 0) return;
+
+    const mainCatId = resolveSkuMainCategoryId(checked[0].value);
+    if (!mainCatId) return;
+    catField.value = mainCatId;
+
+    // نولّد رمز جديد بس لو الحقل فاضي أو كان آخر توليد تلقائي (يعني الأدمن ما كتب شي يدوي)
+    if (autoFlag.value === '1' || !skuInput.value.trim()) {
+        try {
+            const preview = await fetchSkuPreview(mainCatId);
+            if (preview && preview.sku) {
+                skuInput.value = preview.sku;
+                autoFlag.value = '1';
+            }
+        } catch (e) { console.error('SKU preview error:', e); }
+    }
+}
+
+async function regenerateSku() {
+    const catField = document.getElementById('product-sku-category');
+    const catId = catField?.value;
+    if (!catId) { showNotification('اختر قسم رئيسي للمنتج أولاً', 'error'); return; }
+    try {
+        const preview = await fetchSkuPreview(catId);
+        if (preview && preview.sku) {
+            document.getElementById('product-sku').value = preview.sku;
+            document.getElementById('product-sku-auto').value = '1';
+        }
+    } catch (e) {
+        showNotification('تعذر توليد رمز جديد', 'error');
+    }
+}
+
+// تفويض حدث تغيير التصنيفات (checkboxes تُبنى ديناميكياً، فالمستمع يكون على الحاوية الثابتة)
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('product-categories');
+    if (container) {
+        container.addEventListener('change', (e) => {
+            if (e.target.classList.contains('category-checkbox')) updateSkuFromCategories();
+        });
+    }
+});
 
 // ============================================
 // BULK DISCOUNT
@@ -2973,6 +3050,8 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
         const salePrice = parseFloat(document.getElementById('product-sale-price')?.value) || 0;
         
         const skuValue = document.getElementById('product-sku')?.value || '';
+        const skuAutoValue = document.getElementById('product-sku-auto')?.value === '1';
+        const skuCategoryValue = document.getElementById('product-sku-category')?.value || '';
         const freeShippingValue = document.getElementById('product-free-shipping')?.checked || false;
         console.log('🔍 SKU (variants):', skuValue);
         console.log('🔍 Free Shipping (variants):', freeShippingValue);
@@ -2980,6 +3059,8 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
         const productData = {
             name: document.getElementById('product-name')?.value || '',
             sku: skuValue,
+            skuAutoGenerated: skuAutoValue,
+            skuCategoryId: skuCategoryValue,
             price: salePrice,
             categories: selectedCategories,
             stock: parseInt(document.getElementById('product-stock')?.value) || 0,

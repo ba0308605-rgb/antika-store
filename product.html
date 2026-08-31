@@ -868,7 +868,7 @@
                 <!-- Actual Content -->
                 <div id="productContent" class="hidden">
                     <h1 class="product-title" id="productName">---</h1>
-                    <div class="sku-badge">رقم الموديل: <span id="productSku">---</span></div>
+                    <div class="sku-badge" id="skuBadge">رقم الموديل: <span id="productSku">---</span></div>
 
                     <div class="price-box">
                         <div class="flex items-center flex-wrap gap-2">
@@ -1173,7 +1173,14 @@
             // Basic Info
             document.getElementById('productName').textContent = product.name;
             document.getElementById('breadcrumbName').textContent = product.name;
-            document.getElementById('productSku').textContent = product.sku || id || '00000000';
+            // نعرض شارة رقم الموديل فقط لو متوفر فعلاً — بدل عرض معرّف داخلي مو مفهوم للعميل
+            const skuBadgeEl = document.getElementById('skuBadge');
+            if (product.sku) {
+                document.getElementById('productSku').textContent = product.sku;
+                if (skuBadgeEl) skuBadgeEl.classList.remove('hidden');
+            } else if (skuBadgeEl) {
+                skuBadgeEl.classList.add('hidden');
+            }
             document.getElementById('productPrice').textContent = displayPrice + ' ر.س';
             document.getElementById('productDesc').textContent = product.description || (product.name + ' - منتج عالي الجودة من أنتيكا ستور');
             
