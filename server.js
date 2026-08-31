@@ -917,9 +917,18 @@ app.post('/api/orders/:id/create-shipment', requireAdmin, async (req, res) => {
       lat: (order.lat !== undefined && order.lat !== null) ? Number(order.lat) : undefined,
       lon: (order.lng !== undefined && order.lng !== null) ? Number(order.lng) : undefined }, items: (order.items || []).map((item, i) => ({ productId: String(item.productId || 'item-' + i), name: String(item.name || 'Item'), price: Number(item.price || 0), rowTotal: Number(item.price || 0) * Number(item.quantity || 1), quantity: Number(item.quantity || 1), sku: String(item.productId || 'SKU-' + i) })) });
     const otoResult = await callOTO('createOrder', payload);
-    const updates = { otoOrderId: String((otoResult && otoResult.orderId) || genId), otoTrackingNumber: String((otoResult && otoResult.trackingNumber) || ''), otoAwbUrl: String((otoResult && otoResult.printAWBURL) || ''), otoStatus: String((otoResult && otoResult.status) || 'shipmentCreated'), status: mapOTOStatusToOrderStatus(String((otoResult && otoResult.status) || ''), ''), shippingCarrier: 'OTO' };
-    if (updates.otoTrackingNumber) updates.trackingNumber = updates.otoTrackingNumber;
-    if (updates.otoAwbUrl) updates.trackingUrl = updates.otoAwbUrl;
+    const updates = {
+      otoOrderId: String((otoResult && otoResult.orderId) || genId),
+      otoTrackingNumber: String((otoResult && otoResult.trackingNumber) || ''), // مرجع OTO الداخلي (للاستخدام الإداري فقط، ما يُعرض للعميل)
+      // 🚚 الرقم الحقيقي الصادر من شركة الشحن الفعلية نفسها — هذا اللي يشتغل على موقع الشركة (أرامكس/سمسا/إلخ) مباشرة
+      dcTrackingNumber: String((otoResult && otoResult.dcTrackingNumber) || ''),
+      deliveryCompany: String((otoResult && otoResult.deliveryCompany) || ''),
+      otoAwbUrl: String((otoResult && otoResult.printAWBURL) || ''), // رابط طباعة بوليصة الشحن (للأدمن)
+      otoTrackingUrl: String((otoResult && otoResult.trackingUrl) || ''), // رابط تتبع فعلي من شركة الشحن (للعميل)
+      otoStatus: String((otoResult && otoResult.status) || 'shipmentCreated'),
+      status: mapOTOStatusToOrderStatus(String((otoResult && otoResult.status) || ''), ''),
+      shippingCarrier: 'OTO'
+    };
     await ref.update(updates);
     const ud = await ref.get();
     return res.json({ success: true, oto: otoResult, order: Object.assign({ id: ud.id }, ud.data()) });
@@ -930,7 +939,20 @@ app.post('/api/oto/webhook', async (req, res) => {
     if (OTO_WEBHOOK_AUTH_KEY) { const ac = [req.headers.authorization, req.headers['x-oto-key'], req.headers['x-api-key']].filter(Boolean).map(v => String(v).replace(/^Bearer\s+/i, '').trim()); if (!ac.includes(OTO_WEBHOOK_AUTH_KEY)) return res.status(401).json({ error: 'Unauthorized' }); }
     const events = Array.isArray(req.body) ? req.body : [req.body];
     let count = 0;
-    for (const ev of events) { const oid = String((ev && ev.orderId) || (ev && ev.order_id) || '').trim(); if (!oid) continue; const s = await db.collection('orders').where('otoOrderId', '==', oid).get(); if (s.empty) continue; const st = String((ev && ev.status) || '').trim(); await s.docs[0].ref.update({ otoStatus: st, status: mapOTOStatusToOrderStatus(st, ''), otoLastWebhookAt: new Date().toISOString() }); count++; }
+    for (const ev of events) {
+      const oid = String((ev && ev.orderId) || (ev && ev.order_id) || '').trim();
+      if (!oid) continue;
+      const s = await db.collection('orders').where('otoOrderId', '==', oid).get();
+      if (s.empty) continue;
+      const st = String((ev && ev.status) || '').trim();
+      // 🚚 الويبهوك ممكن يجيب/يحدّث رقم شركة الشحن الحقيقي واسمها لو ما كانت متوفرة وقت الإنشاء (بعض الشركات تتأخر بتوليد رقمها)
+      const webhookUpdates = { otoStatus: st, status: mapOTOStatusToOrderStatus(st, ''), otoLastWebhookAt: new Date().toISOString() };
+      if (ev && ev.dcTrackingNumber) webhookUpdates.dcTrackingNumber = String(ev.dcTrackingNumber);
+      if (ev && ev.deliveryCompany) webhookUpdates.deliveryCompany = String(ev.deliveryCompany);
+      if (ev && ev.trackingUrl) webhookUpdates.otoTrackingUrl = String(ev.trackingUrl);
+      await s.docs[0].ref.update(webhookUpdates);
+      count++;
+    }
     return res.json({ success: true, updatedCount: count });
   } catch (err) { return res.status(500).json({ error: err.message }); }
 });
