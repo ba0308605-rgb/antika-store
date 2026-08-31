@@ -3571,8 +3571,9 @@ async function confirmDeleteReviewInProduct(reviewId, productId, productName) {
     const DRAFT_KEY = 'antika_product_draft';
     
     function saveDraft() {
+        // ⚠️ product-sku مستثنى عمداً — يتولّد تلقائياً من القسم الآن، وحفظه بالمسودة يسبب تكرار نفس الرمز القديم بكل فتح
         const fields = ['product-name', 'product-description', 'product-price', 
-                       'product-original-price', 'product-stock', 'product-sku'];
+                       'product-original-price', 'product-stock'];
         const draft = {};
         fields.forEach(id => {
             const el = document.getElementById(id);
@@ -3592,6 +3593,7 @@ async function confirmDeleteReviewInProduct(reviewId, productId, productName) {
             const draft = JSON.parse(raw);
             Object.keys(draft).forEach(id => {
                 if (id === 'categories') return;
+                if (id === 'product-sku') return; // استثناء SKU حتى لو موجود بمسودة قديمة محفوظة سابقاً بالمتصفح
                 const el = document.getElementById(id);
                 if (el && draft[id]) el.value = draft[id];
             });
