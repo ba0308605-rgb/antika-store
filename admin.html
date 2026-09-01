@@ -1107,11 +1107,12 @@
                             <div>
                                 <label class="block text-gray-700 font-bold mb-2">رقم الموديل (SKU) <span class="text-red-500">*</span>:</label>
                                 <div class="flex gap-2">
-                                    <input type="text" id="product-sku" required class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none uppercase" placeholder="اختر تصنيف رئيسي أولاً" oninput="document.getElementById('product-sku-auto').value='0'; this.value=this.value.toUpperCase();">
+                                    <input type="text" id="product-sku" required class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none uppercase" placeholder="اختر تصنيف رئيسي أولاً" oninput="document.getElementById('product-sku-auto').value='0'; this.value=this.value.toUpperCase(); clearSkuError();">
                                     <button type="button" onclick="regenerateSku()" title="توليد رمز جديد" class="shrink-0 bg-gray-100 hover:bg-gray-200 rounded-lg px-4 text-lg">🔄</button>
                                 </div>
                                 <input type="hidden" id="product-sku-auto" value="0">
                                 <input type="hidden" id="product-sku-category" value="">
+                                <p id="product-sku-error" class="hidden text-red-500 text-xs mt-1">⚠️ رقم الموديل هذا مستخدم مسبقاً بمنتج آخر</p>
                                 <p class="text-xs text-gray-400 mt-1">يتولّد تلقائياً حسب أول قسم رئيسي تختاره بالأعلى، وتقدر تعدّله يدوياً.</p>
                             </div>
                             <div>

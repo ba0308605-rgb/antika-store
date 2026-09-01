@@ -1502,6 +1502,7 @@ function openProductModal(productId = null) {
         console.error('Modal or form not found');
         return;
     }
+    if (typeof clearSkuError === 'function') clearSkuError();
 
     // Reset form
     form.reset();
@@ -2347,10 +2348,37 @@ async function regenerateSku() {
         if (preview && preview.sku) {
             document.getElementById('product-sku').value = preview.sku;
             document.getElementById('product-sku-auto').value = '1';
+            clearSkuError();
         }
     } catch (e) {
         showNotification('تعذر توليد رمز جديد', 'error');
     }
+}
+
+// تمييز حقل SKU بحدود حمراء + رسالة عند رفض السيرفر بسبب تكرار الرمز
+function markSkuError(message) {
+    const input = document.getElementById('product-sku');
+    const errorMsg = document.getElementById('product-sku-error');
+    if (input) {
+        input.classList.remove('border-gray-200');
+        input.classList.add('border-red-500');
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        input.focus();
+    }
+    if (errorMsg) {
+        if (message) errorMsg.textContent = '⚠️ ' + message;
+        errorMsg.classList.remove('hidden');
+    }
+}
+
+function clearSkuError() {
+    const input = document.getElementById('product-sku');
+    const errorMsg = document.getElementById('product-sku-error');
+    if (input) {
+        input.classList.remove('border-red-500');
+        input.classList.add('border-gray-200');
+    }
+    if (errorMsg) errorMsg.classList.add('hidden');
 }
 
 // تفويض حدث تغيير التصنيفات (checkboxes تُبنى ديناميكياً، فالمستمع يكون على الحاوية الثابتة)
@@ -3123,6 +3151,7 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
                 hideWaitToast(); showNotification('تم إضافة المنتج بنجاح! 🎉');
             }
 
+            clearSkuError();
             closeProductModal();
             await loadAdminProducts();
             await updateStats();
@@ -3132,6 +3161,9 @@ document.getElementById('product-form')?.addEventListener('submit', async functi
             hideWaitToast();
         const errMsg = error?.message || 'حدث خطأ أثناء حفظ المنتج';
         showNotification(errMsg, 'error');
+        if (errMsg.includes('رقم الموديل') || errMsg.toLowerCase().includes('sku')) {
+            markSkuError(errMsg);
+        }
         }
     });
 })();

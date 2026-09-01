@@ -113,7 +113,7 @@ const API = {
             });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || 'Failed to update product');
+                throw new Error(errorData.error || errorData.message || 'Failed to update product');
             }
             return await response.json();
         } catch (error) {
