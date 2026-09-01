@@ -2340,11 +2340,21 @@ async function updateSkuFromCategories() {
 }
 
 async function regenerateSku() {
+    // نقرأ التصنيفات المؤشّرة فعلياً بالنموذج الآن (مو قيمة مخزّنة من وقت فتح المنتج) — يحل مشكلة المنتجات القديمة
+    const checked = Array.from(document.querySelectorAll('.category-checkbox:checked'));
+    if (checked.length === 0) {
+        showNotification('أشّر على تصنيف واحد على الأقل للمنتج أولاً', 'error');
+        return;
+    }
+    const mainCatId = resolveSkuMainCategoryId(checked[0].value);
+    if (!mainCatId) {
+        showNotification('تعذر تحديد القسم الرئيسي لهذا التصنيف', 'error');
+        return;
+    }
     const catField = document.getElementById('product-sku-category');
-    const catId = catField?.value;
-    if (!catId) { showNotification('اختر قسم رئيسي للمنتج أولاً', 'error'); return; }
+    if (catField) catField.value = mainCatId;
     try {
-        const preview = await fetchSkuPreview(catId);
+        const preview = await fetchSkuPreview(mainCatId);
         if (preview && preview.sku) {
             document.getElementById('product-sku').value = preview.sku;
             document.getElementById('product-sku-auto').value = '1';
