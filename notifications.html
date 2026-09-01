@@ -156,10 +156,11 @@
                 const data = await res.json();
                 const notifications = data.notifications || [];
 
-                // تحديد كمقروء تلقائياً
+                // نظهر زر "تحديد الكل كمقروء" لو فيه غير مقروء — بدون تعليمها مقروءة تلقائياً بمجرد فتح الصفحة
                 if (notifications.some(n => !n.read)) {
                     document.getElementById('mark-read-btn').classList.remove('hidden');
-                    await markAllRead(false);
+                } else {
+                    document.getElementById('mark-read-btn').classList.add('hidden');
                 }
 
                 renderNotifications(notifications);
@@ -167,6 +168,20 @@
                 document.getElementById('notif-container').innerHTML =
                     '<div class="bg-white rounded-xl p-8 text-center text-red-400">حدث خطأ في تحميل الإشعارات</div>';
             }
+        }
+
+        // يتعامل مع Firestore Timestamp (يوصل بعد التحويل لـ JSON كـ {_seconds, _nanoseconds} أو {seconds, nanoseconds})
+        // بدل new Date() المباشر اللي يفشل مع هذي الصيغة ويطلع "Invalid Date" — نفس الحل المستخدم بلوحة الأدمن
+        function formatNotifDate(value) {
+            if (!value) return '';
+            let d;
+            if (typeof value === 'object' && (value._seconds != null || value.seconds != null)) {
+                const secs = value._seconds != null ? value._seconds : value.seconds;
+                d = new Date(secs * 1000);
+            } else {
+                d = new Date(value);
+            }
+            return isNaN(d.getTime()) ? '' : d.toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' });
         }
 
         function renderNotifications(notifications) {
@@ -178,13 +193,14 @@
             }
 
             container.innerHTML = notifications.map(function(n) {
-                const date = new Date(n.updatedAt).toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
+                const date = formatNotifDate(n.updatedAt);
                 const unreadClass = !n.read ? ' unread' : '';
+                const cardClick = ' onclick="markSingleRead(\'' + n.id + '\')"';
                 const closeBtn = '<button onclick="event.preventDefault();event.stopPropagation();deleteNotification(\'' + n.id + '\')" class="text-gray-300 hover:text-red-500 transition flex-shrink-0 p-1" title="حذف الإشعار"><i class="fas fa-times"></i></button>';
 
                 // إشعار متعلق بحالة الطلب
                 if (n.type === 'order') {
-                    return '<div class="notif-card' + unreadClass + '" id="notif-' + n.id + '">'
+                    return '<div class="notif-card' + unreadClass + ' cursor-pointer" id="notif-' + n.id + '"' + cardClick + '>'
                         + '<div class="notif-icon">📦</div>'
                         + '<div style="flex:1">'
                         + '<p class="font-bold text-gray-800 text-sm mb-1">' + (n.title || 'تحديث على طلبك') + '</p>'
@@ -206,7 +222,7 @@
                 else if (total === 2) msg = 'أعجب شخصان بتعليقك';
                 else msg = 'أعجب ' + total + ' أشخاص بتعليقك';
 
-                return '<div class="notif-card' + unreadClass + '" id="notif-' + n.id + '">' 
+                return '<div class="notif-card' + unreadClass + ' cursor-pointer" id="notif-' + n.id + '"' + cardClick + '>' 
                     + '<div class="notif-icon">❤️</div>'
                     + '<div style="flex:1">'
                     + '<p class="font-bold text-gray-800 text-sm mb-1">' + msg + '</p>'
@@ -218,6 +234,26 @@
                     + closeBtn
                     + '</div>';
             }).join('');
+        }
+
+        // تعليم إشعار واحد بعينه كمقروء لما يضغط عليه العميل — ينقص عداد الجرس بمقدار واحد فقط، وباقي الإشعارات تبقى كما هي
+        async function markSingleRead(id) {
+            const card = document.getElementById('notif-' + id);
+            const wasUnread = card && card.classList.contains('unread');
+            if (!wasUnread) return; // مقروء أصلاً، ما فيه داعي نطلب من السيرفر شي
+            try {
+                await fetch('/api/notifications/' + id + '/read', { method: 'PUT' });
+                if (card) card.classList.remove('unread');
+                // تحديث جرس الهيدر (ينقص بمقدار هذا الإشعار فقط، الباقي غير المقروء يبقى كما هو)
+                const header = document.querySelector('antika-header');
+                if (header && typeof header.updateNotifCount === 'function' && currentUserEmail) {
+                    header.updateNotifCount(currentUserEmail);
+                }
+                // لو ما بقي أي إشعار غير مقروء، نخفي زر "تحديد الكل كمقروء"
+                if (!document.querySelector('.notif-card.unread')) {
+                    document.getElementById('mark-read-btn').classList.add('hidden');
+                }
+            } catch (e) { console.warn('Could not mark notification as read:', e); }
         }
 
         async function deleteNotification(id) {
