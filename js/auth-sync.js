@@ -1,24 +1,14 @@
 // 🔄 Auth Sync - يعمل في جميع الصفحات
-// يتحقق من حالة تسجيل الدخول كل ثانية
+// ⚠️ الفحص الدوري (setInterval كل ثانية) اتشال بالكامل — كان يسبب حلقة reload لا نهائية:
+// Firebase يحتاج جزء من الثانية لتأكيد الجلسة عند كل تحميل صفحة، وهذا التأخير الطبيعي كان
+// يُفسَّر خطأً كـ"تسجيل دخول/خروج حقيقي" فيعمل reload، وبعد الـreload يتكرر نفس التأخير الطبيعي
+// فيُكتشف "تغيير" من جديد ويعمل reload مرة ثانية... وهكذا بلا توقف.
+// المزامنة الصحيحة بين التبويبات موجودة أصلاً بـ js/header.js عبر حدث المتصفح الحقيقي 'storage'
+// (يشتغل بس لو التغيير صار بتبويب مختلف، فما يقع بنفس هذا الفخ إطلاقاً).
 
 (function() {
-    let lastAuthState = localStorage.getItem('antika_user') !== null;
-    
-    // فحص دوري كل ثانية
-    setInterval(() => {
-        const currentAuthState = localStorage.getItem('antika_user') !== null;
-        
-        // إذا تغيرت الحالة
-        if (currentAuthState !== lastAuthState) {
-            console.log('🔔 Auth state changed:', lastAuthState, '→', currentAuthState);
-            lastAuthState = currentAuthState;
-            
-            // إعادة تحميل الصفحة لتطبيق التغييرات
-            window.location.reload();
-        }
-    }, 1000);
-    
-    // استقبال رسائل من صفحات أخرى
+    // نبقي استقبال رسائل تسجيل الخروج عبر BroadcastChannel كطبقة حماية إضافية فقط
+    // (بدون أي فحص دوري/polling يسبب مشاكل)
     if ('BroadcastChannel' in window) {
         const bc = new BroadcastChannel('auth_sync');
         bc.onmessage = async (event) => {
