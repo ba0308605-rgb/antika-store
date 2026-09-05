@@ -523,7 +523,67 @@ let _ordersStatusFilter = 'all'; // 'all' | 'active' | 'cancelled'
 
 function setOrdersStatusFilter(filter) {
     _ordersStatusFilter = filter;
+    // 🔔 فتح تبويب "نشطة" أو "ملغية" تحديداً هو الوحيد اللي يصفّر عداد الطلبات الجديدة لهذي الفئة
+    if (filter === 'active' || filter === 'cancelled') markOrdersCategorySeen(filter);
     renderOrdersList(lastLoadedOrders || []);
+}
+
+// 🔔 نظام شارة "الطلبات الجديدة غير المفتوحة" بلوحة الأدمن (نشطة/ملغية بشكل منفصل)
+// يخزّن بـ localStorage (خاص بهذا المتصفح) آخر وقت فتح فيه الأدمن كل فئة على حدة
+const ORDERS_SEEN_KEY_ACTIVE = 'antika_admin_orders_seen_active_ts';
+const ORDERS_SEEN_KEY_CANCELLED = 'antika_admin_orders_seen_cancelled_ts';
+
+function _getOrdersSeenTs(key) {
+    const v = localStorage.getItem(key);
+    return v ? parseInt(v, 10) : null;
+}
+
+function _setOrdersSeenTs(key, ts) {
+    try { localStorage.setItem(key, String(ts)); } catch (e) { /* تجاهل */ }
+}
+
+// يحسب عدد الطلبات الجديدة (بعد آخر مرة فُتحت فيها كل فئة) — وأول مرة يهيّئ نقطة البداية
+// على أحدث طلب موجود حالياً، عشان ما يظهر فجأة عداد ضخم لطلبات قديمة أصلاً
+function computeOrdersUnseenCounts(orders) {
+    const activeOrders = (orders || []).filter(o => o.status !== 'cancelled');
+    const cancelledOrders = (orders || []).filter(o => o.status === 'cancelled');
+    const tsOf = o => orderDateMs(o.createdAt || o.date);
+
+    let activeSeenTs = _getOrdersSeenTs(ORDERS_SEEN_KEY_ACTIVE);
+    if (activeSeenTs === null) {
+        activeSeenTs = activeOrders.reduce((max, o) => Math.max(max, tsOf(o)), 0);
+        _setOrdersSeenTs(ORDERS_SEEN_KEY_ACTIVE, activeSeenTs);
+    }
+    let cancelledSeenTs = _getOrdersSeenTs(ORDERS_SEEN_KEY_CANCELLED);
+    if (cancelledSeenTs === null) {
+        cancelledSeenTs = cancelledOrders.reduce((max, o) => Math.max(max, tsOf(o)), 0);
+        _setOrdersSeenTs(ORDERS_SEEN_KEY_CANCELLED, cancelledSeenTs);
+    }
+
+    return {
+        unseenActive: activeOrders.filter(o => tsOf(o) > activeSeenTs).length,
+        unseenCancelled: cancelledOrders.filter(o => tsOf(o) > cancelledSeenTs).length
+    };
+}
+
+// يعلّم فئة معينة (active/cancelled) كـ"مُشاهدة الآن" — يُستدعى فقط عند فتح تبويبها تحديداً
+function markOrdersCategorySeen(category) {
+    const key = category === 'cancelled' ? ORDERS_SEEN_KEY_CANCELLED : ORDERS_SEEN_KEY_ACTIVE;
+    _setOrdersSeenTs(key, Date.now());
+}
+
+// يحدّث شارة العدد الإجمالي (نشطة + ملغية غير المفتوحة) بجانب "الطلبات" بالقائمة الجانبية
+function updateOrdersSidebarBadge(orders) {
+    const badge = document.getElementById('orders-sidebar-badge');
+    if (!badge) return;
+    const { unseenActive, unseenCancelled } = computeOrdersUnseenCounts(orders || []);
+    const total = unseenActive + unseenCancelled;
+    if (total > 0) {
+        badge.textContent = total > 99 ? '99+' : String(total);
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
 }
 
 // ينشئ شريط تبويبات الفلترة مرة وحدة فوق قائمة الطلبات (لو ما كان موجود أصلاً بـ admin.html)
@@ -536,8 +596,8 @@ function ensureOrdersFilterBar() {
     bar.className = 'flex flex-wrap items-center gap-2 mb-4';
     bar.innerHTML = `
         <button data-filter="all" class="orders-filter-btn px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">الكل</button>
-        <button data-filter="active" class="orders-filter-btn px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">نشطة</button>
-        <button data-filter="cancelled" class="orders-filter-btn px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">ملغية</button>
+        <button data-filter="active" class="orders-filter-btn px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">نشطة <span id="orders-tab-badge-active" class="hidden mr-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 inline-flex items-center justify-center align-middle"></span></button>
+        <button data-filter="cancelled" class="orders-filter-btn px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">ملغية <span id="orders-tab-badge-cancelled" class="hidden mr-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 inline-flex items-center justify-center align-middle"></span></button>
         <button id="delete-all-cancelled-btn" onclick="deleteAllCancelledOrders()" class="hidden mr-auto px-4 py-1.5 rounded-lg text-sm font-bold bg-red-600 hover:bg-red-700 text-white transition-colors">
             <i class="fas fa-trash ml-1"></i>حذف جميع الطلبات الملغية
         </button>
@@ -559,6 +619,20 @@ function updateOrdersFilterBarUI() {
     const cancelledCount = (lastLoadedOrders || []).filter(o => o.status === 'cancelled').length;
     const delBtn = document.getElementById('delete-all-cancelled-btn');
     if (delBtn) delBtn.classList.toggle('hidden', !(_ordersStatusFilter === 'cancelled' && cancelledCount > 0));
+
+    // 🔔 تحديث شارات عدد الطلبات الجديدة (تبويب نشطة/ملغية + الشارة الإجمالية بالقائمة الجانبية)
+    const { unseenActive, unseenCancelled } = computeOrdersUnseenCounts(lastLoadedOrders || []);
+    const activeBadge = document.getElementById('orders-tab-badge-active');
+    if (activeBadge) {
+        activeBadge.textContent = unseenActive > 99 ? '99+' : String(unseenActive);
+        activeBadge.classList.toggle('hidden', unseenActive === 0);
+    }
+    const cancelledBadge = document.getElementById('orders-tab-badge-cancelled');
+    if (cancelledBadge) {
+        cancelledBadge.textContent = unseenCancelled > 99 ? '99+' : String(unseenCancelled);
+        cancelledBadge.classList.toggle('hidden', unseenCancelled === 0);
+    }
+    updateOrdersSidebarBadge(lastLoadedOrders || []);
 }
 
 // ✏️ إظهار/إخفاء فورم إدخال رقم التتبع يدوياً (لطلبات تم إنشاء شحنتها مباشرة من لوحة OTO بدون زر الإنشاء التلقائي)

@@ -340,7 +340,7 @@
                                 <div class="flex items-center gap-3 flex-wrap">
                                     <span class="font-bold text-gray-800">طلب #${orderSeq}</span>
                                     <span class="text-xs text-gray-400">${formatDate(order.date)}</span>
-                                    ${order.status === 'cancelled' ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold ${order.cancelledBy === 'customer' ? 'bg-gray-200 text-gray-700' : 'bg-red-600 text-white'}"><i class="fas fa-ban ml-1"></i>${order.cancelledBy === 'customer' ? 'ألغيته أنت' : 'ألغته الإدارة'}</span>` : ''}
+                                    ${order.status === 'cancelled' ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold ${order.cancelledBy === 'customer' ? 'bg-gray-200 text-gray-700' : 'bg-red-600 text-white'}"><i class="fas fa-ban ml-1"></i>${order.cancelledBy === 'customer' ? 'تم الإلغاء من قبلك' : 'ألغته الإدارة'}</span>` : ''}
                                 </div>
                                 <div class="flex items-center gap-3">
                                     <span class="px-3 py-1 rounded-full text-sm font-semibold ${getStatusClass(order.status)}">${getStatusText(order.status)}</span>
@@ -537,7 +537,8 @@
                         if (res.ok) success++;
                     } catch (e) { /* تجاهل وتكملة الباقي */ }
                 }
-                alert(success === cancelled.length ? 'تم حذف جميع الطلبات الملغية من قائمتك' : `تم حذف ${success} من ${cancelled.length} طلب`);
+                const doneMsg = success === cancelled.length ? 'تم حذف جميع الطلبات الملغية من قائمتك' : `تم حذف ${success} من ${cancelled.length} طلب`;
+                if (typeof showToast === 'function') { showToast(doneMsg); } else { alert(doneMsg); }
                 await loadOrdersPage();
             } finally {
                 if (btn) { btn.disabled = false; btn.classList.remove('opacity-70', 'cursor-not-allowed'); btn.innerHTML = originalHtml; }
