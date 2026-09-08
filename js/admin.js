@@ -642,10 +642,11 @@ function toggleManualTrackingForm(orderId) {
 }
 
 async function saveManualTracking(orderId) {
+    const otoRef = (document.getElementById('manual-oto-ref-' + orderId).value || '').trim();
     const dcName = (document.getElementById('manual-dc-name-' + orderId).value || '').trim();
     const dcNumber = (document.getElementById('manual-dc-number-' + orderId).value || '').trim();
     const dcUrl = (document.getElementById('manual-dc-url-' + orderId).value || '').trim();
-    if (!dcNumber) { showNotification('اكتب رقم التتبع على الأقل', 'error'); return; }
+    if (!otoRef && !dcNumber) { showNotification('اكتب رقم التعريف في OTO أو رقم التتبع على الأقل', 'error'); return; }
     const btn = document.getElementById('manual-tracking-save-' + orderId);
     const originalHtml = btn ? btn.innerHTML : '';
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i>جارٍ الحفظ...'; }
@@ -654,11 +655,11 @@ async function saveManualTracking(orderId) {
         const res = await fetch('/api/orders/' + orderId, {
             method: 'PUT',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dcTrackingNumber: dcNumber, deliveryCompany: dcName, otoTrackingUrl: dcUrl })
+            body: JSON.stringify({ otoOrderId: otoRef, dcTrackingNumber: dcNumber, deliveryCompany: dcName, otoTrackingUrl: dcUrl })
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'فشل حفظ رقم التتبع');
-        showNotification('تم حفظ رقم التتبع، وبيظهر للعميل تلقائياً بصفحة طلباته', 'success');
+        showNotification('تم الحفظ، وبيظهر رقم التتبع للعميل تلقائياً بصفحة طلباته', 'success');
         await loadOrders();
     } catch (e) {
         showNotification(e.message || 'تعذر حفظ رقم التتبع', 'error');
@@ -846,13 +847,14 @@ function renderOrdersList(orders) {
                             <p class="text-sm text-gray-700">المدة المتوقعة: ${order.shippingEta || '-'}</p>
                             ${order.dcTrackingNumber ? `<p class="text-sm text-gray-700 flex items-center gap-2">رقم التتبع (${order.deliveryCompany || 'شركة الشحن'}): <span class="font-mono text-xs font-bold">${order.dcTrackingNumber}</span> <button onclick="copyToClipboard('${order.dcTrackingNumber}')" title="نسخ" class="text-blue-500 hover:text-blue-700"><i class="fas fa-copy"></i></button></p>` : `<p class="text-sm text-gray-700">رقم التتبع: -</p>`}
                             ${order.otoTrackingUrl ? `<p class="text-sm"><a href="${order.otoTrackingUrl}" target="_blank" class="text-blue-600 hover:underline"><i class="fas fa-arrow-up-left-from-square ml-1"></i>تتبع الشحنة (رابط شركة الشحن)</a></p>` : ''}
-                            <p class="text-xs text-gray-400">مرجع OTO الداخلي: ${order.otoTrackingNumber || '-'} • ${order.otoOrderId || '-'}</p>
+                            <p class="text-xs text-gray-400 flex items-center gap-2">مرجع OTO الداخلي: ${order.otoTrackingNumber || '-'} • ${order.otoOrderId || '-'} ${order.otoOrderId ? `<button onclick="event.stopPropagation(); copyToClipboard('${order.otoOrderId}')" title="نسخ رقم التعريف" class="text-blue-500 hover:text-blue-700"><i class="fas fa-copy"></i></button>` : ''}</p>
                             ${order.otoAwbUrl ? `<p class="text-sm"><a href="${order.otoAwbUrl}" target="_blank" class="text-blue-600 hover:underline"><i class="fas fa-file-lines ml-1"></i>طباعة بوليصة الشحن (AWB)</a></p>` : ''}
                             ${!order.otoOrderId ? `<button onclick="event.stopPropagation(); createOTOShipment('${orderId}')" id="oto-create-btn-${orderId}" class="w-full mt-2 text-xs bg-antika-gold text-white rounded-lg py-1.5 hover:opacity-90 transition"><i class="fas fa-truck-fast ml-1"></i> إنشاء شحنة OTO تلقائياً (بإحداثيات GPS المحفوظة)</button>` : ''}
                             <button onclick="event.stopPropagation(); toggleManualTrackingForm('${orderId}')" class="w-full mt-2 text-xs text-gray-500 hover:text-gray-700 underline">
-                                <i class="fas fa-pen ml-1"></i>${order.dcTrackingNumber ? 'تعديل' : 'إدخال'} رقم تتبع يدوياً (لو سويت الشحنة مباشرة من لوحة OTO)
+                                <i class="fas fa-pen ml-1"></i>${(order.dcTrackingNumber || order.otoOrderId) ? 'تعديل' : 'إدخال'} رقم التعريف/التتبع يدوياً (لو سويت الشحنة مباشرة من لوحة OTO)
                             </button>
                             <div id="manual-tracking-form-${orderId}" class="hidden mt-2 p-3 bg-white border border-gray-200 rounded-lg space-y-2" onclick="event.stopPropagation()">
+                                <input type="text" id="manual-oto-ref-${orderId}" placeholder="رقم/معرف الطلب في OTO (لتلقاه سريعاً هناك)" value="${order.otoOrderId || ''}" class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 font-mono">
                                 <input type="text" id="manual-dc-name-${orderId}" placeholder="اسم شركة الشحن (مثال: سمسا)" value="${order.deliveryCompany || ''}" class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5">
                                 <input type="text" id="manual-dc-number-${orderId}" placeholder="رقم التتبع الحقيقي من شركة الشحن" value="${order.dcTrackingNumber || ''}" class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 font-mono">
                                 <input type="text" id="manual-dc-url-${orderId}" placeholder="رابط تتبع الشحنة (اختياري)" value="${order.otoTrackingUrl || ''}" class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5">

@@ -841,8 +841,8 @@ app.put('/api/orders/:id', requireAdmin, async (req, res) => {
     if (!doc.exists) return res.status(404).json({ error: 'Order not found' });
     const order = Object.assign({ id: doc.id }, doc.data());
     const allowed = ['status','shippingCarrier','trackingNumber','trackingUrl','shipmentReference','shippingMethod','shippingMethodLabel','shippingCity','shippingRegion','shippingEta','shippingCost','shippingBaseFee','shippingMethodExtraFee','codFee','paymentMethod','otoTrackingNumber','otoAwbUrl','otoStatus','otoDcStatus',
-      // 🚚 إدخال يدوي لرقم تتبع شركة الشحن الحقيقية لما الأدمن ينشئ الشحنة بنفسه مباشرة من لوحة OTO (بدون المرور بزر الإنشاء التلقائي)
-      'dcTrackingNumber','deliveryCompany','otoTrackingUrl',
+      // 🚚 إدخال يدوي لرقم تتبع شركة الشحن الحقيقية ومرجع OTO لما الأدمن ينشئ الشحنة بنفسه مباشرة من لوحة OTO (بدون المرور بزر الإنشاء التلقائي)
+      'dcTrackingNumber','deliveryCompany','otoTrackingUrl','otoOrderId',
       'total','weight','awaitingPaymentSince','isPaid','paidAt'];
     const updates = {};
     const before = { status: String(order.status || ''), trackingNumber: String(order.trackingNumber || '') };
