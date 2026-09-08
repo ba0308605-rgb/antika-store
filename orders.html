@@ -181,6 +181,9 @@
     <script>
         document.addEventListener('DOMContentLoaded', loadOrdersPage);
 
+        // 🖱️ نتأكد إذا الجهاز يدعم "تمرير ماوس" فعلي (كمبيوتر) عشان ما نصير نفعّل حدث hover على الجوال ويتعارض مع اللمس
+        const CAN_HOVER = Boolean(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches);
+
         function formatDate(value) {
             const dt = value ? new Date(value) : new Date();
             if (Number.isNaN(dt.getTime())) return '-';
@@ -210,7 +213,13 @@
                 customerCancelled: Boolean(order.customerCancelled),
                 customerHidden: Boolean(order.customerHidden),
                 cancelReason: order.cancelReason || '',
-                cancelledBy: order.cancelledBy || ''
+                cancelledBy: order.cancelledBy || '',
+                // 🕒 تواريخ كل مرحلة — لعرضها بتولتيب خط مراحل الطلب عند اللمس/تمرير الماوس
+                paidAt: order.paidAt,
+                shippedAt: order.shippedAt,
+                outForDeliveryAt: order.outForDeliveryAt,
+                deliveredAt: order.deliveredAt,
+                statusTimeline: Array.isArray(order.statusTimeline) ? order.statusTimeline : []
             };
         }
 
@@ -251,6 +260,51 @@
                 </a>
             `;
         }
+
+        // 🕒 يدور بآخر تسجيل بـ statusTimeline لحالة معينة (لو تكرر التحديث ياخذ آخر مرة وصلها)
+        function getStageTimelineDate(order, statusKey) {
+            const tl = Array.isArray(order.statusTimeline) ? order.statusTimeline : [];
+            for (let i = tl.length - 1; i >= 0; i--) {
+                if (tl[i] && tl[i].status === statusKey) return tl[i].at;
+            }
+            return null;
+        }
+
+        // 🕒 تاريخ كل مرحلة بخط سير الطلب — من حقول التاريخ المباشرة، وإلا يرجع لسجل statusTimeline
+        function getStageDate(order, stageKey) {
+            if (stageKey === 'confirming_availability') return order.date;
+            if (stageKey === 'paid') return order.paidAt || getStageTimelineDate(order, 'processing');
+            if (stageKey === 'processing') return getStageTimelineDate(order, 'processing');
+            if (stageKey === 'shipped') return order.shippedAt || getStageTimelineDate(order, 'shipped');
+            if (stageKey === 'out_for_delivery') return order.outForDeliveryAt || getStageTimelineDate(order, 'out_for_delivery');
+            if (stageKey === 'delivered') return order.deliveredAt || getStageTimelineDate(order, 'delivered');
+            return null;
+        }
+
+        // 🛈 إظهار/إخفاء تولتيب مرحلة الطلب (يشتغل بتمرير الماوس بالكمبيوتر، وبلمسة واحدة بالجوال)
+        function showStepTooltip(event, label, dateText) {
+            const tip = document.getElementById('global-step-tooltip');
+            if (!tip) return;
+            const rect = event.currentTarget.getBoundingClientRect();
+            document.getElementById('global-step-tooltip-label').textContent = label;
+            document.getElementById('global-step-tooltip-date').textContent = dateText;
+            tip.style.left = (rect.left + rect.width / 2) + 'px';
+            tip.style.top = (rect.top - 8) + 'px';
+            tip.style.transform = 'translate(-50%, -100%)';
+            tip.classList.remove('hidden');
+        }
+        function hideStepTooltip() {
+            const tip = document.getElementById('global-step-tooltip');
+            if (tip) tip.classList.add('hidden');
+        }
+        function toggleStepTooltip(event, label, dateText) {
+            const tip = document.getElementById('global-step-tooltip');
+            if (tip && !tip.classList.contains('hidden')) { hideStepTooltip(); return; }
+            showStepTooltip(event, label, dateText);
+        }
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.step-item')) hideStepTooltip();
+        });
 
         function buildOrderStepper(order) {
             if (order.status === 'cancelled' || order.customerCancelled) return '';
@@ -303,8 +357,13 @@
                 const connector = idx < stages.length - 1
                     ? `<div class="flex-1 h-0.5 mt-3.5 md:mt-4 ${state === 'done' ? 'bg-green-500' : 'bg-gray-200'}"></div>`
                     : '';
+                const stageDate = getStageDate(order, stage.key);
+                const dateText = stageDate ? formatDate(stageDate) : (state === 'upcoming' ? 'لسا ما وصلت' : '-');
+                const safeLabel = stage.label.replace(/'/g, "\\'");
+                const safeDate = dateText.replace(/'/g, "\\'");
+                const hoverAttrs = CAN_HOVER ? `onmouseenter="showStepTooltip(event, '${safeLabel}', '${safeDate}')" onmouseleave="hideStepTooltip()"` : '';
                 return `
-                    <div class="flex flex-col items-center flex-1 min-w-0">
+                    <div class="flex flex-col items-center flex-1 min-w-0 step-item cursor-pointer" ${hoverAttrs} onclick="event.stopPropagation(); toggleStepTooltip(event, '${safeLabel}', '${safeDate}')">
                         <div class="w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center shrink-0 ${circleClasses[state]}">${inner}</div>
                         <span class="hidden sm:block text-[10px] md:text-xs mt-1.5 text-center leading-tight ${labelClasses[state]}">${stage.label}</span>
                     </div>
@@ -758,5 +817,10 @@
             window.location.href = 'index.html';
         }
     </script>
+    <!-- 🛈 تولتيب واحد مشترك لخط مراحل الطلب — يظهر عند اللمس (جوال) أو تمرير الماوس (كمبيوتر)، وموضعه ثابت (fixed) عشان ما ينقص بحدود الكارد (overflow-hidden) -->
+    <div id="global-step-tooltip" class="hidden fixed z-[999] bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-center pointer-events-none" style="min-width:120px;">
+        <p id="global-step-tooltip-label" class="text-xs font-bold text-gray-700 whitespace-nowrap"></p>
+        <p id="global-step-tooltip-date" class="text-[10px] text-gray-400 mt-0.5 whitespace-nowrap"></p>
+    </div>
 </body>
 </html>
