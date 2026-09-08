@@ -818,6 +818,10 @@ function renderOrdersList(orders) {
                             <p class="text-sm text-gray-700"><i class="fas fa-phone ml-2 text-antika-gold w-4 inline-block"></i>${order.customerPhone}</p>
                             <p class="text-sm text-gray-700"><i class="fas fa-envelope ml-2 text-antika-gold w-4 inline-block"></i>${safeText(order.customerEmail)}</p>
                             <p class="text-sm text-gray-700"><i class="fas fa-map-marker-alt ml-2 text-antika-gold w-4 inline-block"></i>${safeText(order.customerAddress)}</p>
+                            ${order.customerStreet ? `<p class="text-sm text-gray-700"><i class="fas fa-road ml-2 text-antika-gold w-4 inline-block"></i>الشارع: ${safeText(order.customerStreet)}</p>` : ''}
+                            ${order.customerBuilding ? `<p class="text-sm text-gray-700"><i class="fas fa-building ml-2 text-antika-gold w-4 inline-block"></i>رقم المبنى: ${safeText(order.customerBuilding)}</p>` : ''}
+                            ${order.customerLandmark ? `<p class="text-sm text-gray-700"><i class="fas fa-mosque ml-2 text-antika-gold w-4 inline-block"></i>أقرب معلم: ${safeText(order.customerLandmark)}</p>` : ''}
+                            ${order.customerAltPhone ? `<p class="text-sm text-gray-700"><i class="fas fa-phone-volume ml-2 text-antika-gold w-4 inline-block"></i>جوال إضافي: ${safeText(order.customerAltPhone)}</p>` : ''}
                             ${order.location && order.location.coordinates ? `
                             <p class="text-sm mt-1">
                                 <a href="https://www.google.com/maps?q=${order.location.coordinates[1]},${order.location.coordinates[0]}" target="_blank" class="text-blue-600 hover:underline">
@@ -1019,8 +1023,9 @@ function buildReceiptHtml({ title, orderSeq, orderDate, order, refNote }) {
         ${refNote ? `<div class="box" style="background:#fff5f5;border-color:#fecaca;">${refNote}</div>` : ''}
         <div class="box">
             <strong>بيانات العميل</strong>
-            <p style="margin:6px 0 0;">${order.customerName || ''} — ${order.customerPhone || ''}</p>
+            <p style="margin:6px 0 0;">${order.customerName || ''} — ${order.customerPhone || ''}${order.customerAltPhone ? ' / ' + order.customerAltPhone : ''}</p>
             <p style="margin:2px 0 0;color:#555;">${order.customerAddress || ''}</p>
+            ${order.customerLandmark ? `<p style="margin:2px 0 0;color:#555;">أقرب معلم: ${order.customerLandmark}</p>` : ''}
         </div>
         <table>
             <thead><tr><th>المنتج</th><th>الكمية</th><th>سعر القطعة</th><th>الإجمالي</th></tr></thead>
