@@ -1044,6 +1044,9 @@ function buildReceiptHtml({ title, orderSeq, orderDate, order, refNote }) {
             <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${(it.quantity * it.price).toLocaleString('ar-SA')} ر.س</td>
         </tr>
     `).join('');
+    // 🧾 المجموع الفرعي (المنتجات فقط) محسوب من عناصر الطلب — والشحن بند منفصل، نفس أسلوب نون/أمازون/سلة
+    const itemsSubtotal = (order.items || []).reduce((sum, it) => sum + (Number(it.quantity || 0) * Number(it.price || 0)), 0);
+    const shippingDisplay = order.shippingCost != null ? Number(order.shippingCost).toFixed(2) + ' ر.س' : '0.00 ر.س';
     return `
     <html dir="rtl" lang="ar">
     <head>
@@ -1058,7 +1061,9 @@ function buildReceiptHtml({ title, orderSeq, orderDate, order, refNote }) {
             .box { border:1px solid #eee; border-radius:8px; padding:14px; margin-bottom:16px; }
             table { width:100%; border-collapse:collapse; margin-top:10px; }
             th { background:#f8f5ef; padding:8px; text-align:center; font-size:13px; }
-            .total-row td { font-weight:bold; font-size:16px; padding-top:12px; }
+            .subtotal-row td { padding-top:12px; font-size:14px; color:#444; }
+            .shipping-row td { font-size:14px; color:#444; }
+            .total-row td { font-weight:bold; font-size:16px; padding-top:8px; border-top:1px solid #eee; }
             @media print { body { padding: 10px; } }
         </style>
     </head>
@@ -1083,6 +1088,8 @@ function buildReceiptHtml({ title, orderSeq, orderDate, order, refNote }) {
             <thead><tr><th>المنتج</th><th>الكمية</th><th>سعر القطعة</th><th>الإجمالي</th></tr></thead>
             <tbody>${itemsRows}</tbody>
             <tfoot>
+                <tr class="subtotal-row"><td colspan="3" style="text-align:left;">المجموع الفرعي (المنتجات)</td><td style="text-align:center;">${itemsSubtotal.toLocaleString('ar-SA')} ر.س</td></tr>
+                <tr class="shipping-row"><td colspan="3" style="text-align:left;">الشحن</td><td style="text-align:center;">${shippingDisplay}</td></tr>
                 <tr class="total-row"><td colspan="3" style="text-align:left;">الإجمالي الكلي</td><td style="text-align:center;">${order.total} ر.س</td></tr>
             </tfoot>
         </table>
@@ -3885,6 +3892,25 @@ async function toggleMaintenance() {
     updateMaintenanceStatus(data.enabled, data.key);
     showNotification(data.enabled ? '✅ تم تفعيل وضع الصيانة' : '✅ تم إيقاف وضع الصيانة');
   } catch (e) { showNotification('❌ حدث خطأ، حاول مرة ثانية', 'error'); }
+}
+
+// 🧾 إعداد عام للمتجر بالكامل: تفعيل/إخفاء فاتورة الطلب للعميل من صفحة "طلباتي"
+async function loadInvoiceSettings() {
+  try {
+    const settings = await API.getSettings();
+    document.getElementById('invoice-toggle').checked = settings.customerInvoiceEnabled === true;
+  } catch (e) { console.error('loadInvoiceSettings:', e); }
+}
+
+async function toggleCustomerInvoice() {
+  const enabled = document.getElementById('invoice-toggle').checked;
+  try {
+    await API.updateSettings({ customerInvoiceEnabled: enabled });
+    showNotification(enabled ? '✅ صار العميل يقدر يطبع فاتورة طلبه' : '✅ تم إخفاء الفاتورة عن العميل');
+  } catch (e) {
+    document.getElementById('invoice-toggle').checked = !enabled; // رجّع الحالة لو فشل الحفظ
+    showNotification('❌ حدث خطأ، حاول مرة ثانية', 'error');
+  }
 }
 
 async function saveMaintenanceKey() {

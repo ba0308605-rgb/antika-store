@@ -236,6 +236,11 @@
                 lat: order.lat,
                 lng: order.lng,
                 customerAddress: order.customerAddress || '',
+                // 🧾 مطلوبة لعرضها على فاتورة العميل (لو مفعّلة)
+                customerName: order.customerName || '',
+                customerPhone: order.customerPhone || '',
+                customerAltPhone: order.customerAltPhone || '',
+                customerLandmark: order.customerLandmark || '',
                 dcTrackingNumber: order.dcTrackingNumber || '',
                 deliveryCompany: order.deliveryCompany || '',
                 otoTrackingUrl: order.otoTrackingUrl || '',
@@ -503,6 +508,10 @@
                                     <span class="font-bold text-gray-700">الإجمالي</span>
                                     <span class="font-bold text-antika-gold text-lg">${order.total} ر.س</span>
                                 </div>
+                                ${_customerInvoiceEnabled ? `
+                                <button onclick="event.stopPropagation(); printCustomerInvoice('${order.id}')" class="mt-3 w-full text-sm bg-white border border-antika-gold/50 text-antika-gold-dark rounded-lg py-2 hover:bg-antika-gold/10 transition">
+                                    <i class="fas fa-print ml-1"></i> طباعة فاتورة الطلب
+                                </button>` : ''}
                                 ${order.dcTrackingNumber ? `
                                 <div class="mt-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
                                     <p class="text-sm text-blue-800 font-bold mb-1">
@@ -574,6 +583,80 @@
             if (isOpening) clearNotificationsForOrder(orderId);
         }
 
+        // ===== فاتورة الطلب (تظهر بس لو الأدمن مفعّلها من الإعدادات) — بند الشحن منفصل عن المنتجات =====
+        function buildCustomerReceiptHtml(order, orderSeq, orderDate) {
+            const itemsRows = (order.items || []).map(it => `
+                <tr>
+                    <td style="padding:8px;border-bottom:1px solid #eee;">${it.name || ''}</td>
+                    <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${it.quantity || 1}</td>
+                    <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${it.price || 0} ر.س</td>
+                    <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${((it.quantity || 1) * (it.price || 0)).toLocaleString('ar-SA')} ر.س</td>
+                </tr>
+            `).join('');
+            const itemsSubtotal = (order.items || []).reduce((sum, it) => sum + ((it.quantity || 1) * (it.price || 0)), 0);
+            const shippingDisplay = order.shippingCost != null ? Number(order.shippingCost).toFixed(2) + ' ر.س' : '0.00 ر.س';
+            return `
+            <html dir="rtl" lang="ar">
+            <head>
+                <meta charset="UTF-8">
+                <title>فاتورة طلب #${orderSeq}</title>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 30px; color: #222; }
+                    .header { text-align:center; border-bottom: 3px solid #C9A15D; padding-bottom: 16px; margin-bottom: 20px; }
+                    .header h1 { color:#C9A15D; margin:0 0 4px; }
+                    .badge { display:inline-block; background:#C9A15D; color:#fff; padding:4px 14px; border-radius:20px; font-size:13px; margin-top:8px; }
+                    .meta { display:flex; justify-content:space-between; margin-bottom:20px; font-size:14px; }
+                    .box { border:1px solid #eee; border-radius:8px; padding:14px; margin-bottom:16px; }
+                    table { width:100%; border-collapse:collapse; margin-top:10px; }
+                    th { background:#f8f5ef; padding:8px; text-align:center; font-size:13px; }
+                    .subtotal-row td { padding-top:12px; font-size:14px; color:#444; }
+                    .shipping-row td { font-size:14px; color:#444; }
+                    .total-row td { font-weight:bold; font-size:16px; padding-top:8px; border-top:1px solid #eee; }
+                    @media print { body { padding: 10px; } }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>أنتيكا ستور</h1>
+                    <p style="margin:0;color:#666;">Antika Store</p>
+                    <span class="badge">فاتورة طلب</span>
+                </div>
+                <div class="meta">
+                    <div><strong>رقم الطلب:</strong> #${orderSeq}</div>
+                    <div><strong>التاريخ:</strong> ${orderDate}</div>
+                </div>
+                <div class="box">
+                    <strong>بيانات العميل</strong>
+                    <p style="margin:6px 0 0;">${order.customerName || ''}${order.customerPhone ? ' — ' + order.customerPhone : ''}${order.customerAltPhone ? ' / ' + order.customerAltPhone : ''}</p>
+                    <p style="margin:2px 0 0;color:#555;">${order.customerAddress || ''}</p>
+                    ${order.customerLandmark ? `<p style="margin:2px 0 0;color:#555;">أقرب معلم: ${order.customerLandmark}</p>` : ''}
+                </div>
+                <table>
+                    <thead><tr><th>المنتج</th><th>الكمية</th><th>سعر القطعة</th><th>الإجمالي</th></tr></thead>
+                    <tbody>${itemsRows}</tbody>
+                    <tfoot>
+                        <tr class="subtotal-row"><td colspan="3" style="text-align:left;">المجموع الفرعي (المنتجات)</td><td style="text-align:center;">${itemsSubtotal.toLocaleString('ar-SA')} ر.س</td></tr>
+                        <tr class="shipping-row"><td colspan="3" style="text-align:left;">الشحن</td><td style="text-align:center;">${shippingDisplay}</td></tr>
+                        <tr class="total-row"><td colspan="3" style="text-align:left;">الإجمالي الكلي</td><td style="text-align:center;">${order.total} ر.س</td></tr>
+                    </tfoot>
+                </table>
+            </body>
+            </html>`;
+        }
+
+        function printCustomerInvoice(orderId) {
+            const order = (_lastAllOrders || []).find(o => o.id === orderId);
+            if (!order) return;
+            const seqMap = _lastSeqMap || {};
+            const orderSeq = seqMap[order.id] || order.orderNumber || order.id;
+            const orderDate = formatDate(order.date);
+            const html = buildCustomerReceiptHtml(order, orderSeq, orderDate);
+            const w = window.open('', '_blank');
+            w.document.write(html);
+            w.document.close();
+            setTimeout(() => w.print(), 300);
+        }
+
         // يمسح الإشعارات وعلامة التنبيه الخاصة بطلب معيّن بمجرد ما العميل يفتحه
         async function clearNotificationsForOrder(orderId) {
             const dot = document.getElementById('order-notif-dot-' + orderId);
@@ -606,6 +689,7 @@
         }
 
         let currentCustomerEmail = '';
+        let _customerInvoiceEnabled = false; // إعداد عام للمتجر — يوصل من السيرفر، افتراضياً مخفي لين الأدمن يفعّله
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
                 if (typeof showToast === 'function') { showToast('تم النسخ'); } else { alert('تم النسخ: ' + text); }
@@ -694,6 +778,11 @@
             const user = JSON.parse(userRaw);
             const email = (user.email || '').toLowerCase();
             currentCustomerEmail = email;
+
+            try {
+                const settings = await API.getSettings();
+                _customerInvoiceEnabled = settings.customerInvoiceEnabled === true;
+            } catch (e) { console.warn('Could not load settings:', e); }
 
             try {
                 const ordersRes = await fetch('/api/orders/customer?email=' + encodeURIComponent(email));

@@ -188,7 +188,7 @@
                         <i class="fas fa-comments w-6"></i>
                         <span>التعليقات</span>
                     </button>
-                    <button onclick="showSection('maintenance'); loadMaintenanceSettings();" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
+                    <button onclick="showSection('maintenance'); loadMaintenanceSettings(); loadInvoiceSettings();" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
                         <i class="fas fa-tools w-6"></i>
                         <span>وضع الصيانة</span>
                     </button>
@@ -1016,6 +1016,20 @@
                                 <input type="text" id="maintenance-key-input" placeholder="المفتاح السري" class="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-antika-gold">
                                 <button onclick="saveMaintenanceKey()" class="bg-antika-gold text-white px-5 py-2 rounded-xl text-sm font-medium hover:opacity-90 transition">حفظ</button>
                             </div>
+                        </div>
+                    </div>
+
+                    <h2 class="text-2xl font-bold text-gray-800">🧾 فاتورة الطلب للعميل</h2>
+                    <div class="bg-white rounded-2xl p-6 shadow-sm space-y-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-semibold text-gray-800 text-lg">تفعيل عرض/طباعة الفاتورة للعميل</h3>
+                                <p class="text-gray-500 text-sm mt-1">عند التفعيل، يقدر العميل يطبع فاتورة طلبه من صفحة "طلباتي" (بند الشحن يظهر منفصل عن المنتجات)</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="invoice-toggle" class="sr-only peer" onchange="toggleCustomerInvoice()">
+                                <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-7 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-antika-gold"></div>
+                            </label>
                         </div>
                     </div>
                 </section>
