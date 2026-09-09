@@ -95,6 +95,8 @@ const OTO_DEFAULT_DELIVERY_OPTION_ID = (process.env.OTO_DEFAULT_DELIVERY_OPTION_
 const OTO_ORDER_PREFIX = (process.env.OTO_ORDER_PREFIX || 'ANTIKA').trim();
 const OTO_WEBHOOK_AUTH_KEY = (process.env.OTO_WEBHOOK_AUTH_KEY || '').trim();
 const COD_SURCHARGE_SAR = Number(process.env.COD_SURCHARGE_SAR || 17);
+// 🔄 عدد الأيام المسموح بها للعميل يطلب استرجاع منتج بعد تاريخ التوصيل (اتفاق: 3 أيام، بدون استبدال)
+const RETURN_WINDOW_DAYS = Number(process.env.RETURN_WINDOW_DAYS || 3);
 const MOYASAR_SECRET_KEY = (process.env.MOYASAR_SECRET_KEY || '').trim();
 const MOYASAR_PUBLISHABLE_KEY = (process.env.MOYASAR_PUBLISHABLE_KEY || '').trim();
 const FIREBASE_API_KEY = (process.env.FIREBASE_API_KEY || '').trim();
@@ -956,7 +958,95 @@ app.post('/api/orders/:id/hide-for-customer', async (req, res) => {
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// ===== أسباب الإلغاء الجاهزة (يديرها الأدمن) =====
+// ===== 🔄 نظام طلب استرجاع منتج (3 أيام من تاريخ التوصيل، بدون استبدال) =====
+function canRequestReturn(order) {
+  if (order.status !== 'delivered') return { ok: false, error: 'يمكن طلب الاسترجاع فقط بعد توصيل الطلب' };
+  if (!order.deliveredAt) return { ok: false, error: 'تاريخ التوصيل غير مسجل لهذا الطلب، تواصل معنا مباشرة' };
+  const deliveredMs = new Date(order.deliveredAt).getTime();
+  if (!Number.isFinite(deliveredMs)) return { ok: false, error: 'تاريخ التوصيل غير صالح' };
+  const daysPassed = (Date.now() - deliveredMs) / (1000 * 60 * 60 * 24);
+  if (daysPassed > RETURN_WINDOW_DAYS) return { ok: false, error: `انتهت فترة الاسترجاع (${RETURN_WINDOW_DAYS} أيام من تاريخ التوصيل)` };
+  const existing = order.returnRequest;
+  if (existing && (existing.status === 'pending' || existing.status === 'approved')) {
+    return { ok: false, error: 'يوجد طلب استرجاع مسجل مسبقاً لهذا الطلب' };
+  }
+  return { ok: true };
+}
+// 👤 العميل يطلب استرجاع منتج معين من طلب تم توصيله (خلال المدة المسموحة فقط)
+app.post('/api/orders/:id/return-request', async (req, res) => {
+  try {
+    const { customerEmail, itemIndex, quantity, reason } = req.body || {};
+    const returnReason = String(reason || '').trim();
+    if (!returnReason) return res.status(400).json({ error: 'يرجى كتابة سبب الاسترجاع' });
+    const ref = db.collection('orders').doc(req.params.id);
+    const doc = await ref.get();
+    if (!doc.exists) return res.status(404).json({ error: 'الطلب غير موجود' });
+    const order = doc.data();
+    const email = String(customerEmail || '').trim().toLowerCase();
+    if (!email || email !== String(order.customerEmail || '').trim().toLowerCase()) {
+      return res.status(403).json({ error: 'غير مصرح بهذا الإجراء' });
+    }
+    const check = canRequestReturn(order);
+    if (!check.ok) return res.status(400).json({ error: check.error });
+    const items = Array.isArray(order.items) ? order.items : [];
+    const idx = Number(itemIndex);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= items.length) return res.status(400).json({ error: 'منتج غير صالح' });
+    const item = items[idx];
+    const maxQty = Number(item.quantity || 1);
+    const qty = Number(quantity);
+    if (!Number.isInteger(qty) || qty < 1 || qty > maxQty) return res.status(400).json({ error: 'الكمية غير صالحة' });
+    const returnRequest = {
+      status: 'pending',
+      itemIndex: idx,
+      itemName: item.name || item.title || 'منتج',
+      quantity: qty,
+      reason: returnReason,
+      requestedAt: new Date().toISOString(),
+      decidedAt: null,
+      decisionNote: null
+    };
+    const tl = order.statusTimeline || [];
+    tl.push({ status: 'return_requested', title: 'طلب استرجاع منتج', message: `طلب العميل استرجاع "${returnRequest.itemName}" (الكمية: ${qty}) — السبب: ${returnReason}`, source: 'customer', at: returnRequest.requestedAt });
+    await ref.update({ returnRequest, statusTimeline: tl });
+    res.json({ success: true, returnRequest });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// 🛠️ الأدمن يوافق أو يرفض طلب استرجاع معلّق
+app.put('/api/orders/:id/return-request', requireAdmin, async (req, res) => {
+  try {
+    const { action, decisionNote } = req.body || {};
+    if (!['approve', 'reject'].includes(action)) return res.status(400).json({ error: 'إجراء غير صالح' });
+    const ref = db.collection('orders').doc(req.params.id);
+    const doc = await ref.get();
+    if (!doc.exists) return res.status(404).json({ error: 'الطلب غير موجود' });
+    const order = doc.data();
+    if (!order.returnRequest || order.returnRequest.status !== 'pending') {
+      return res.status(400).json({ error: 'لا يوجد طلب استرجاع بانتظار المراجعة لهذا الطلب' });
+    }
+    const newStatus = action === 'approve' ? 'approved' : 'rejected';
+    const note = String(decisionNote || '').trim() || null;
+    const updatedReturnRequest = Object.assign({}, order.returnRequest, { status: newStatus, decidedAt: new Date().toISOString(), decisionNote: note });
+    const tl = order.statusTimeline || [];
+    tl.push({
+      status: newStatus === 'approved' ? 'return_approved' : 'return_rejected',
+      title: newStatus === 'approved' ? 'تمت الموافقة على طلب الاسترجاع' : 'تم رفض طلب الاسترجاع',
+      message: note || '',
+      source: 'admin',
+      at: updatedReturnRequest.decidedAt
+    });
+    await ref.update({ returnRequest: updatedReturnRequest, statusTimeline: tl });
+    try {
+      await sendOrderCustomerNotification(Object.assign({ id: ref.id }, order), {
+        title: newStatus === 'approved' ? 'تمت الموافقة على طلب الاسترجاع' : 'تم رفض طلب الاسترجاع',
+        message: newStatus === 'approved'
+          ? `تمت الموافقة على استرجاع "${updatedReturnRequest.itemName}". سيتم التواصل معك لترتيب استلام المنتج.`
+          : `نأسف، تم رفض طلب استرجاع "${updatedReturnRequest.itemName}"${note ? ' — السبب: ' + note : ''}.`
+      });
+    } catch (ne) { console.error('Return notify error:', ne.message); }
+    res.json({ success: true, returnRequest: updatedReturnRequest });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/cancel-reasons', requireAdmin, async (req, res) => {
   try {
     const snap = await db.collection('cancel_reasons').orderBy('createdAt', 'asc').get();

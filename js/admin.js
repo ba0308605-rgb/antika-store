@@ -518,7 +518,43 @@ function filterOrdersFromSearch() {
     renderOrdersList(lastLoadedOrders || []);
 }
 
-// 🗂️ فلتر حالة الطلبات بلوحة الأدمن: الكل / نشطة (غير ملغية) / ملغية
+// 🔄 يحدّث شارة عدد طلبات الاسترجاع المعلّقة (بانتظار قرار الأدمن) بجانب "الطلبات" بالقائمة الجانبية
+function updateReturnsSidebarBadge(orders) {
+    const badge = document.getElementById('returns-sidebar-badge');
+    if (!badge) return;
+    const count = (orders || []).filter(o => o.returnRequest && o.returnRequest.status === 'pending').length;
+    if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : String(count);
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+// 🔄 موافقة/رفض طلب استرجاع منتج من الأدمن
+async function decideReturnRequest(orderId, action) {
+    let decisionNote = '';
+    if (action === 'reject') {
+        decisionNote = prompt('سبب الرفض (اختياري، يظهر للعميل):') || '';
+    } else {
+        if (!confirm('تأكيد الموافقة على طلب الاسترجاع؟ سيتم إشعار العميل.')) return;
+    }
+    try {
+        const token = localStorage.getItem('antika_admin_token');
+        const res = await fetch('/api/orders/' + orderId + '/return-request', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, decisionNote })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'فشل تنفيذ الإجراء');
+        showNotification(action === 'approve' ? 'تمت الموافقة على طلب الاسترجاع' : 'تم رفض طلب الاسترجاع', 'success');
+        await loadOrders();
+    } catch (e) {
+        showNotification(e.message || 'تعذر تنفيذ الإجراء', 'error');
+    }
+}
+
 let _ordersStatusFilter = 'all'; // 'all' | 'active' | 'cancelled'
 
 function setOrdersStatusFilter(filter) {
@@ -633,6 +669,7 @@ function updateOrdersFilterBarUI() {
         cancelledBadge.classList.toggle('hidden', unseenCancelled === 0);
     }
     updateOrdersSidebarBadge(lastLoadedOrders || []);
+    updateReturnsSidebarBadge(lastLoadedOrders || []);
 }
 
 // ✏️ إظهار/إخفاء فورم إدخال رقم التتبع يدوياً (لطلبات تم إنشاء شحنتها مباشرة من لوحة OTO بدون زر الإنشاء التلقائي)
@@ -837,6 +874,18 @@ function renderOrdersList(orders) {
                             </p>` : `
                             <p class="text-xs text-gray-400 mt-1">لا يوجد موقع GPS محفوظ لهذا الطلب</p>`}
                         </div>
+                        ${order.returnRequest ? `
+                        <div class="rounded-xl p-3 border-2 ${order.returnRequest.status === 'pending' ? 'bg-amber-50 border-amber-400' : order.returnRequest.status === 'approved' ? 'bg-green-50 border-green-400' : 'bg-red-50 border-red-300'}">
+                            <h4 class="font-bold mb-2 flex items-center gap-2 ${order.returnRequest.status === 'pending' ? 'text-amber-900' : order.returnRequest.status === 'approved' ? 'text-green-900' : 'text-red-900'}"><i class="fas fa-rotate-left"></i> طلب استرجاع منتج</h4>
+                            <p class="text-sm text-gray-700">المنتج: <span class="font-bold">${safeText(order.returnRequest.itemName)}</span> — الكمية: ${order.returnRequest.quantity}</p>
+                            <p class="text-sm text-gray-700 mt-1">السبب: ${safeText(order.returnRequest.reason)}</p>
+                            ${order.returnRequest.status === 'pending' ? `
+                            <div class="flex gap-2 mt-3">
+                                <button onclick="event.stopPropagation(); decideReturnRequest('${orderId}', 'approve')" class="flex-1 text-xs bg-green-600 text-white rounded-lg py-1.5 hover:opacity-90 transition"><i class="fas fa-check ml-1"></i>قبول</button>
+                                <button onclick="event.stopPropagation(); decideReturnRequest('${orderId}', 'reject')" class="flex-1 text-xs bg-red-600 text-white rounded-lg py-1.5 hover:opacity-90 transition"><i class="fas fa-xmark ml-1"></i>رفض</button>
+                            </div>` : `
+                            <p class="text-sm font-bold mt-2 ${order.returnRequest.status === 'approved' ? 'text-green-800' : 'text-red-800'}">${order.returnRequest.status === 'approved' ? '✅ تمت الموافقة' : '❌ تم الرفض'}${order.returnRequest.decisionNote ? ' — ' + safeText(order.returnRequest.decisionNote) : ''}</p>`}
+                        </div>` : ''}
                         <div class="bg-amber-50 border border-amber-100 rounded-xl p-3">
                             <h4 class="font-bold text-amber-900 mb-2 flex items-center gap-2"><i class="fas fa-receipt"></i> ملخص الطلب</h4>
                             <p class="text-sm text-gray-700">رقم الطلب: <span class="font-bold">#${orderSeq}</span></p>
@@ -849,13 +898,13 @@ function renderOrdersList(orders) {
                             ${order.otoTrackingUrl ? `<p class="text-sm"><a href="${order.otoTrackingUrl}" target="_blank" class="text-blue-600 hover:underline"><i class="fas fa-arrow-up-left-from-square ml-1"></i>تتبع الشحنة (رابط شركة الشحن)</a></p>` : ''}
                             <p class="text-xs text-gray-400 flex items-center gap-2">مرجع OTO الداخلي: ${order.otoTrackingNumber || '-'} • ${order.otoOrderId || '-'} ${order.otoOrderId ? `<button onclick="event.stopPropagation(); copyToClipboard('${order.otoOrderId}')" title="نسخ رقم التعريف" class="text-blue-500 hover:text-blue-700"><i class="fas fa-copy"></i></button>` : ''}</p>
                             ${order.otoAwbUrl ? `<p class="text-sm"><a href="${order.otoAwbUrl}" target="_blank" class="text-blue-600 hover:underline"><i class="fas fa-file-lines ml-1"></i>طباعة بوليصة الشحن (AWB)</a></p>` : ''}
-                            ${!order.otoOrderId ? `<p class="text-xs text-gray-500 flex items-center gap-2 mt-1">معرّف داخلي جاهز (الصقه بخانة "رقم/مرجع الطلب" لما تسوي الشحنة يدوياً بلوحة OTO عشان تتحدث حالة الطلب عندك تلقائياً): <span class="font-mono">ANTIKA-${orderId}</span> <button onclick="event.stopPropagation(); copyToClipboard('ANTIKA-${orderId}')" title="نسخ" class="text-blue-500 hover:text-blue-700"><i class="fas fa-copy"></i></button></p>` : ''}
+                            ${!order.otoOrderId ? `<p class="text-xs text-gray-500 mt-1">بعد ما تسوي الشحنة يدوياً بلوحة OTO، انسخ "الرقم التعريفي" اللي يطلعلك هناك (يبدأ بـ OID-...) وحطه بخانة "رقم/معرف الطلب في OTO" تحت.</p>` : ''}
                             ${!order.otoOrderId ? `<button onclick="event.stopPropagation(); createOTOShipment('${orderId}')" id="oto-create-btn-${orderId}" class="w-full mt-2 text-xs bg-antika-gold text-white rounded-lg py-1.5 hover:opacity-90 transition"><i class="fas fa-truck-fast ml-1"></i> إنشاء شحنة OTO تلقائياً (بإحداثيات GPS المحفوظة)</button>` : ''}
                             <button onclick="event.stopPropagation(); toggleManualTrackingForm('${orderId}')" class="w-full mt-2 text-xs text-gray-500 hover:text-gray-700 underline">
                                 <i class="fas fa-pen ml-1"></i>${(order.dcTrackingNumber || order.otoOrderId) ? 'تعديل' : 'إدخال'} رقم التعريف/التتبع يدوياً (لو سويت الشحنة مباشرة من لوحة OTO)
                             </button>
                             <div id="manual-tracking-form-${orderId}" class="hidden mt-2 p-3 bg-white border border-gray-200 rounded-lg space-y-2" onclick="event.stopPropagation()">
-                                <input type="text" id="manual-oto-ref-${orderId}" placeholder="الصق نفس المعرّف اللي استخدمته بـ OTO (ANTIKA-...) لتفعيل التحديث التلقائي" value="${order.otoOrderId || ''}" class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 font-mono">
+                                <input type="text" id="manual-oto-ref-${orderId}" placeholder="مثال: OID-163588-1003" value="${order.otoOrderId || ''}" class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 font-mono">
                                 <input type="text" id="manual-dc-name-${orderId}" placeholder="اسم شركة الشحن (مثال: سمسا)" value="${order.deliveryCompany || ''}" class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5">
                                 <input type="text" id="manual-dc-number-${orderId}" placeholder="رقم التتبع الحقيقي من شركة الشحن" value="${order.dcTrackingNumber || ''}" class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 font-mono">
                                 <input type="text" id="manual-dc-url-${orderId}" placeholder="رابط تتبع الشحنة (اختياري)" value="${order.otoTrackingUrl || ''}" class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5">

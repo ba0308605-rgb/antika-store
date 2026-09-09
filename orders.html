@@ -113,6 +113,7 @@
                         <button data-filter="all" onclick="setCustomerOrdersFilter('all')" class="orders-filter-tab px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">جميع الطلبات</button>
                         <button data-filter="active" onclick="setCustomerOrdersFilter('active')" class="orders-filter-tab px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">النشطة</button>
                         <button data-filter="cancelled" onclick="setCustomerOrdersFilter('cancelled')" class="orders-filter-tab px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">الملغية</button>
+                        <button data-filter="delivered" onclick="setCustomerOrdersFilter('delivered')" class="orders-filter-tab px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">الموصّلة</button>
                         <button id="delete-all-cancelled-mine-btn" onclick="deleteAllCancelledForCustomer()" class="hidden mr-auto px-4 py-1.5 rounded-lg text-sm font-bold bg-red-50 border border-red-300 text-red-700 hover:bg-red-100 transition-colors">
                             <i class="fas fa-trash ml-1"></i>حذف جميع الطلبات الملغية من قائمتي
                         </button>
@@ -148,6 +149,36 @@
                     <i class="fas fa-check ml-1"></i>تأكيد إلغاء الطلب
                 </button>
                 <button onclick="closeCancelOrderModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg text-sm">تراجع</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Return Request Modal -->
+    <div id="return-request-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[3000] hidden p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-rotate-left ml-2 text-antika-gold"></i>طلب استرجاع منتج</h3>
+                <button onclick="closeReturnModal()" class="w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-100 text-xl flex items-center justify-center">&times;</button>
+            </div>
+            <p class="text-xs text-gray-500 mb-3">مدة الاسترجاع 3 أيام من تاريخ التوصيل، استرجاع فقط بدون استبدال.</p>
+            <div class="mb-3">
+                <label class="block text-sm font-bold text-gray-700 mb-2">اختر المنتج</label>
+                <div id="return-items-list" class="space-y-2"></div>
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-bold text-gray-700 mb-2">الكمية</label>
+                <input type="number" id="return-quantity" min="1" value="1" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-bold text-gray-700 mb-2">سبب الاسترجاع <span class="text-red-500">*</span></label>
+                <textarea id="return-reason" rows="3" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="مثال: المنتج مختلف عن الوصف، وصل تالف..."></textarea>
+                <p id="return-reason-error" class="text-xs text-red-600 mt-1 hidden">يرجى كتابة سبب الاسترجاع</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="submitReturnRequest()" id="return-request-confirm-btn" class="flex-1 bg-antika-gold hover:opacity-90 text-white font-bold py-2.5 rounded-lg text-sm">
+                    <i class="fas fa-paper-plane ml-1"></i>إرسال الطلب
+                </button>
+                <button onclick="closeReturnModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg text-sm">تراجع</button>
             </div>
         </div>
     </div>
@@ -219,7 +250,9 @@
                 shippedAt: order.shippedAt,
                 outForDeliveryAt: order.outForDeliveryAt,
                 deliveredAt: order.deliveredAt,
-                statusTimeline: Array.isArray(order.statusTimeline) ? order.statusTimeline : []
+                statusTimeline: Array.isArray(order.statusTimeline) ? order.statusTimeline : [],
+                // 🔄 بيانات طلب استرجاع المنتج (لو موجود)
+                returnRequest: order.returnRequest || null
             };
         }
 
@@ -306,6 +339,42 @@
             if (!e.target.closest('.step-item')) hideStepTooltip();
         });
 
+        // 🔄 نظام طلب استرجاع منتج — 3 أيام من تاريخ التوصيل، بدون استبدال
+        const RETURN_WINDOW_DAYS = 3;
+
+        function getReturnWindowInfo(order) {
+            if (!order.deliveredAt) return { withinWindow: false, daysLeft: 0 };
+            const deliveredMs = new Date(order.deliveredAt).getTime();
+            if (Number.isNaN(deliveredMs)) return { withinWindow: false, daysLeft: 0 };
+            const daysPassed = (Date.now() - deliveredMs) / (1000 * 60 * 60 * 24);
+            return { withinWindow: daysPassed <= RETURN_WINDOW_DAYS, daysLeft: Math.max(0, Math.ceil(RETURN_WINDOW_DAYS - daysPassed)) };
+        }
+
+        function buildReturnSection(order) {
+            const rr = order.returnRequest;
+            if (rr) {
+                const cardClass = rr.status === 'pending' ? 'bg-amber-50 border-amber-300' : rr.status === 'approved' ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300';
+                const textClass = rr.status === 'pending' ? 'text-amber-800' : rr.status === 'approved' ? 'text-green-800' : 'text-red-800';
+                const statusLabel = rr.status === 'pending' ? 'بانتظار مراجعة الإدارة' : rr.status === 'approved' ? '✅ تمت الموافقة على الاسترجاع — سيتم التواصل معك لترتيب الاستلام' : '❌ تم رفض طلب الاسترجاع';
+                return `
+                <div class="mt-4 p-4 border-2 rounded-xl ${cardClass}">
+                    <p class="font-bold text-sm ${textClass}"><i class="fas fa-rotate-left ml-1"></i>طلب استرجاع: ${rr.itemName} (الكمية: ${rr.quantity})</p>
+                    <p class="text-sm ${textClass} mt-1">${statusLabel}</p>
+                    ${rr.decisionNote ? `<p class="text-sm ${textClass} mt-1"><i class="fas fa-circle-info ml-1"></i>${rr.decisionNote}</p>` : ''}
+                </div>`;
+            }
+            const { withinWindow, daysLeft } = getReturnWindowInfo(order);
+            if (!withinWindow) {
+                return `<div class="mt-4 text-center text-xs text-gray-400">انتهت فترة استرجاع هذا الطلب (${RETURN_WINDOW_DAYS} أيام من تاريخ التوصيل)</div>`;
+            }
+            return `
+            <div class="mt-4 text-center">
+                <button onclick="event.stopPropagation(); openReturnModal('${order.id}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold py-1.5 px-5 rounded-full transition-colors">
+                    <i class="fas fa-rotate-left ml-1"></i>طلب استرجاع منتج (متبقي ${daysLeft} يوم)
+                </button>
+            </div>`;
+        }
+
         function buildOrderStepper(order) {
             if (order.status === 'cancelled' || order.customerCancelled) return '';
 
@@ -332,7 +401,10 @@
                     if (order.status === 'awaiting_shipping_payment') return 'current';
                     return 'upcoming';
                 }
-                const stageRank = idx + 1;
+                const stageRank = idx;
+                if (idx === stages.length - 1) {
+                    return currentRank >= stageRank ? 'done' : 'upcoming';
+                }
                 if (currentRank > stageRank) return 'done';
                 if (currentRank === stageRank) return 'current';
                 return 'upcoming';
@@ -482,6 +554,7 @@
                                         <i class="fas fa-trash ml-1"></i>حذف الطلب من قائمتي
                                     </button>
                                 </div>` : ''}
+                                ${order.status === 'delivered' ? buildReturnSection(order) : ''}
                             </div>
                             </div>
                         </div>
@@ -566,7 +639,7 @@
         function renderEmptyFilteredState() {
             const container = document.getElementById('orders-container');
             container.className = 'bg-white rounded-xl shadow-sm border p-12 text-center min-h-[300px] flex flex-col items-center justify-center';
-            const msg = _customerOrdersFilter === 'cancelled' ? 'لا توجد طلبات ملغية' : 'لا توجد طلبات نشطة حالياً';
+            const msg = _customerOrdersFilter === 'cancelled' ? 'لا توجد طلبات ملغية' : _customerOrdersFilter === 'delivered' ? 'لا توجد طلبات موصّلة بعد' : 'لا توجد طلبات نشطة حالياً';
             container.innerHTML = `
                 <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                     <i class="fas fa-filter text-3xl text-gray-300"></i>
@@ -608,6 +681,7 @@
             updateOrdersFilterTabsUI();
             const filtered = _customerOrdersFilter === 'all' ? _lastAllOrders
                 : _customerOrdersFilter === 'cancelled' ? _lastAllOrders.filter(o => o.status === 'cancelled')
+                : _customerOrdersFilter === 'delivered' ? _lastAllOrders.filter(o => o.status === 'delivered')
                 : _lastAllOrders.filter(o => o.status !== 'cancelled');
             if (filtered.length === 0) { renderEmptyFilteredState(); return; }
             renderOrders(filtered, _lastSeqMap, _lastUnreadOrderIds);
@@ -787,7 +861,78 @@
             }
         }
 
-        // 🙈 يحذف الطلب من قائمة العميل فقط — لا يمس سجل الطلب بالأدمن إطلاقاً (تحكم مستقل تماماً)
+        // 🔄 فتح/إغلاق وإرسال طلب استرجاع منتج
+        let _pendingReturnOrderId = null;
+
+        function openReturnModal(orderId) {
+            const order = _lastAllOrders.find(o => o.id === orderId);
+            if (!order) return;
+            _pendingReturnOrderId = orderId;
+            const list = document.getElementById('return-items-list');
+            list.innerHTML = (order.items || []).map((item, idx) => `
+                <label class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input type="radio" name="return-item" value="${idx}" data-max="${item.quantity || 1}" onchange="onReturnItemChange()" ${idx === 0 ? 'checked' : ''}>
+                    <img src="${item.image || ''}" class="w-8 h-8 rounded object-cover bg-gray-100">
+                    <span class="text-sm flex-1">${item.name || 'منتج'} <span class="text-gray-400">(الكمية بالطلب: ${item.quantity || 1})</span></span>
+                </label>
+            `).join('');
+            onReturnItemChange();
+            document.getElementById('return-reason').value = '';
+            document.getElementById('return-reason-error').classList.add('hidden');
+            document.getElementById('return-request-modal').classList.remove('hidden');
+        }
+
+        function onReturnItemChange() {
+            const selected = document.querySelector('input[name="return-item"]:checked');
+            const max = selected ? Number(selected.dataset.max || 1) : 1;
+            const qtyInput = document.getElementById('return-quantity');
+            qtyInput.max = max;
+            if (!qtyInput.value || Number(qtyInput.value) > max) qtyInput.value = 1;
+        }
+
+        function closeReturnModal() {
+            document.getElementById('return-request-modal').classList.add('hidden');
+            _pendingReturnOrderId = null;
+        }
+
+        async function submitReturnRequest() {
+            const orderId = _pendingReturnOrderId;
+            if (!orderId) return;
+            const selected = document.querySelector('input[name="return-item"]:checked');
+            const itemIndex = selected ? Number(selected.value) : 0;
+            const quantity = Number(document.getElementById('return-quantity').value) || 1;
+            const reason = document.getElementById('return-reason').value.trim();
+            if (!reason) {
+                document.getElementById('return-reason-error').classList.remove('hidden');
+                document.getElementById('return-reason').focus();
+                return;
+            }
+            const btn = document.getElementById('return-request-confirm-btn');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i>جارٍ الإرسال...';
+            try {
+                const res = await fetch('/api/orders/' + orderId + '/return-request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ customerEmail: currentCustomerEmail, itemIndex, quantity, reason })
+                });
+                const data = await res.json().catch(() => ({}));
+                const msg = (!res.ok || !data.success) ? (data.error || 'تعذر إرسال طلب الاسترجاع') : 'تم إرسال طلب الاسترجاع، سيتم مراجعته قريباً';
+                if (typeof showToast === 'function') { showToast(msg); } else { alert(msg); }
+                if (!res.ok || !data.success) return;
+                closeReturnModal();
+                await loadOrdersPage();
+            } catch (err) {
+                console.error('Return request error:', err);
+                if (typeof showToast === 'function') { showToast('حدث خطأ أثناء إرسال الطلب'); } else { alert('حدث خطأ أثناء إرسال الطلب'); }
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
+
         async function hideOrderForCustomer(orderId) {
             if (!confirm('هل تريد حذف هذا الطلب من قائمة طلباتك؟ لن يظهر لك مرة أخرى.')) return;
             try {
