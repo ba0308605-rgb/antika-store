@@ -766,7 +766,7 @@
             const filtered = _customerOrdersFilter === 'all' ? _lastAllOrders
                 : _customerOrdersFilter === 'cancelled' ? _lastAllOrders.filter(o => o.status === 'cancelled')
                 : _customerOrdersFilter === 'delivered' ? _lastAllOrders.filter(o => o.status === 'delivered')
-                : _lastAllOrders.filter(o => o.status !== 'cancelled');
+                : _lastAllOrders.filter(o => o.status !== 'cancelled' && o.status !== 'delivered');
             if (filtered.length === 0) { renderEmptyFilteredState(); return; }
             renderOrders(filtered, _lastSeqMap, _lastUnreadOrderIds);
         }

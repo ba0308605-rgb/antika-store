@@ -555,7 +555,11 @@ async function decideReturnRequest(orderId, action) {
     }
 }
 
-let _ordersStatusFilter = 'all'; // 'all' | 'active' | 'cancelled'
+let _ordersStatusFilter = 'all'; // 'all' | 'active' | 'cancelled' | 'delivered' | 'returns'
+let _ordersActiveSubFilter = 'all'; // تصفية فرعية داخل تبويب "نشطة": حالة طلب محددة أو 'all'
+let _ordersCancelledSubFilter = 'all'; // تصفية فرعية داخل تبويب "ملغية": 'all' | 'admin' | 'customer' | 'system'
+let _ordersShowDeliveredArchive = false; // إظهار الطلبات الموصّلة الأقدم من DELIVERED_VISIBLE_DAYS (أرشيف، بدون حذف)
+const DELIVERED_VISIBLE_DAYS = 7;
 
 function setOrdersStatusFilter(filter) {
     _ordersStatusFilter = filter;
@@ -581,7 +585,7 @@ function _setOrdersSeenTs(key, ts) {
 // يحسب عدد الطلبات الجديدة (بعد آخر مرة فُتحت فيها كل فئة) — وأول مرة يهيّئ نقطة البداية
 // على أحدث طلب موجود حالياً، عشان ما يظهر فجأة عداد ضخم لطلبات قديمة أصلاً
 function computeOrdersUnseenCounts(orders) {
-    const activeOrders = (orders || []).filter(o => o.status !== 'cancelled');
+    const activeOrders = (orders || []).filter(o => o.status !== 'cancelled' && o.status !== 'delivered');
     const cancelledOrders = (orders || []).filter(o => o.status === 'cancelled');
     const tsOf = o => orderDateMs(o.createdAt || o.date);
 
@@ -629,11 +633,13 @@ function ensureOrdersFilterBar() {
     if (!container || !container.parentNode) return;
     const bar = document.createElement('div');
     bar.id = 'orders-status-filter-bar';
-    bar.className = 'flex flex-wrap items-center gap-2 mb-4';
+    bar.className = 'flex flex-wrap items-center gap-2 mb-2';
     bar.innerHTML = `
         <button data-filter="all" class="orders-filter-btn px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">الكل</button>
         <button data-filter="active" class="orders-filter-btn px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">نشطة <span id="orders-tab-badge-active" class="hidden mr-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 inline-flex items-center justify-center align-middle"></span></button>
         <button data-filter="cancelled" class="orders-filter-btn px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">ملغية <span id="orders-tab-badge-cancelled" class="hidden mr-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 inline-flex items-center justify-center align-middle"></span></button>
+        <button data-filter="delivered" class="orders-filter-btn px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">الموصّلة</button>
+        <button data-filter="returns" class="orders-filter-btn px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors">الاسترجاع <span id="orders-tab-badge-returns" class="hidden mr-1 bg-amber-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 inline-flex items-center justify-center align-middle"></span></button>
         <button id="delete-all-cancelled-btn" onclick="deleteAllCancelledOrders()" class="hidden mr-auto px-4 py-1.5 rounded-lg text-sm font-bold bg-red-600 hover:bg-red-700 text-white transition-colors">
             <i class="fas fa-trash ml-1"></i>حذف جميع الطلبات الملغية
         </button>
@@ -642,6 +648,11 @@ function ensureOrdersFilterBar() {
     bar.querySelectorAll('.orders-filter-btn').forEach(btn => {
         btn.addEventListener('click', () => setOrdersStatusFilter(btn.dataset.filter));
     });
+    // شريط تصفية فرعي (يتغير محتواه حسب التبويب المفتوح: حالة الطلب / من ألغى / أرشيف الموصّلة)
+    const subBar = document.createElement('div');
+    subBar.id = 'orders-sub-filter-bar';
+    subBar.className = 'flex flex-wrap items-center gap-2 mb-4 hidden';
+    container.parentNode.insertBefore(subBar, container);
     updateOrdersFilterBarUI();
 }
 
@@ -668,8 +679,69 @@ function updateOrdersFilterBarUI() {
         cancelledBadge.textContent = unseenCancelled > 99 ? '99+' : String(unseenCancelled);
         cancelledBadge.classList.toggle('hidden', unseenCancelled === 0);
     }
+    const pendingReturns = (lastLoadedOrders || []).filter(o => o.returnRequest && o.returnRequest.status === 'pending').length;
+    const returnsTabBadge = document.getElementById('orders-tab-badge-returns');
+    if (returnsTabBadge) {
+        returnsTabBadge.textContent = pendingReturns > 99 ? '99+' : String(pendingReturns);
+        returnsTabBadge.classList.toggle('hidden', pendingReturns === 0);
+    }
     updateOrdersSidebarBadge(lastLoadedOrders || []);
     updateReturnsSidebarBadge(lastLoadedOrders || []);
+
+    // شريط التصفية الفرعي — محتواه يتغير حسب التبويب الرئيسي المفتوح حالياً
+    const subBar = document.getElementById('orders-sub-filter-bar');
+    if (!subBar) return;
+    if (_ordersStatusFilter === 'active') {
+        subBar.classList.remove('hidden');
+        subBar.innerHTML = `
+            <label class="text-xs text-gray-500">تصفية حسب حالة الطلب:</label>
+            <select id="orders-active-sub-select" class="border border-gray-200 rounded-lg text-sm px-3 py-1.5 focus:outline-none focus:border-antika-gold bg-white">
+                <option value="all">كل الحالات</option>
+                <option value="confirming_availability">تأكيد التوفر + احتساب الشحن</option>
+                <option value="awaiting_shipping_payment">بانتظار الدفع</option>
+                <option value="processing">قيد التجهيز</option>
+                <option value="shipped">تم الشحن</option>
+                <option value="out_for_delivery">خرج للتوصيل</option>
+            </select>
+        `;
+        const sel = document.getElementById('orders-active-sub-select');
+        if (sel) {
+            sel.value = _ordersActiveSubFilter;
+            sel.onchange = () => { _ordersActiveSubFilter = sel.value; renderOrdersList(lastLoadedOrders || []); };
+        }
+    } else if (_ordersStatusFilter === 'cancelled') {
+        subBar.classList.remove('hidden');
+        subBar.innerHTML = `
+            <label class="text-xs text-gray-500">من ألغى الطلب:</label>
+            <select id="orders-cancelled-sub-select" class="border border-gray-200 rounded-lg text-sm px-3 py-1.5 focus:outline-none focus:border-antika-gold bg-white">
+                <option value="all">الكل</option>
+                <option value="admin">ألغته الإدارة</option>
+                <option value="customer">ألغاه العميل</option>
+                <option value="system">إلغاء تلقائي (عدم الدفع خلال المهلة)</option>
+            </select>
+        `;
+        const sel = document.getElementById('orders-cancelled-sub-select');
+        if (sel) {
+            sel.value = _ordersCancelledSubFilter;
+            sel.onchange = () => { _ordersCancelledSubFilter = sel.value; renderOrdersList(lastLoadedOrders || []); };
+        }
+    } else if (_ordersStatusFilter === 'delivered') {
+        subBar.classList.remove('hidden');
+        subBar.innerHTML = `
+            <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+                <input type="checkbox" id="orders-delivered-archive-toggle" class="rounded border-gray-300">
+                عرض الطلبات الأقدم من ${DELIVERED_VISIBLE_DAYS} أيام (الأرشيف — محفوظة عندك، بس مخفية افتراضياً)
+            </label>
+        `;
+        const chk = document.getElementById('orders-delivered-archive-toggle');
+        if (chk) {
+            chk.checked = _ordersShowDeliveredArchive;
+            chk.onchange = () => { _ordersShowDeliveredArchive = chk.checked; renderOrdersList(lastLoadedOrders || []); };
+        }
+    } else {
+        subBar.classList.add('hidden');
+        subBar.innerHTML = '';
+    }
 }
 
 // ✏️ إظهار/إخفاء فورم إدخال رقم التتبع يدوياً (لطلبات تم إنشاء شحنتها مباشرة من لوحة OTO بدون زر الإنشاء التلقائي)
@@ -767,11 +839,16 @@ function renderOrdersList(orders) {
         updateOrdersFilterBarUI();
 
         const statusFiltered = _ordersStatusFilter === 'all' ? orders
-            : _ordersStatusFilter === 'cancelled' ? orders.filter(o => o.status === 'cancelled')
-            : orders.filter(o => o.status !== 'cancelled');
+            : _ordersStatusFilter === 'cancelled' ? orders.filter(o => o.status === 'cancelled' && (_ordersCancelledSubFilter === 'all' || (o.cancelledBy || 'admin') === _ordersCancelledSubFilter))
+            : _ordersStatusFilter === 'delivered' ? orders.filter(o => o.status === 'delivered' && (_ordersShowDeliveredArchive || orderDateMs(o.deliveredAt || o.date) >= (Date.now() - DELIVERED_VISIBLE_DAYS * 24 * 60 * 60 * 1000)))
+            : _ordersStatusFilter === 'returns' ? orders.filter(o => !!o.returnRequest)
+            : orders.filter(o => o.status !== 'cancelled' && o.status !== 'delivered' && (_ordersActiveSubFilter === 'all' || o.status === _ordersActiveSubFilter)); // active
 
         if (statusFiltered.length === 0) {
-            const emptyMsg = _ordersStatusFilter === 'cancelled' ? 'لا توجد طلبات ملغية' : (_ordersStatusFilter === 'active' ? 'لا توجد طلبات نشطة' : 'لا توجد طلبات حالياً');
+            const emptyMsg = _ordersStatusFilter === 'cancelled' ? 'لا توجد طلبات ملغية بهذي التصفية'
+                : _ordersStatusFilter === 'delivered' ? 'لا توجد طلبات موصّلة' + (_ordersShowDeliveredArchive ? '' : ` خلال آخر ${DELIVERED_VISIBLE_DAYS} أيام`)
+                : _ordersStatusFilter === 'returns' ? 'لا توجد طلبات استرجاع'
+                : (_ordersStatusFilter === 'active' ? 'لا توجد طلبات نشطة بهذي التصفية' : 'لا توجد طلبات حالياً');
             container.innerHTML = `
                 <div class="text-center py-12">
                     <i class="fas fa-shopping-bag text-6xl text-gray-200 mb-4"></i>
@@ -947,7 +1024,7 @@ function renderOrdersList(orders) {
                     </div>` : ''}
                     ${order.cancelReason ? `
                     <div class="mb-4 p-3 bg-yellow-50 border-2 border-yellow-300 rounded-xl text-sm text-yellow-800">
-                        <p class="font-bold mb-1"><i class="fas fa-circle-info ml-1"></i>سبب الإلغاء (${order.cancelledBy === 'customer' ? 'من العميل' : 'من الإدارة'})</p>
+                        <p class="font-bold mb-1"><i class="fas fa-circle-info ml-1"></i>سبب الإلغاء (${order.cancelledBy === 'customer' ? 'من العميل' : order.cancelledBy === 'system' ? 'إلغاء تلقائي — عدم الدفع' : 'من الإدارة'})</p>
                         <p>${order.cancelReason}</p>
                     </div>` : ''}
                     ${order.isPaid ? `

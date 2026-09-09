@@ -1595,7 +1595,7 @@ async function autoCancelUnpaidOrders() {
       if (!since || since > cutoff) continue;
       const tl = order.statusTimeline || [];
       tl.push({ status: 'cancelled', title: '\u0625\u0644\u063a\u0627\u0621 \u062a\u0644\u0642\u0627\u0626\u064a', message: '\u062a\u0645 \u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0644\u0639\u062f\u0645 \u0625\u062a\u0645\u0627\u0645 \u0627\u0644\u062f\u0641\u0639 \u062e\u0644\u0627\u0644 24 \u0633\u0627\u0639\u0629', source: 'system', at: new Date().toISOString() });
-      await doc.ref.update({ status: 'cancelled', statusTimeline: tl, cancelReason: 'payment_timeout' });
+      await doc.ref.update({ status: 'cancelled', statusTimeline: tl, cancelReason: 'payment_timeout', cancelledBy: 'system' });
       try {
         const uo = Object.assign({}, order, { status: 'cancelled' });
         const nr = await sendOrderCustomerNotification(uo, { title: '\u062a\u0645 \u0625\u0644\u063a\u0627\u0621 \u0637\u0644\u0628\u0643', message: '\u062a\u0645 \u0625\u0644\u063a\u0627\u0621 \u0637\u0644\u0628\u0643 \u0644\u0639\u062f\u0645 \u0625\u062a\u0645\u0627\u0645 \u0627\u0644\u062f\u0641\u0639 \u062e\u0644\u0627\u0644 24 \u0633\u0627\u0639\u0629 \u0645\u0646 \u062a\u0623\u0643\u064a\u062f \u0627\u0644\u0633\u0639\u0631 \u0627\u0644\u0646\u0647\u0627\u0626\u064a.' });
