@@ -4,6 +4,8 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const admin = require('firebase-admin');
+const helmet = require('helmet');
+const { rateLimit } = require('express-rate-limit');
 require('dotenv').config();
 
 // ============================================
@@ -107,7 +109,7 @@ const MAX_OTP_ATTEMPTS = 5;
 // ============================================
 // HELPERS
 // ============================================
-function generateOTP() { return Math.floor(100000 + Math.random() * 900000).toString(); }
+function generateOTP() { return crypto.randomInt(100000, 1000000).toString(); }
 function isOTOConfigured() { return Boolean(OTO_REFRESH_TOKEN && OTO_PICKUP_LOCATION_CODE); }
 // 🔁 كاش access_token بالذاكرة — OTO يعطيه صلاحية ساعة وحدة بس، فنجدده تلقائيًا قبل ما ينتهي بـ5 دقايق أمان
 let _otoAccessTokenCache = { token: '', expiresAt: 0 };
@@ -246,6 +248,29 @@ async function callOTO(path, payload) {
   return data;
 }
 
+// 🛡️ Railway خلف بروكسي: نحتاجه عشان حدّ المحاولات يقرأ IP العميل الحقيقي
+app.set('trust proxy', 1);
+// 🛡️ ترويسات الحماية (CSP مقفل عن قصد لأن الموقع يستخدم سكربتات خارجية وخرائط جوجل)
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false, crossOriginResourcePolicy: false }));
+const makeLimiter = (windowMs, limit, message) => rateLimit({ windowMs, limit, standardHeaders: true, legacyHeaders: false, message: { error: message } });
+const adminLoginLimiter = makeLimiter(15 * 60 * 1000, 10, 'محاولات كثيرة، حاول بعد 15 دقيقة');
+const otpSendLimiter = makeLimiter(60 * 60 * 1000, 10, 'طلبات كثيرة لرمز التحقق، حاول لاحقاً');
+const otpVerifyLimiter = makeLimiter(15 * 60 * 1000, 30, 'محاولات كثيرة، حاول لاحقاً');
+const couponLimiter = makeLimiter(60 * 1000, 30, 'طلبات كثيرة، حاول بعد قليل');
+const orderCreateLimiter = makeLimiter(60 * 60 * 1000, 30, 'طلبات كثيرة من نفس الشبكة، حاول لاحقاً');
+const geocodeLimiter = makeLimiter(60 * 1000, 30, 'طلبات كثيرة، حاول بعد قليل');
+// مقارنة آمنة ضد هجمات التوقيت
+function safeEqual(a, b) {
+  const ha = crypto.createHash('sha256').update(String(a)).digest();
+  const hb = crypto.createHash('sha256').update(String(b)).digest();
+  return crypto.timingSafeEqual(ha, hb);
+}
+// 🔒 أخطاء السيرفر: الأدمن يشوف التفاصيل، العميل يشوف رسالة عامة (والتفاصيل تنسجل بالـ logs)
+function serverError(req, res, err) {
+  console.error('[SERVER ERROR]', req.method, req.path, err && err.message);
+  return res.status(500).json({ error: (req && req.admin) ? err.message : 'حدث خطأ بالسيرفر، حاول مرة أخرى' });
+}
+
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
@@ -272,7 +297,7 @@ app.use((req, res, next) => {
   if (!maintenanceMode || isApi || isAdmin || isAsset) return next();
   // Allow access with secret key
   if (req.query.key && req.query.key === maintenanceKey) {
-    res.cookie('maintenance_bypass', maintenanceKey, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: false, sameSite: 'lax' });
+    res.cookie('maintenance_bypass', maintenanceKey, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: 'lax' });
     return next();
   }
   const cookies = req.headers.cookie || '';
@@ -309,10 +334,10 @@ app.use((req, res, next) => {
 app.use(express.static('.'));
 
 // ADMIN AUTH
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', adminLoginLimiter, (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: 'Username and password are required' });
-  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Invalid username or password' });
+  if (!safeEqual(username, ADMIN_USERNAME) || !safeEqual(password, ADMIN_PASSWORD)) return res.status(401).json({ error: 'Invalid username or password' });
   const token = jwt.sign({ role: 'admin', username: ADMIN_USERNAME, type: 'admin' }, JWT_SECRET, { expiresIn: ADMIN_TOKEN_TTL });
   return res.json({ token, user: { name: 'Admin', username: ADMIN_USERNAME, isAdmin: true } });
 });
@@ -322,18 +347,6 @@ app.get('/api/admin/session', requireAdmin, (req, res) => res.json({ ok: true, u
 app.get('/api/admin/maintenance', requireAdmin, (req, res) => {
   res.json({ enabled: maintenanceMode, key: maintenanceKey });
 });
-// ========== 🧪 مؤقت للاختبار فقط — احذف هذا الراوت بالكامل قبل الإطلاق الفعلي ==========
-// يصفّر عداد ترقيم الطلبات (والمرتجعات اختيارياً) للسماح بإعادة الاختبار من الرقم 1 بسهولة
-app.post('/api/admin/reset-order-counter', requireAdmin, async (req, res) => {
-  try {
-    await db.collection('counters').doc('orders').set({ value: 0 });
-    if (req.body && req.body.includeReturns) {
-      await db.collection('counters').doc('returns').set({ value: 0 });
-    }
-    res.json({ success: true, message: 'تم تصفير العداد — الطلب الجاي بيبدأ من #1' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-// ========== نهاية الكود المؤقت للاختبار ==========
 
 app.post('/api/admin/maintenance', requireAdmin, async (req, res) => {
   const { enabled, key } = req.body;
@@ -357,11 +370,11 @@ app.get('/api/products', async (req, res) => {
     if (search) { const s = search.toLowerCase(); products = products.filter(p => (p.name || '').toLowerCase().includes(s) || (p.description || '').toLowerCase().includes(s)); }
     products.sort((a, b) => ((b.createdAt && b.createdAt.seconds) || 0) - ((a.createdAt && a.createdAt.seconds) || 0));
     res.json(products);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.get('/api/products/:id', async (req, res) => {
   try { const doc = await db.collection('products').doc(req.params.id).get(); if (!doc.exists) return res.status(404).json({ error: 'Product not found' }); res.json(Object.assign({ id: doc.id }, doc.data())); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 app.post('/api/products', requireAdmin, async (req, res) => {
   try {
@@ -404,7 +417,7 @@ app.post('/api/products', requireAdmin, async (req, res) => {
 
     const doc = await ref.get();
     res.json(Object.assign({ id: ref.id }, doc.data()));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.put('/api/products/:id', requireAdmin, async (req, res) => {
   try {
@@ -450,15 +463,15 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
 
     const doc = await db.collection('products').doc(req.params.id).get();
     res.json(Object.assign({ id: doc.id }, doc.data()));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.delete('/api/products/:id', requireAdmin, async (req, res) => {
   try { await db.collection('products').doc(req.params.id).delete(); res.json({ message: 'Product deleted successfully' }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 app.delete('/api/products', requireAdmin, async (req, res) => {
   try { const s = await db.collection('products').get(); const b = db.batch(); s.docs.forEach(d => b.delete(d.ref)); await b.commit(); res.json({ message: 'All products deleted', count: s.size }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 app.post('/api/products/bulk-discount', requireAdmin, async (req, res) => {
   try {
@@ -476,14 +489,14 @@ app.post('/api/products/bulk-discount', requireAdmin, async (req, res) => {
     }
     await batch.commit();
     res.json({ message: 'Bulk discount applied' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.get('/api/users/stats', requireAdmin, (req, res) => res.json({ genderStats: { male: 0, female: 0, unknown: 0 }, ageStats: { under18: 0, age18to25: 0, age26to35: 0, age36to50: 0, over50: 0, unknown: 0 }, totalUsers: 0 }));
 
 // CATEGORIES
 app.get('/api/categories', async (req, res) => {
   try { let s; try { s = await db.collection('categories').orderBy('sortOrder').get(); } catch (e) { s = await db.collection('categories').get(); } res.json(docsToArr(s)); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 app.post('/api/categories', requireAdmin, async (req, res) => {
   try {
@@ -494,7 +507,7 @@ app.post('/api/categories', requireAdmin, async (req, res) => {
     const ref = await db.collection('categories').add(Object.assign({}, req.body, { sortOrder: req.body.sortOrder || 0, lastSkuNumber: 0 }));
     const doc = await ref.get();
     res.json(Object.assign({ id: ref.id }, doc.data()));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.put('/api/categories/:id', requireAdmin, async (req, res) => {
   try {
@@ -514,7 +527,7 @@ app.put('/api/categories/:id', requireAdmin, async (req, res) => {
     await docRef.update(u);
     const updated = await docRef.get();
     res.json(Object.assign({ id: updated.id }, updated.data()));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.delete('/api/categories/:id', requireAdmin, async (req, res) => {
   try {
@@ -535,11 +548,11 @@ app.delete('/api/categories/:id', requireAdmin, async (req, res) => {
     const ch = await db.collection('categories').where('parentId', '==', catId).get();
     if (!ch.empty) { const b = db.batch(); ch.docs.forEach(d => b.delete(d.ref)); await b.commit(); }
     res.json({ message: 'Category deleted' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.delete('/api/categories', requireAdmin, async (req, res) => {
   try { const s = await db.collection('categories').get(); const b = db.batch(); s.docs.forEach(d => b.delete(d.ref)); await b.commit(); res.json({ message: 'All categories deleted', count: s.size }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 // معاينة رقم الموديل (SKU) القادم لقسم معيّن — بدون حجزه (المعاينة فقط، الحجز الفعلي يحصل عند حفظ المنتج)
 app.get('/api/categories/:id/preview-sku', requireAdmin, async (req, res) => {
@@ -558,7 +571,7 @@ app.get('/api/categories/:id/preview-sku', requireAdmin, async (req, res) => {
     const next = (Number(data.lastSkuNumber) || 0) + 1;
     const sku = prefix + '-' + String(next).padStart(4, '0');
     res.json({ prefix, nextNumber: next, sku, categoryDocId: docRef.id });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.post('/api/categories/reorder', requireAdmin, async (req, res) => {
   try {
@@ -568,13 +581,13 @@ app.post('/api/categories/reorder', requireAdmin, async (req, res) => {
     orderedIds.forEach(item => b.update(db.collection('categories').doc(item.id), { sortOrder: Number(item.sortOrder) }));
     await b.commit();
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 
 // COUPONS
 app.get('/api/coupons', requireAdmin, async (req, res) => {
   try { let s; try { s = await db.collection('coupons').orderBy('createdAt', 'desc').get(); } catch (e) { s = await db.collection('coupons').get(); } res.json(docsToArr(s)); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 app.post('/api/coupons', requireAdmin, async (req, res) => {
   try {
@@ -586,17 +599,17 @@ app.post('/api/coupons', requireAdmin, async (req, res) => {
     const ref = await db.collection('coupons').add({ code: uc, type, value, minOrder: minOrder || 0, maxUses: maxUses || 0, usedCount: 0, perUser: !!perUser, active: active !== false, expiresAt: expiresAt || null, createdAt: admin.firestore.FieldValue.serverTimestamp() });
     const doc = await ref.get();
     res.json(Object.assign({ id: ref.id }, doc.data()));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.put('/api/coupons/:id', requireAdmin, async (req, res) => {
   try { await db.collection('coupons').doc(req.params.id).update(req.body); const doc = await db.collection('coupons').doc(req.params.id).get(); res.json(Object.assign({ id: doc.id }, doc.data())); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 app.delete('/api/coupons/:id', requireAdmin, async (req, res) => {
   try { await db.collection('coupons').doc(req.params.id).delete(); res.json({ message: '\u062a\u0645 \u0627\u0644\u062d\u0630\u0641' }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
-app.post('/api/coupons/validate', async (req, res) => {
+app.post('/api/coupons/validate', couponLimiter, async (req, res) => {
   try {
     const { code, orderTotal } = req.body;
     if (!code) return res.status(400).json({ error: '\u0623\u062f\u062e\u0644 \u0631\u0645\u0632 \u0627\u0644\u0643\u0648\u0628\u0648\u0646' });
@@ -608,7 +621,7 @@ app.post('/api/coupons/validate', async (req, res) => {
     if (c.maxUses > 0 && c.usedCount >= c.maxUses) return res.status(400).json({ error: '\u062a\u0645 \u0627\u0633\u062a\u0646\u0641\u0627\u0630 \u0639\u062f\u062f \u0645\u0631\u0627\u062a \u0627\u0633\u062a\u062e\u062f\u0627\u0645 \u0647\u0630\u0627 \u0627\u0644\u0643\u0648\u0628\u0648\u0646' });
     const discount = c.type === 'percent' ? Math.round(Number(orderTotal) * (c.value / 100) * 100) / 100 : Math.min(c.value, Number(orderTotal));
     res.json({ valid: true, code: c.code, type: c.type, value: c.value, discount, label: c.type === 'percent' ? '\u062e\u0635\u0645 ' + c.value + '%' : '\u062e\u0635\u0645 ' + c.value + ' \u0631.\u0633', minOrder: c.minOrder });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 // 🔒 احتساب استخدام الكوبون صار داخل إنشاء الطلب (POST /api/orders). نُبقي الراوت فقط لتوافق الفرونت القديم ولا يغيّر شي.
 app.post('/api/coupons/use', (req, res) => res.json({ ok: true }));
@@ -616,7 +629,7 @@ app.post('/api/coupons/use', (req, res) => res.json({ ok: true }));
 // CART
 app.get('/api/cart', async (req, res) => {
   try { const sid = getSessionId(req); const doc = await db.collection('carts').doc(sid).get(); res.json(doc.exists ? (doc.data().items || []) : []); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 app.post('/api/cart', async (req, res) => {
   try {
@@ -632,7 +645,7 @@ app.post('/api/cart', async (req, res) => {
     else items.push({ productId: pid, name: String(name || ''), price: Number(price) || 0, image: String(image || ''), quantity: Math.floor(Number(quantity)) || 1 });
     await ref.set({ items, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
     res.json(items);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.put('/api/cart/:productId', async (req, res) => {
   try {
@@ -648,7 +661,7 @@ app.put('/api/cart/:productId', async (req, res) => {
     else { const idx = items.findIndex(i => normalizeCartRef(i.productId) === pid); if (idx >= 0) items[idx].quantity = qty; }
     await ref.update({ items, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
     res.json(items);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.delete('/api/cart/:productId', async (req, res) => {
   try {
@@ -660,11 +673,11 @@ app.delete('/api/cart/:productId', async (req, res) => {
     const items = (doc.data().items || []).filter(i => normalizeCartRef(i.productId) !== pid);
     await ref.update({ items, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
     res.json(items);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.delete('/api/cart', async (req, res) => {
   try { const sid = getSessionId(req); await db.collection('carts').doc(sid).set({ items: [], updatedAt: admin.firestore.FieldValue.serverTimestamp() }); res.json({ message: 'Cart cleared' }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 
 // ============================================
@@ -775,7 +788,7 @@ app.get('/api/orders', requireAdmin, async (req, res) => {
     // 🔒 نستبعد الطلبات اللي "حذفها" الأدمن (soft delete) — الطلب يفضل موجود بالكامل عند العميل رغم اختفائه من هنا
     res.json(docsToArr(s).filter(o => !o.adminDeleted));
   }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 // \u062c\u0644\u0628 \u0637\u0644\u0628\u0627\u062a \u0639\u0645\u064a\u0644 \u0645\u0639\u064a\u0646 (\u0628\u062f\u0648\u0646 \u0635\u0644\u0627\u062d\u064a\u0629 \u0623\u062f\u0645\u0646) \u0644\u0627\u0633\u062a\u062e\u062f\u0627\u0645\u0647 \u0641\u064a \u0635\u0641\u062d\u0629 "\u0637\u0644\u0628\u0627\u062a\u064a"
 app.get('/api/orders/customer', async (req, res) => {
@@ -786,13 +799,13 @@ app.get('/api/orders/customer', async (req, res) => {
     try { s = await db.collection('orders').where('customerEmail', '==', email).orderBy('date', 'desc').get(); }
     catch (e) { s = await db.collection('orders').where('customerEmail', '==', email).get(); }
     res.json(docsToArr(s));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.get('/api/orders/:id', requireAdmin, async (req, res) => {
   try { const doc = await db.collection('orders').doc(req.params.id).get(); if (!doc.exists) return res.status(404).json({ error: 'Order not found' }); res.json(Object.assign({ id: doc.id }, doc.data())); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', orderCreateLimiter, async (req, res) => {
   try {
     const body = req.body || {};
     // 🔒 قائمة بيضاء: نقبل فقط بيانات العميل من الفرونت — السعر/الإجمالي/الحالة/الدفع كلها يحسبها السيرفر
@@ -956,7 +969,7 @@ app.put('/api/orders/:id', requireAdmin, async (req, res) => {
     if (statusChanged || trackingChanged) { try { const uo = Object.assign({}, order, updates); const nr = await sendOrderCustomerNotification(uo, { title: statusChanged ? '\u062d\u0627\u0644\u0629 \u0627\u0644\u0637\u0644\u0628: ' + getOrderStatusTextAr(nextStatus) : '\u062a\u062d\u062f\u064a\u062b \u0639\u0644\u0649 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0634\u062d\u0646\u0629' }); if (nr.sent) await ref.update({ customerNotifiedAt: new Date().toISOString() }); } catch (ne) { console.error('Notify error:', ne.message); } }
     const ud = await ref.get();
     res.json({ success: true, notificationSent: statusChanged || trackingChanged, stockReturned: stockResult ? stockResult.success : undefined, stockReturnFailed: stockResult ? stockResult.failed : undefined, order: Object.assign({ id: ud.id }, ud.data()) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.delete('/api/orders/:id', requireAdmin, async (req, res) => {
   try {
@@ -977,7 +990,7 @@ app.delete('/api/orders/:id', requireAdmin, async (req, res) => {
     // 🔀 حذف من عند الأدمن فقط (soft delete) — الطلب يبقى موجوداً بالكامل عند العميل، مستقل تماماً عن قرار الأدمن
     await ref.update({ adminDeleted: true, adminDeletedAt: new Date().toISOString() });
     res.json({ message: 'Order deleted (admin view only)', stockReturned: stockResult ? stockResult.success : undefined, stockReturnFailed: stockResult ? stockResult.failed : undefined });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 // \u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0645\u0646 \u0637\u0631\u0641 \u0627\u0644\u0639\u0645\u064a\u0644 \u0642\u0628\u0644 \u0627\u0644\u062f\u0641\u0639 \u0641\u0642\u0637 (\u0644\u0627 \u064a\u062d\u0630\u0641 \u0627\u0644\u0637\u0644\u0628\u060c \u0641\u0642\u0637 \u064a\u062e\u0641\u064a\u0647 \u0639\u0646 \u0627\u0644\u0639\u0645\u064a\u0644 \u0648\u064a\u0638\u0647\u0631 \u0644\u0644\u0623\u062f\u0645\u0646 \u0623\u0646 \u0627\u0644\u0639\u0645\u064a\u0644 \u0623\u0644\u063a\u0627\u0647)
 app.post('/api/orders/:id/cancel', async (req, res) => {
@@ -1006,7 +1019,7 @@ app.post('/api/orders/:id/cancel', async (req, res) => {
     // ويمنع زر الحذف بالأدمن من الفتح، ويرفضه راوت الحذف نفسه رغم ظهور علامة "ألغاه العميل"
     const stockResult = await restoreOrderStock(ref, order, { status: 'cancelled', customerCancelled: true, customerCancelledAt: new Date().toISOString(), cancelReason, cancelledBy: 'customer', statusTimeline: tl });
     res.json({ success: true, stockReturned: stockResult.success, stockReturnFailed: stockResult.failed || [] });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 // 🙈 العميل يخفي طلباً ملغياً من قائمته الخاصة فقط — لا يمس سجل الطلب بالأدمن إطلاقاً (تحكم مستقل تماماً عن الأدمن)
 app.post('/api/orders/:id/hide-for-customer', async (req, res) => {
@@ -1025,7 +1038,7 @@ app.post('/api/orders/:id/hide-for-customer', async (req, res) => {
     }
     await ref.update({ customerHidden: true, customerHiddenAt: new Date().toISOString() });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 // ===== 🔄 نظام طلب استرجاع منتج (3 أيام من تاريخ التوصيل، بدون استبدال) =====
 function canRequestReturn(order) {
@@ -1078,7 +1091,7 @@ app.post('/api/orders/:id/return-request', async (req, res) => {
     tl.push({ status: 'return_requested', title: 'طلب استرجاع منتج', message: `طلب العميل استرجاع "${returnRequest.itemName}" (الكمية: ${qty}) — السبب: ${returnReason}`, source: 'customer', at: returnRequest.requestedAt });
     await ref.update({ returnRequest, statusTimeline: tl });
     res.json({ success: true, returnRequest });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 // 🛠️ الأدمن يوافق أو يرفض طلب استرجاع معلّق
 app.put('/api/orders/:id/return-request', requireAdmin, async (req, res) => {
@@ -1113,14 +1126,14 @@ app.put('/api/orders/:id/return-request', requireAdmin, async (req, res) => {
       });
     } catch (ne) { console.error('Return notify error:', ne.message); }
     res.json({ success: true, returnRequest: updatedReturnRequest });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 
 app.get('/api/cancel-reasons', requireAdmin, async (req, res) => {
   try {
     const snap = await db.collection('cancel_reasons').orderBy('createdAt', 'asc').get();
     res.json(snap.docs.map(d => Object.assign({ id: d.id }, d.data())));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.post('/api/cancel-reasons', requireAdmin, async (req, res) => {
   try {
@@ -1131,11 +1144,11 @@ app.post('/api/cancel-reasons', requireAdmin, async (req, res) => {
     const ref = await db.collection('cancel_reasons').add({ text, createdAt: admin.firestore.FieldValue.serverTimestamp() });
     const doc = await ref.get();
     res.json(Object.assign({ id: ref.id }, doc.data()));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.delete('/api/cancel-reasons/:id', requireAdmin, async (req, res) => {
   try { await db.collection('cancel_reasons').doc(req.params.id).delete(); res.json({ success: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 app.post('/api/orders/:id/create-shipment', requireAdmin, async (req, res) => {
   try {
@@ -1172,7 +1185,8 @@ app.post('/api/orders/:id/create-shipment', requireAdmin, async (req, res) => {
 });
 app.post('/api/oto/webhook', async (req, res) => {
   try {
-    if (OTO_WEBHOOK_AUTH_KEY) { const ac = [req.headers.authorization, req.headers['x-oto-key'], req.headers['x-api-key']].filter(Boolean).map(v => String(v).replace(/^Bearer\s+/i, '').trim()); if (!ac.includes(OTO_WEBHOOK_AUTH_KEY)) return res.status(401).json({ error: 'Unauthorized' }); }
+    if (!OTO_WEBHOOK_AUTH_KEY) return res.status(503).json({ error: 'Webhook not configured' });
+    { const ac = [req.headers.authorization, req.headers['x-oto-key'], req.headers['x-api-key']].filter(Boolean).map(v => String(v).replace(/^Bearer\s+/i, '').trim()); if (!ac.includes(OTO_WEBHOOK_AUTH_KEY)) return res.status(401).json({ error: 'Unauthorized' }); }
     const events = Array.isArray(req.body) ? req.body : [req.body];
     let count = 0;
     for (const ev of events) {
@@ -1190,21 +1204,21 @@ app.post('/api/oto/webhook', async (req, res) => {
       count++;
     }
     return res.json({ success: true, updatedCount: count });
-  } catch (err) { return res.status(500).json({ error: err.message }); }
+  } catch (err) { return serverError(req, res, err); }
 });
 
 // SETTINGS
 app.get('/api/settings', async (req, res) => {
   try { const s = await db.collection('settings').get(); const r = {}; s.docs.forEach(d => { r[d.data().key] = d.data().value; }); res.json(r); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 app.put('/api/settings', requireAdmin, async (req, res) => {
   try { for (const [key, value] of Object.entries(req.body)) { const s = await db.collection('settings').where('key', '==', key).get(); if (s.empty) await db.collection('settings').add({ key, value }); else await s.docs[0].ref.update({ value }); } res.json({ message: 'Settings updated' }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 app.get('/api/announcing', async (req, res) => {
   try { const s = await db.collection('settings').where('key', '==', 'announcing').get(); if (s.empty) return res.json({ text: '\u0634\u062d\u0646 \u0645\u062c\u0627\u0646\u064a', isVisible: true }); const d = s.docs[0].data(); res.json({ text: (d.value && d.value.text) || '\u0634\u062d\u0646 \u0645\u062c\u0627\u0646\u064a', isVisible: (d.value && d.value.isVisible) !== false }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 app.put('/api/announcing', requireAdmin, async (req, res) => {
   try {
@@ -1214,13 +1228,13 @@ app.put('/api/announcing', requireAdmin, async (req, res) => {
     const nv = { text: text !== undefined ? text : cv.text, isVisible: isVisible !== undefined ? isVisible : (cv.isVisible !== false) };
     if (s.empty) await db.collection('settings').add({ key: 'announcing', value: nv }); else await s.docs[0].ref.update({ value: nv });
     res.json({ message: 'Announcing settings updated' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 
 // USERS
 app.get('/api/users/:email', async (req, res) => {
   try { const email = decodeURIComponent(req.params.email).toLowerCase(); const s = await db.collection('mongo_users').where('email', '==', email).get(); if (s.empty) return res.json({}); res.json(Object.assign({ id: s.docs[0].id }, s.docs[0].data())); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 app.put('/api/users/:email', async (req, res) => {
   try {
@@ -1229,7 +1243,7 @@ app.put('/api/users/:email', async (req, res) => {
     const s = await db.collection('mongo_users').where('email', '==', email).get();
     if (s.empty) { const ref = await db.collection('mongo_users').add({ email, name: name || '', phone: phone || '', addresses: [], createdAt: admin.firestore.FieldValue.serverTimestamp() }); const doc = await ref.get(); return res.json(Object.assign({ id: ref.id }, doc.data())); }
     else { await s.docs[0].ref.update({ name: name || '', phone: phone || '' }); const doc = await s.docs[0].ref.get(); return res.json(Object.assign({ id: doc.id }, doc.data())); }
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 // 🔒 تغيير البريد الإلكتروني الفعلي لسجل المستخدم — يُستدعى فقط بعد تأكيد رمز التحقق بنجاح (/api/verify-email-code)
 // يحافظ على نفس السجل (العناوين، الموقع المحفوظ) لكن تحت البريد الإلكتروني الجديد، ويمنع تكرار بريد مستخدم بحساب آخر
@@ -1252,7 +1266,7 @@ app.post('/api/users/:email/change-email', async (req, res) => {
     await s.docs[0].ref.update({ email: newEmail, emailChangedAt: new Date().toISOString(), previousEmail: oldEmail });
     const doc = await s.docs[0].ref.get();
     res.json({ success: true, user: Object.assign({ id: doc.id }, doc.data()) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.delete('/api/users/:email', requireAdmin, async (req, res) => {
   try {
@@ -1273,7 +1287,7 @@ app.post('/api/users/:email/addresses', async (req, res) => {
     const s = await db.collection('mongo_users').where('email', '==', email).get();
     if (s.empty) { const ref = await db.collection('mongo_users').add({ email, name: '', phone: '', addresses: [entry], createdAt: admin.firestore.FieldValue.serverTimestamp() }); const doc = await ref.get(); return res.json(Object.assign({ id: ref.id }, doc.data())); }
     else { const u = s.docs[0]; const addrs = u.data().addresses || []; addrs.push(entry); await u.ref.update({ addresses: addrs }); const doc = await u.ref.get(); return res.json(Object.assign({ id: doc.id }, doc.data())); }
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.put('/api/users/:email/addresses/:idx', async (req, res) => {
   try {
@@ -1291,7 +1305,7 @@ app.put('/api/users/:email/addresses/:idx', async (req, res) => {
     await s.docs[0].ref.update({ addresses: addrs });
     const doc = await s.docs[0].ref.get();
     res.json(Object.assign({ id: doc.id }, doc.data()));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.delete('/api/users/:email/addresses/:idx', async (req, res) => {
   try {
@@ -1305,11 +1319,11 @@ app.delete('/api/users/:email/addresses/:idx', async (req, res) => {
     await s.docs[0].ref.update({ addresses: addrs });
     const doc = await s.docs[0].ref.get();
     res.json(Object.assign({ id: doc.id }, doc.data()));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.get('/api/users/:email/location', async (req, res) => {
   try { const email = decodeURIComponent(req.params.email).toLowerCase(); const s = await db.collection('mongo_users').where('email', '==', email).get(); if (s.empty) return res.json({ location: null, label: '\u0645\u0648\u0642\u0639\u064a' }); const d = s.docs[0].data(); res.json({ location: d.defaultLocation || null, label: d.locationLabel || '\u0645\u0648\u0642\u0639\u064a' }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 app.put('/api/users/:email/location', async (req, res) => {
   try {
@@ -1319,28 +1333,31 @@ app.put('/api/users/:email/location', async (req, res) => {
     if (s.empty) await db.collection('mongo_users').add({ email, name: '', phone: '', addresses: [], defaultLocation: { lat, lng }, locationLabel: label, createdAt: admin.firestore.FieldValue.serverTimestamp() });
     else await s.docs[0].ref.update({ defaultLocation: { lat, lng }, locationLabel: label });
     res.json({ success: true, location: { lat, lng }, label });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.delete('/api/users/:email/location', async (req, res) => {
   try { const email = decodeURIComponent(req.params.email).toLowerCase(); const s = await db.collection('mongo_users').where('email', '==', email).get(); if (!s.empty) await s.docs[0].ref.update({ defaultLocation: null, locationLabel: '\u0645\u0648\u0642\u0639\u064a' }); res.json({ success: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 
 // EMAIL VERIFICATION
-app.post('/api/send-verification-email', async (req, res) => {
+app.post('/api/send-verification-email', otpSendLimiter, async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email || !email.includes('@')) return res.status(400).json({ error: 'Valid email required' });
+    const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+    if (!email || !email.includes('@') || email.length > 200) return res.status(400).json({ error: 'Valid email required' });
+    const prev = otpStore.get(email);
+    if (prev && Date.now() - prev.timestamp < 60 * 1000) return res.status(429).json({ error: 'انتظر دقيقة قبل طلب رمز جديد' });
     const otp = generateOTP();
     otpStore.set(email, { code: otp, timestamp: Date.now(), attempts: 0 });
     const html = '<div style="font-family:Arial;direction:rtl;text-align:right;background:#f5f5f5;padding:20px;border-radius:8px"><div style="background:white;padding:30px;border-radius:8px"><h2 style="color:#c93c7f">\u0623\u0646\u062a\u064a\u0643\u0627 \u0633\u062a\u0648\u0631</h2><p>\u0643\u0648\u062f \u0627\u0644\u062a\u062d\u0642\u0642:</p><div style="background:#f9f9f9;padding:20px;text-align:center;border:2px solid #c93c7f;margin:20px 0"><p style="font-size:32px;font-weight:bold;color:#c93c7f;letter-spacing:5px;margin:0">' + otp + '</p></div><p style="color:#999;font-size:12px">\u0635\u0644\u0627\u062d\u064a\u0629: 10 \u062f\u0642\u0627\u0626\u0642</p></div></div>';
     try { const r = await sendEmailViaResend({ to: email, subject: 'Antika Store - Email Verification Code', html }); if (r.devMode) { console.log('DEV OTP for ' + email + ': ' + otp); return res.json({ success: true, message: 'dev mode', email }); } return res.json({ success: true, message: 'Verification code sent', email }); }
     catch (e) { return res.status(500).json({ error: 'Failed to send email', details: e.message }); }
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
-app.post('/api/verify-email-code', async (req, res) => {
+app.post('/api/verify-email-code', otpVerifyLimiter, async (req, res) => {
   try {
-    const { email, code } = req.body;
+    const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+    const code = String((req.body && req.body.code) || '').trim();
     if (!email || !code) return res.status(400).json({ error: 'Email and code required' });
     const stored = otpStore.get(email);
     if (!stored) return res.status(400).json({ error: 'No OTP found. Request a new one.' });
@@ -1349,7 +1366,7 @@ app.post('/api/verify-email-code', async (req, res) => {
     if (stored.code !== code) { stored.attempts++; return res.status(400).json({ error: 'Invalid code.', attemptsLeft: MAX_OTP_ATTEMPTS - stored.attempts }); }
     otpStore.delete(email);
     res.json({ success: true, message: 'Email verified', email });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 
 // BANNERS
@@ -1360,7 +1377,7 @@ app.get('/api/banners', async (req, res) => {
     const r = {}; keys.forEach(k => { r[k] = { image: '', height: 400, active: true }; });
     s.docs.forEach(d => { r[d.data().key] = d.data().value; });
     res.json(r);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.put('/api/banners/:key', requireAdmin, async (req, res) => {
   try {
@@ -1377,17 +1394,17 @@ app.put('/api/banners/:key', requireAdmin, async (req, res) => {
     const value = { image: newImg, height: height !== undefined ? height : 400, heightMobile: heightMobile !== undefined ? heightMobile : 220, active: active !== false };
     if (s.empty) await db.collection('settings').add({ key, value }); else await s.docs[0].ref.update({ value });
     res.json({ success: true, banner: value });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 
 // PAGES
 app.get('/api/pages', async (req, res) => {
   try { const keys = ['about', 'returns', 'terms', 'faq', 'shipping', 'cancellation', 'privacy']; const s = await db.collection('settings').where('key', 'in', keys).get(); const r = {}; s.docs.forEach(d => { r[d.data().key] = d.data().value; }); res.json(r); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 app.put('/api/pages/:pageId', requireAdmin, async (req, res) => {
   try { const { pageId } = req.params; const { title, content } = req.body; const s = await db.collection('settings').where('key', '==', pageId).get(); if (s.empty) await db.collection('settings').add({ key: pageId, value: { title, content } }); else await s.docs[0].ref.update({ value: { title, content } }); res.json({ message: 'Page updated', page: { title, content } }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 
 // ADMIN USER INFO
@@ -1401,7 +1418,7 @@ app.get('/api/admin/user-info/:email', requireAdmin, async (req, res) => {
     const orders = docsToArr(os); const reviews = docsToArr(rs);
     if (!user && orders.length === 0) return res.json({ found: false, email, orders: [], reviews: [] });
     res.json({ found: true, user, orders, ordersCount: orders.length, totalSpent: orders.reduce((s, o) => s + (o.total || 0), 0), reviews });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 
 // REVIEWS
@@ -1411,7 +1428,7 @@ app.get('/api/products/:id/reviews', async (req, res) => {
     const reviews = docsToArr(s);
     const avg = reviews.length > 0 ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length) * 10) / 10 : 0;
     res.json({ reviews, avgRating: avg, count: reviews.length });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.post('/api/products/:id/reviews', async (req, res) => {
   try {
@@ -1426,7 +1443,7 @@ app.post('/api/products/:id/reviews', async (req, res) => {
     await db.collection('products').doc(id).update({ rating: Math.round(avg * 10) / 10, reviews: all.size });
     const doc = await ref.get();
     res.json({ success: true, review: Object.assign({ id: ref.id }, doc.data()) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.put('/api/reviews/:reviewId/user', async (req, res) => {
   try {
@@ -1448,7 +1465,7 @@ app.put('/api/reviews/:reviewId/user', async (req, res) => {
     await db.collection('products').doc(rv.productId).update({ rating: Math.round((all.docs.reduce((s, d) => s + d.data().rating, 0) / all.size) * 10) / 10 });
     const ud = await rr.get();
     res.json({ success: true, review: Object.assign({ id: ud.id }, ud.data()) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.delete('/api/reviews/:reviewId/user', async (req, res) => {
   try {
@@ -1468,7 +1485,7 @@ app.delete('/api/reviews/:reviewId/user', async (req, res) => {
     const avg = all.size > 0 ? all.docs.reduce((s, d) => s + d.data().rating, 0) / all.size : 5;
     await db.collection('products').doc(rv.productId).update({ rating: Math.round(avg * 10) / 10, reviews: all.size });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.delete('/api/reviews/:reviewId', requireAdmin, async (req, res) => {
   try {
@@ -1481,7 +1498,7 @@ app.delete('/api/reviews/:reviewId', requireAdmin, async (req, res) => {
     const avg = all.size > 0 ? all.docs.reduce((s, d) => s + d.data().rating, 0) / all.size : 5;
     await db.collection('products').doc(rv.productId).update({ rating: Math.round(avg * 10) / 10, reviews: all.size });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 
 // LIKES & NOTIFICATIONS
@@ -1509,7 +1526,7 @@ app.post('/api/reviews/:reviewId/like', async (req, res) => {
     }
     const ud = await rr.get();
     res.json({ success: true, liked: !alreadyLiked, totalLikes: (ud.data().likes || []).length });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.get('/api/notifications', async (req, res) => {
   try {
@@ -1520,7 +1537,7 @@ app.get('/api/notifications', async (req, res) => {
     const unreadCount = notifications.filter(n => !n.read).length;
     const orderUnreadCount = notifications.filter(n => !n.read && n.type === 'order').length;
     res.json({ notifications, unreadCount, orderUnreadCount });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 app.put('/api/notifications/read-all', async (req, res) => {
   try {
@@ -1532,14 +1549,14 @@ app.put('/api/notifications/read-all', async (req, res) => {
     s.docs.forEach(d => { if (!type || d.data().type === type) b.update(d.ref, { read: true, newLikes: 0 }); });
     await b.commit();
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 // تعليم إشعار واحد بعينه كمقروء (لما العميل يفتحه لحاله) — بدون التأثير على باقي الإشعارات غير المقروءة
 app.put('/api/notifications/:id/read', async (req, res) => {
   try {
     await db.collection('notifications').doc(req.params.id).update({ read: true, newLikes: 0 });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 // \u062d\u0630\u0641 \u0643\u0644 \u0625\u0634\u0639\u0627\u0631\u0627\u062a \u0646\u0648\u0639 \u0645\u0639\u064a\u0646 \u0644\u0639\u0645\u064a\u0644 \u0645\u0639\u064a\u0646 (\u064a\u0633\u062a\u062e\u062f\u0645 \u0639\u0646\u062f \u0641\u062a\u062d \u0635\u0641\u062d\u0629 \u0637\u0644\u0628\u0627\u062a\u064a \u0644\u0645\u0633\u062d \u0625\u0634\u0639\u0627\u0631\u0627\u062a \u0627\u0644\u0637\u0644\u0628\u0627\u062a)
 // ملاحظة: لازم هذا الراوت يسبق راوت /:id العام، وإلا Express بيطابق /:id اول ويعتبر by-type/by-order قيمة id
@@ -1551,7 +1568,7 @@ app.delete('/api/notifications/by-type', async (req, res) => {
     const s = await db.collection('notifications').where('ownerEmail', '==', email).where('type', '==', type).get();
     const b = db.batch(); s.docs.forEach(d => b.delete(d.ref)); await b.commit();
     res.json({ success: true, deleted: s.size });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 // حذف الإشعارات المرتبطة بطلب معيّن فقط لعميل معين (يستخدم عند فتح تفاصيل طلب محدد)
 app.delete('/api/notifications/by-order', async (req, res) => {
@@ -1562,18 +1579,18 @@ app.delete('/api/notifications/by-order', async (req, res) => {
     const s = await db.collection('notifications').where('ownerEmail', '==', email).where('orderId', '==', orderId).get();
     const b = db.batch(); s.docs.forEach(d => b.delete(d.ref)); await b.commit();
     res.json({ success: true, deleted: s.size });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 // \u062d\u0630\u0641 \u0625\u0634\u0639\u0627\u0631 \u0648\u0627\u062d\u062f (\u0632\u0631 X \u0641\u064a \u0635\u0641\u062d\u0629 \u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062a) — لازم يبقى بالآخر لأنه راوت عام يطابق أي قيمة
 app.delete('/api/notifications/:id', async (req, res) => {
   try { await db.collection('notifications').doc(req.params.id).delete(); res.json({ success: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { serverError(req, res, err); }
 });
 
 // MAPS & PAYMENT
 app.get('/api/maps/config', (req, res) => { const e = Boolean(GOOGLE_MAPS_API_KEY); res.json({ provider: e ? 'google' : 'leaflet', googleMapsEnabled: e, googleMapsApiKey: e ? GOOGLE_MAPS_API_KEY : '' }); });
 
-app.get('/api/maps/geocode', async (req, res) => {
+app.get('/api/maps/geocode', geocodeLimiter, async (req, res) => {
     const { lat, lng } = req.query;
     if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
     const geocodeKey = GOOGLE_GEOCODING_KEY || GOOGLE_MAPS_API_KEY;
@@ -1620,7 +1637,7 @@ app.post('/api/payment/verify', async (req, res) => {
       } catch (ne) { console.error('Notify error (payment verify):', ne.message); }
     }
     return res.json({ success: true, payment });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { serverError(req, res, err); }
 });
 
 
