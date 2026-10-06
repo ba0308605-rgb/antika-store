@@ -387,6 +387,14 @@ app.use((req, res, next) => {
 </html>`);
 });
 
+// 🔒 نمنع تحميل ملفات المشروع الحساسة (الكود، الإعدادات، الملفات المخفية، التوثيق) — الباقي (صفحات، css، js، صور) يُقدَّم عادي
+const BLOCKED_STATIC = /(^|\/)(\.[^/]*|node_modules|server\.js|package(-lock)?\.json|npm|node|antika-store@[^/]*|dockerfile|procfile|railway\.(json|toml)|nixpacks\.toml|firebase\.json|firestore\.(rules|indexes\.json))(\/|$)|(serviceaccount|adminsdk|credential|secret)[^/]*\.json$|\.(md|example|env|log|sh|bat|cmd|yml|yaml|toml|map|ts)$/i;
+app.use((req, res, next) => {
+  let p;
+  try { p = decodeURIComponent(req.path); } catch (_) { return res.status(400).end(); }
+  if (BLOCKED_STATIC.test(p)) return res.status(404).send('Not found');
+  next();
+});
 app.use(express.static('.'));
 
 // ADMIN AUTH
