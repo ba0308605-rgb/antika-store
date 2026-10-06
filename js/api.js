@@ -1,5 +1,51 @@
 // 🌸 Antika Store API - Enhanced with Orders Support
 
+// 🔐 يضيف توكن Firebase تلقائياً (ترويسة x-user-token) للطلبات اللي تخص بيانات العميل — السيرفر يتحقق منه
+(function () {
+    if (window.__antikaUserTokenPatched) return;
+    window.__antikaUserTokenPatched = true;
+    var PROTECTED = [
+        /^\/api\/orders\/customer$/,
+        /^\/api\/orders\/[^/]+\/(cancel|hide-for-customer|return-request)$/,
+        /^\/api\/users\//,
+        /^\/api\/notifications/,
+        /^\/api\/products\/[^/]+\/reviews$/,
+        /^\/api\/reviews\/[^/]+\/like$/
+    ];
+    var origFetch = window.fetch.bind(window);
+    var authReady = null;
+    function waitForUser() {
+        if (!(window.firebase && firebase.auth)) return Promise.resolve(null);
+        if (!authReady) {
+            authReady = new Promise(function (resolve) {
+                try { var off = firebase.auth().onAuthStateChanged(function (u) { off(); resolve(u); }); }
+                catch (e) { resolve(null); }
+            });
+        }
+        return Promise.race([authReady, new Promise(function (r) { setTimeout(function () { r(null); }, 4000); })]);
+    }
+    window.fetch = async function (input, init) {
+        try {
+            var rawUrl = typeof input === 'string' ? input : ((input && input.url) || '');
+            var u = new URL(rawUrl, window.location.href);
+            var sameSite = u.origin === window.location.origin || u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+            if (sameSite && PROTECTED.some(function (re) { return re.test(u.pathname); })) {
+                var waited = await waitForUser();
+                var cu = (window.firebase && firebase.auth && firebase.auth().currentUser) || waited;
+                if (cu) {
+                    var token = await cu.getIdToken();
+                    var baseHeaders = (init && init.headers) || ((typeof Request !== 'undefined' && input instanceof Request) ? input.headers : undefined);
+                    var headers = new Headers(baseHeaders);
+                    headers.set('x-user-token', token);
+                    if (typeof Request !== 'undefined' && input instanceof Request) input = new Request(input, { headers: headers });
+                    else init = Object.assign({}, init, { headers: headers });
+                }
+            }
+        } catch (e) { /* نكمل الطلب عادي لو صار خطأ */ }
+        return origFetch(input, init);
+    };
+})();
+
 const API = {
     // Base URL for API requests
     baseURL: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')

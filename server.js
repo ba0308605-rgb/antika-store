@@ -271,6 +271,62 @@ function serverError(req, res, err) {
   return res.status(500).json({ error: (req && req.admin) ? err.message : 'حدث خطأ بالسيرفر، حاول مرة أخرى' });
 }
 
+// ============================================
+// 🔐 هوية العميل: توكن Firebase يجي بالترويسة x-user-token (يضيفه الفرونت تلقائياً)
+// ============================================
+const REQUIRE_VERIFIED_EMAIL = String(process.env.REQUIRE_VERIFIED_EMAIL || '').toLowerCase() === 'true';
+function safeDecode(v) { try { return decodeURIComponent(String(v || '')); } catch (_) { return ''; } }
+async function identifyRequester(req) {
+  // 1) أدمن (JWT حق السيرفر)
+  const auth = req.headers.authorization || '';
+  if (auth.startsWith('Bearer ')) {
+    try { const p = jwt.verify(auth.slice(7).trim(), JWT_SECRET); if (p && p.role === 'admin') return { isAdmin: true, admin: p }; } catch (_) {}
+  }
+  // 2) عميل (توكن Firebase)
+  const t = String(req.headers['x-user-token'] || '').trim();
+  if (!t) return null;
+  try {
+    const d = await admin.auth().verifyIdToken(t);
+    const email = String(d.email || '').trim().toLowerCase();
+    if (!email) return null;
+    if (REQUIRE_VERIFIED_EMAIL && !d.email_verified) {
+      const v = await db.collection('verified_emails').doc(email).get();
+      if (!v.exists) return null;
+    }
+    return { email, uid: d.uid };
+  } catch (_) { return null; }
+}
+// يسمح فقط لصاحب الإيميل (أو الأدمن). optional: لو الإيميل فاضي يمرّ (تعليق زائر مثلاً)
+function requireOwnEmail(getEmail, opts) {
+  const optional = !!(opts && opts.optional);
+  return async (req, res, next) => {
+    try {
+      const target = String(getEmail(req) || '').trim().toLowerCase();
+      const who = await identifyRequester(req);
+      if (who && who.isAdmin) { req.admin = who.admin; return next(); }
+      if (optional && !target) return next();
+      if (!who) return res.status(401).json({ error: 'يجب تسجيل الدخول أولاً' });
+      if (!target || target !== who.email) return res.status(403).json({ error: 'غير مصرح بهذا الإجراء' });
+      req.user = who; return next();
+    } catch (e) { return res.status(401).json({ error: 'يجب تسجيل الدخول أولاً' }); }
+  };
+}
+async function requireUser(req, res, next) {
+  const who = await identifyRequester(req);
+  if (!who) return res.status(401).json({ error: 'يجب تسجيل الدخول أولاً' });
+  if (who.isAdmin) { req.admin = who.admin; return next(); }
+  req.user = who; return next();
+}
+async function ownsNotification(req, res, next) {
+  try {
+    if (req.admin) return next();
+    const d = await db.collection('notifications').doc(req.params.id).get();
+    if (!d.exists) return res.status(404).json({ error: 'الإشعار غير موجود' });
+    if (String(d.data().ownerEmail || '').trim().toLowerCase() !== req.user.email) return res.status(403).json({ error: 'غير مصرح بهذا الإجراء' });
+    return next();
+  } catch (e) { return serverError(req, res, e); }
+}
+
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
@@ -791,7 +847,7 @@ app.get('/api/orders', requireAdmin, async (req, res) => {
   catch (err) { serverError(req, res, err); }
 });
 // \u062c\u0644\u0628 \u0637\u0644\u0628\u0627\u062a \u0639\u0645\u064a\u0644 \u0645\u0639\u064a\u0646 (\u0628\u062f\u0648\u0646 \u0635\u0644\u0627\u062d\u064a\u0629 \u0623\u062f\u0645\u0646) \u0644\u0627\u0633\u062a\u062e\u062f\u0627\u0645\u0647 \u0641\u064a \u0635\u0641\u062d\u0629 "\u0637\u0644\u0628\u0627\u062a\u064a"
-app.get('/api/orders/customer', async (req, res) => {
+app.get('/api/orders/customer', requireOwnEmail(r => r.query.email), async (req, res) => {
   try {
     const email = String(req.query.email || '').trim().toLowerCase();
     if (!email) return res.json([]);
@@ -993,7 +1049,7 @@ app.delete('/api/orders/:id', requireAdmin, async (req, res) => {
   } catch (err) { serverError(req, res, err); }
 });
 // \u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u0637\u0644\u0628 \u0645\u0646 \u0637\u0631\u0641 \u0627\u0644\u0639\u0645\u064a\u0644 \u0642\u0628\u0644 \u0627\u0644\u062f\u0641\u0639 \u0641\u0642\u0637 (\u0644\u0627 \u064a\u062d\u0630\u0641 \u0627\u0644\u0637\u0644\u0628\u060c \u0641\u0642\u0637 \u064a\u062e\u0641\u064a\u0647 \u0639\u0646 \u0627\u0644\u0639\u0645\u064a\u0644 \u0648\u064a\u0638\u0647\u0631 \u0644\u0644\u0623\u062f\u0645\u0646 \u0623\u0646 \u0627\u0644\u0639\u0645\u064a\u0644 \u0623\u0644\u063a\u0627\u0647)
-app.post('/api/orders/:id/cancel', async (req, res) => {
+app.post('/api/orders/:id/cancel', requireOwnEmail(r => r.body && r.body.customerEmail), async (req, res) => {
   try {
     const { customerEmail, reason } = req.body || {};
     const cancelReason = String(reason || '').trim();
@@ -1022,7 +1078,7 @@ app.post('/api/orders/:id/cancel', async (req, res) => {
   } catch (err) { serverError(req, res, err); }
 });
 // 🙈 العميل يخفي طلباً ملغياً من قائمته الخاصة فقط — لا يمس سجل الطلب بالأدمن إطلاقاً (تحكم مستقل تماماً عن الأدمن)
-app.post('/api/orders/:id/hide-for-customer', async (req, res) => {
+app.post('/api/orders/:id/hide-for-customer', requireOwnEmail(r => r.body && r.body.customerEmail), async (req, res) => {
   try {
     const { customerEmail } = req.body || {};
     const ref = db.collection('orders').doc(req.params.id);
@@ -1055,7 +1111,7 @@ function canRequestReturn(order) {
   return { ok: true };
 }
 // 👤 العميل يطلب استرجاع منتج معين من طلب تم توصيله (خلال المدة المسموحة فقط)
-app.post('/api/orders/:id/return-request', async (req, res) => {
+app.post('/api/orders/:id/return-request', requireOwnEmail(r => r.body && r.body.customerEmail), async (req, res) => {
   try {
     const { customerEmail, itemIndex, quantity, reason } = req.body || {};
     const returnReason = String(reason || '').trim();
@@ -1232,11 +1288,11 @@ app.put('/api/announcing', requireAdmin, async (req, res) => {
 });
 
 // USERS
-app.get('/api/users/:email', async (req, res) => {
+app.get('/api/users/:email', requireOwnEmail(r => safeDecode(r.params.email)), async (req, res) => {
   try { const email = decodeURIComponent(req.params.email).toLowerCase(); const s = await db.collection('mongo_users').where('email', '==', email).get(); if (s.empty) return res.json({}); res.json(Object.assign({ id: s.docs[0].id }, s.docs[0].data())); }
   catch (err) { serverError(req, res, err); }
 });
-app.put('/api/users/:email', async (req, res) => {
+app.put('/api/users/:email', requireOwnEmail(r => safeDecode(r.params.email)), async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();
     const { name, phone } = req.body;
@@ -1247,7 +1303,7 @@ app.put('/api/users/:email', async (req, res) => {
 });
 // 🔒 تغيير البريد الإلكتروني الفعلي لسجل المستخدم — يُستدعى فقط بعد تأكيد رمز التحقق بنجاح (/api/verify-email-code)
 // يحافظ على نفس السجل (العناوين، الموقع المحفوظ) لكن تحت البريد الإلكتروني الجديد، ويمنع تكرار بريد مستخدم بحساب آخر
-app.post('/api/users/:email/change-email', async (req, res) => {
+app.post('/api/users/:email/change-email', requireOwnEmail(r => safeDecode(r.params.email)), async (req, res) => {
   try {
     const oldEmail = decodeURIComponent(req.params.email).toLowerCase();
     const newEmail = String((req.body && req.body.newEmail) || '').trim().toLowerCase();
@@ -1277,7 +1333,7 @@ app.delete('/api/users/:email', requireAdmin, async (req, res) => {
     return res.json({ success: true });
   } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
-app.post('/api/users/:email/addresses', async (req, res) => {
+app.post('/api/users/:email/addresses', requireOwnEmail(r => safeDecode(r.params.email)), async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();
     const allowed = ['label','address','location','lat','lng','city','district','street','building','postal','region','regionKey','isDefault'];
@@ -1289,7 +1345,7 @@ app.post('/api/users/:email/addresses', async (req, res) => {
     else { const u = s.docs[0]; const addrs = u.data().addresses || []; addrs.push(entry); await u.ref.update({ addresses: addrs }); const doc = await u.ref.get(); return res.json(Object.assign({ id: doc.id }, doc.data())); }
   } catch (err) { serverError(req, res, err); }
 });
-app.put('/api/users/:email/addresses/:idx', async (req, res) => {
+app.put('/api/users/:email/addresses/:idx', requireOwnEmail(r => safeDecode(r.params.email)), async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();
     const idx = parseInt(req.params.idx);
@@ -1307,7 +1363,7 @@ app.put('/api/users/:email/addresses/:idx', async (req, res) => {
     res.json(Object.assign({ id: doc.id }, doc.data()));
   } catch (err) { serverError(req, res, err); }
 });
-app.delete('/api/users/:email/addresses/:idx', async (req, res) => {
+app.delete('/api/users/:email/addresses/:idx', requireOwnEmail(r => safeDecode(r.params.email)), async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();
     const idx = parseInt(req.params.idx);
@@ -1321,11 +1377,11 @@ app.delete('/api/users/:email/addresses/:idx', async (req, res) => {
     res.json(Object.assign({ id: doc.id }, doc.data()));
   } catch (err) { serverError(req, res, err); }
 });
-app.get('/api/users/:email/location', async (req, res) => {
+app.get('/api/users/:email/location', requireOwnEmail(r => safeDecode(r.params.email)), async (req, res) => {
   try { const email = decodeURIComponent(req.params.email).toLowerCase(); const s = await db.collection('mongo_users').where('email', '==', email).get(); if (s.empty) return res.json({ location: null, label: '\u0645\u0648\u0642\u0639\u064a' }); const d = s.docs[0].data(); res.json({ location: d.defaultLocation || null, label: d.locationLabel || '\u0645\u0648\u0642\u0639\u064a' }); }
   catch (err) { serverError(req, res, err); }
 });
-app.put('/api/users/:email/location', async (req, res) => {
+app.put('/api/users/:email/location', requireOwnEmail(r => safeDecode(r.params.email)), async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();
     const { lat, lng, label = '\u0645\u0648\u0642\u0639\u064a' } = req.body;
@@ -1335,7 +1391,7 @@ app.put('/api/users/:email/location', async (req, res) => {
     res.json({ success: true, location: { lat, lng }, label });
   } catch (err) { serverError(req, res, err); }
 });
-app.delete('/api/users/:email/location', async (req, res) => {
+app.delete('/api/users/:email/location', requireOwnEmail(r => safeDecode(r.params.email)), async (req, res) => {
   try { const email = decodeURIComponent(req.params.email).toLowerCase(); const s = await db.collection('mongo_users').where('email', '==', email).get(); if (!s.empty) await s.docs[0].ref.update({ defaultLocation: null, locationLabel: '\u0645\u0648\u0642\u0639\u064a' }); res.json({ success: true }); }
   catch (err) { serverError(req, res, err); }
 });
@@ -1365,6 +1421,7 @@ app.post('/api/verify-email-code', otpVerifyLimiter, async (req, res) => {
     if (stored.attempts >= MAX_OTP_ATTEMPTS) { otpStore.delete(email); return res.status(429).json({ error: 'Too many attempts.' }); }
     if (stored.code !== code) { stored.attempts++; return res.status(400).json({ error: 'Invalid code.', attemptsLeft: MAX_OTP_ATTEMPTS - stored.attempts }); }
     otpStore.delete(email);
+    try { await db.collection('verified_emails').doc(email).set({ verifiedAt: new Date().toISOString() }); } catch (ve) { console.error('verified_emails write error:', ve.message); }
     res.json({ success: true, message: 'Email verified', email });
   } catch (err) { serverError(req, res, err); }
 });
@@ -1430,7 +1487,7 @@ app.get('/api/products/:id/reviews', async (req, res) => {
     res.json({ reviews, avgRating: avg, count: reviews.length });
   } catch (err) { serverError(req, res, err); }
 });
-app.post('/api/products/:id/reviews', async (req, res) => {
+app.post('/api/products/:id/reviews', requireOwnEmail(r => r.body && r.body.userEmail, { optional: true }), async (req, res) => {
   try {
     const { id } = req.params;
     const { userName, userEmail, rating, comment } = req.body || {};
@@ -1502,7 +1559,7 @@ app.delete('/api/reviews/:reviewId', requireAdmin, async (req, res) => {
 });
 
 // LIKES & NOTIFICATIONS
-app.post('/api/reviews/:reviewId/like', async (req, res) => {
+app.post('/api/reviews/:reviewId/like', requireOwnEmail(r => r.body && r.body.userEmail), async (req, res) => {
   try {
     const { userEmail } = req.body || {};
     if (!userEmail) return res.status(400).json({ error: '\u064a\u062c\u0628 \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644 \u0644\u0644\u0625\u0639\u062c\u0627\u0628' });
@@ -1528,7 +1585,7 @@ app.post('/api/reviews/:reviewId/like', async (req, res) => {
     res.json({ success: true, liked: !alreadyLiked, totalLikes: (ud.data().likes || []).length });
   } catch (err) { serverError(req, res, err); }
 });
-app.get('/api/notifications', async (req, res) => {
+app.get('/api/notifications', requireOwnEmail(r => r.query.email), async (req, res) => {
   try {
     const { email } = req.query;
     if (!email) return res.status(400).json({ error: '\u0627\u0644\u0625\u064a\u0645\u064a\u0644 \u0645\u0637\u0644\u0648\u0628' });
@@ -1539,7 +1596,7 @@ app.get('/api/notifications', async (req, res) => {
     res.json({ notifications, unreadCount, orderUnreadCount });
   } catch (err) { serverError(req, res, err); }
 });
-app.put('/api/notifications/read-all', async (req, res) => {
+app.put('/api/notifications/read-all', requireOwnEmail(r => r.body && r.body.email), async (req, res) => {
   try {
     const { email, type } = req.body || {};
     if (!email) return res.status(400).json({ error: '\u0627\u0644\u0625\u064a\u0645\u064a\u0644 \u0645\u0637\u0644\u0648\u0628' });
@@ -1552,7 +1609,7 @@ app.put('/api/notifications/read-all', async (req, res) => {
   } catch (err) { serverError(req, res, err); }
 });
 // تعليم إشعار واحد بعينه كمقروء (لما العميل يفتحه لحاله) — بدون التأثير على باقي الإشعارات غير المقروءة
-app.put('/api/notifications/:id/read', async (req, res) => {
+app.put('/api/notifications/:id/read', requireUser, ownsNotification, async (req, res) => {
   try {
     await db.collection('notifications').doc(req.params.id).update({ read: true, newLikes: 0 });
     res.json({ success: true });
@@ -1560,7 +1617,7 @@ app.put('/api/notifications/:id/read', async (req, res) => {
 });
 // \u062d\u0630\u0641 \u0643\u0644 \u0625\u0634\u0639\u0627\u0631\u0627\u062a \u0646\u0648\u0639 \u0645\u0639\u064a\u0646 \u0644\u0639\u0645\u064a\u0644 \u0645\u0639\u064a\u0646 (\u064a\u0633\u062a\u062e\u062f\u0645 \u0639\u0646\u062f \u0641\u062a\u062d \u0635\u0641\u062d\u0629 \u0637\u0644\u0628\u0627\u062a\u064a \u0644\u0645\u0633\u062d \u0625\u0634\u0639\u0627\u0631\u0627\u062a \u0627\u0644\u0637\u0644\u0628\u0627\u062a)
 // ملاحظة: لازم هذا الراوت يسبق راوت /:id العام، وإلا Express بيطابق /:id اول ويعتبر by-type/by-order قيمة id
-app.delete('/api/notifications/by-type', async (req, res) => {
+app.delete('/api/notifications/by-type', requireOwnEmail(r => r.query.email), async (req, res) => {
   try {
     const email = String(req.query.email || '').trim().toLowerCase();
     const type = String(req.query.type || '').trim();
@@ -1571,7 +1628,7 @@ app.delete('/api/notifications/by-type', async (req, res) => {
   } catch (err) { serverError(req, res, err); }
 });
 // حذف الإشعارات المرتبطة بطلب معيّن فقط لعميل معين (يستخدم عند فتح تفاصيل طلب محدد)
-app.delete('/api/notifications/by-order', async (req, res) => {
+app.delete('/api/notifications/by-order', requireOwnEmail(r => r.query.email), async (req, res) => {
   try {
     const email = String(req.query.email || '').trim().toLowerCase();
     const orderId = String(req.query.orderId || '').trim();
@@ -1582,7 +1639,7 @@ app.delete('/api/notifications/by-order', async (req, res) => {
   } catch (err) { serverError(req, res, err); }
 });
 // \u062d\u0630\u0641 \u0625\u0634\u0639\u0627\u0631 \u0648\u0627\u062d\u062f (\u0632\u0631 X \u0641\u064a \u0635\u0641\u062d\u0629 \u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062a) — لازم يبقى بالآخر لأنه راوت عام يطابق أي قيمة
-app.delete('/api/notifications/:id', async (req, res) => {
+app.delete('/api/notifications/:id', requireUser, ownsNotification, async (req, res) => {
   try { await db.collection('notifications').doc(req.params.id).delete(); res.json({ success: true }); }
   catch (err) { serverError(req, res, err); }
 });
