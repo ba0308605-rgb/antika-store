@@ -19,11 +19,12 @@ setInterval(async () => {
 const ADMIN_USER_KEY = 'antika_admin_user';
 
 function safeText(value) {
-    const text = String(value ?? '');
+    let text = String(value ?? '');
     if (window.API && typeof API._fixMojibakeText === 'function') {
-        return API._fixMojibakeText(text);
+        text = API._fixMojibakeText(text);
     }
-    return text;
+    // 🔒 تحويل رموز HTML حتى لا ينفّذ المتصفح أي كود مكتوب داخل بيانات العميل
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // ============================================
@@ -453,22 +454,6 @@ function renderRecentOrders(orders) {
 // ORDERS MANAGEMENT - إدارة الطلبات
 // ============================================
 
-// ========== 🧪 مؤقت للاختبار فقط — احذف هذي الدالة بالكامل قبل الإطلاق الفعلي ==========
-async function resetOrderCounterForTesting() {
-    if (!confirm('تصفير عداد ترقيم الطلبات؟ الطلب الجاي بيبدأ من #1. هذا للاختبار فقط ولازم يُحذف قبل الإطلاق الفعلي.')) return;
-    try {
-        const token = localStorage.getItem('antika_admin_token');
-        const res = await fetch('/api/admin/reset-order-counter', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-            body: JSON.stringify({ includeReturns: false })
-        });
-        const data = await res.json();
-        alert(data.message || 'تم التصفير');
-    } catch (err) {
-        alert('حدث خطأ: ' + err.message);
-    }
-}
 // ========== نهاية الكود المؤقت للاختبار ==========
 
 async function loadOrders() {
@@ -929,8 +914,8 @@ function renderOrdersList(orders) {
                     <div class="grid md:grid-cols-2 gap-4 mb-4">
                         <div class="bg-blue-50 border border-blue-100 rounded-xl p-3">
                             <h4 class="font-bold text-blue-900 mb-2 flex items-center gap-2"><i class="fas fa-user-circle"></i> معلومات العميل</h4>
-                            <p class="text-sm text-gray-700"><i class="fas fa-user ml-2 text-antika-gold w-4 inline-block"></i>${order.customerName}</p>
-                            <p class="text-sm text-gray-700"><i class="fas fa-phone ml-2 text-antika-gold w-4 inline-block"></i>${order.customerPhone}</p>
+                            <p class="text-sm text-gray-700"><i class="fas fa-user ml-2 text-antika-gold w-4 inline-block"></i>${safeText(order.customerName)}</p>
+                            <p class="text-sm text-gray-700"><i class="fas fa-phone ml-2 text-antika-gold w-4 inline-block"></i>${safeText(order.customerPhone)}</p>
                             <p class="text-sm text-gray-700"><i class="fas fa-envelope ml-2 text-antika-gold w-4 inline-block"></i>${safeText(order.customerEmail)}</p>
                             <p class="text-sm text-gray-700"><i class="fas fa-map-marker-alt ml-2 text-antika-gold w-4 inline-block"></i>${safeText(order.customerAddress)}</p>
                             ${order.customerStreet ? `<p class="text-sm text-gray-700"><i class="fas fa-road ml-2 text-antika-gold w-4 inline-block"></i>الشارع: ${safeText(order.customerStreet)}</p>` : ''}
@@ -1025,7 +1010,7 @@ function renderOrdersList(orders) {
                     ${order.cancelReason ? `
                     <div class="mb-4 p-3 bg-yellow-50 border-2 border-yellow-300 rounded-xl text-sm text-yellow-800">
                         <p class="font-bold mb-1"><i class="fas fa-circle-info ml-1"></i>سبب الإلغاء (${order.cancelledBy === 'customer' ? 'من العميل' : order.cancelledBy === 'system' ? 'إلغاء تلقائي — عدم الدفع' : 'من الإدارة'})</p>
-                        <p>${order.cancelReason}</p>
+                        <p>${safeText(order.cancelReason)}</p>
                     </div>` : ''}
                     ${order.isPaid ? `
                     <div class="mb-4 p-2 px-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
@@ -1040,7 +1025,7 @@ function renderOrdersList(orders) {
                         <p class="font-bold mb-1"><i class="fas fa-triangle-exclamation ml-1"></i>خلل في إرجاع المخزون — يحتاج مراجعة يدوية فورية</p>
                         <p>تعذّر إرجاع القطع التالية تلقائياً (على الأغلب لأن المنتج محذوف نهائياً من المخزون):</p>
                         <ul class="list-disc list-inside mt-1">
-                            ${((order.stockReturnLog && order.stockReturnLog.failedItems) || []).map(f => `<li>${f.name || f.productId} — الكمية: ${f.quantity}</li>`).join('') || '<li>راجع سجل stock_return_logs لتفاصيل الخلل</li>'}
+                            ${((order.stockReturnLog && order.stockReturnLog.failedItems) || []).map(f => `<li>${safeText(f.name || f.productId)} — الكمية: ${f.quantity}</li>`).join('') || '<li>راجع سجل stock_return_logs لتفاصيل الخلل</li>'}
                         </ul>
                     </div>`) : ''}
                     <div class="border-t border-gray-100 pt-4">
@@ -1048,9 +1033,9 @@ function renderOrdersList(orders) {
                         <div class="space-y-2">
                             ${order.items.map(item => `
                                 <div class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
-                                    <img src="${item.image}" alt="${item.name}" ${item.productId ? `onclick="openProductModal('${item.productId}')" class="w-14 h-14 rounded-lg object-cover cursor-pointer hover:ring-2 hover:ring-antika-gold transition" title="عرض تفاصيل المنتج"` : `class="w-14 h-14 rounded-lg object-cover"`}>
+                                    <img src="${safeText(item.image)}" alt="${safeText(item.name)}" ${item.productId ? `onclick="openProductModal('${item.productId}')" class="w-14 h-14 rounded-lg object-cover cursor-pointer hover:ring-2 hover:ring-antika-gold transition" title="عرض تفاصيل المنتج"` : `class="w-14 h-14 rounded-lg object-cover"`}>
                                     <div class="flex-1 min-w-0">
-                                        <p class="font-semibold text-sm truncate ${item.productId ? `cursor-pointer hover:text-antika-gold hover:underline" onclick="openProductModal('${item.productId}')" title="عرض تفاصيل المنتج` : ''}">${item.name}</p>
+                                        <p class="font-semibold text-sm truncate ${item.productId ? `cursor-pointer hover:text-antika-gold hover:underline" onclick="openProductModal('${item.productId}')" title="عرض تفاصيل المنتج` : ''}">${safeText(item.name)}</p>
                                         <p class="text-xs text-gray-500 mt-1">سعر القطعة: ${item.price} ر.س</p>
                                     </div>
                                     <div class="flex items-center gap-2 bg-white border-2 border-antika-gold/30 rounded-lg px-3 py-1.5">
@@ -1115,7 +1100,7 @@ function renderOrdersList(orders) {
 function buildReceiptHtml({ title, orderSeq, orderDate, order, refNote }) {
     const itemsRows = (order.items || []).map(it => `
         <tr>
-            <td style="padding:8px;border-bottom:1px solid #eee;">${it.name}</td>
+            <td style="padding:8px;border-bottom:1px solid #eee;">${safeText(it.name)}</td>
             <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${it.quantity}</td>
             <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${it.price} ر.س</td>
             <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${(it.quantity * it.price).toLocaleString('ar-SA')} ر.س</td>
@@ -1157,9 +1142,9 @@ function buildReceiptHtml({ title, orderSeq, orderDate, order, refNote }) {
         ${refNote ? `<div class="box" style="background:#fff5f5;border-color:#fecaca;">${refNote}</div>` : ''}
         <div class="box">
             <strong>بيانات العميل</strong>
-            <p style="margin:6px 0 0;">${order.customerName || ''} — ${order.customerPhone || ''}${order.customerAltPhone ? ' / ' + order.customerAltPhone : ''}</p>
-            <p style="margin:2px 0 0;color:#555;">${order.customerAddress || ''}</p>
-            ${order.customerLandmark ? `<p style="margin:2px 0 0;color:#555;">أقرب معلم: ${order.customerLandmark}</p>` : ''}
+            <p style="margin:6px 0 0;">${safeText(order.customerName || '')} — ${safeText(order.customerPhone || '')}${order.customerAltPhone ? ' / ' + safeText(order.customerAltPhone) : ''}</p>
+            <p style="margin:2px 0 0;color:#555;">${safeText(order.customerAddress || '')}</p>
+            ${order.customerLandmark ? `<p style="margin:2px 0 0;color:#555;">أقرب معلم: ${safeText(order.customerLandmark)}</p>` : ''}
         </div>
         <table>
             <thead><tr><th>المنتج</th><th>الكمية</th><th>سعر القطعة</th><th>الإجمالي</th></tr></thead>
@@ -1191,7 +1176,7 @@ function printReturnReceipt(orderId) {
     if (!order) return;
     const orderSeq = order.orderNumber || orderId;
     const orderDate = formatOrderDate(order.date);
-    const refNote = `<strong>رقم المرتجع: R-${order.returnNumber || '-'}</strong> — مرتبط بالطلب الأصلي #${orderSeq}${order.cancelReason ? `<br>سبب الإلغاء: ${order.cancelReason}` : ''}`;
+    const refNote = `<strong>رقم المرتجع: R-${order.returnNumber || '-'}</strong> — مرتبط بالطلب الأصلي #${orderSeq}${order.cancelReason ? `<br>سبب الإلغاء: ${safeText(order.cancelReason)}` : ''}`;
     const html = buildReceiptHtml({ title: 'إشعار إلغاء / مرتجع', orderSeq, orderDate, order, refNote });
     const w = window.open('', '_blank');
     w.document.write(html);
