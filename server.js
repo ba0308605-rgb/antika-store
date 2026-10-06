@@ -610,15 +610,8 @@ app.post('/api/coupons/validate', async (req, res) => {
     res.json({ valid: true, code: c.code, type: c.type, value: c.value, discount, label: c.type === 'percent' ? '\u062e\u0635\u0645 ' + c.value + '%' : '\u062e\u0635\u0645 ' + c.value + ' \u0631.\u0633', minOrder: c.minOrder });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-app.post('/api/coupons/use', async (req, res) => {
-  try {
-    const { code } = req.body;
-    if (!code) return res.status(400).json({ error: 'code required' });
-    const s = await db.collection('coupons').where('code', '==', code.toUpperCase().trim()).get();
-    if (!s.empty) await s.docs[0].ref.update({ usedCount: admin.firestore.FieldValue.increment(1) });
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
+// 🔒 احتساب استخدام الكوبون صار داخل إنشاء الطلب (POST /api/orders). نُبقي الراوت فقط لتوافق الفرونت القديم ولا يغيّر شي.
+app.post('/api/coupons/use', (req, res) => res.json({ ok: true }));
 
 // CART
 app.get('/api/cart', async (req, res) => {
@@ -801,10 +794,15 @@ app.get('/api/orders/:id', requireAdmin, async (req, res) => {
 });
 app.post('/api/orders', async (req, res) => {
   try {
-    const payload = Object.assign({}, req.body || {});
+    const body = req.body || {};
+    // 🔒 قائمة بيضاء: نقبل فقط بيانات العميل من الفرونت — السعر/الإجمالي/الحالة/الدفع كلها يحسبها السيرفر
+    const CUSTOMER_FIELDS = ['customerName','customerPhone','customerEmail','customerAddress','customerCity','customerDistrict','customerStreet','customerBuilding','customerPostal','customerLandmark','customerAltPhone'];
+    const payload = {};
+    CUSTOMER_FIELDS.forEach(k => { if (body[k] != null) payload[k] = String(body[k]).trim().slice(0, 500); });
+    if (payload.customerEmail) payload.customerEmail = payload.customerEmail.toLowerCase();
     // 🔒 إجبارية الموقع الجغرافي: لا يُقبل أي طلب بدون إحداثيات صالحة (يمنع التلاعب من الفرونت)
-    const rawLat = payload.lat != null ? payload.lat : (payload.location && Array.isArray(payload.location.coordinates) ? payload.location.coordinates[1] : undefined);
-    const rawLng = payload.lng != null ? payload.lng : (payload.location && Array.isArray(payload.location.coordinates) ? payload.location.coordinates[0] : undefined);
+    const rawLat = body.lat != null ? body.lat : (body.location && Array.isArray(body.location.coordinates) ? body.location.coordinates[1] : undefined);
+    const rawLng = body.lng != null ? body.lng : (body.location && Array.isArray(body.location.coordinates) ? body.location.coordinates[0] : undefined);
     const numLat = Number(rawLat);
     const numLng = Number(rawLng);
     if (!Number.isFinite(numLat) || !Number.isFinite(numLng) || (numLat === 0 && numLng === 0)) {
@@ -817,24 +815,95 @@ app.post('/api/orders', async (req, res) => {
     if (!isValidSaudiPhone(payload.customerPhone)) {
       return res.status(400).json({ error: '\u0631\u0642\u0645 \u0627\u0644\u062c\u0648\u0627\u0644 \u063a\u064a\u0631 \u0635\u062d\u064a\u062d\u060c \u064a\u062c\u0628 \u0623\u0646 \u064a\u0643\u0648\u0646 \u0631\u0642\u0645 \u062c\u0648\u0627\u0644 \u0633\u0639\u0648\u062f\u064a \u0645\u0643\u0648\u0646 \u0645\u0646 9 \u0623\u0631\u0642\u0627\u0645 \u0648\u064a\u0628\u062f\u0623 \u0628\u0640 5' });
     }
-    const pm = String(payload.paymentMethod || 'cash').toLowerCase();
-    const codFeeInput = Number(payload.codFee);
-    payload.codFee = Number.isFinite(codFeeInput) ? codFeeInput : (pm === 'cash' ? COD_SURCHARGE_SAR : 0);
+    const pm = ['cash', 'unpaid'].includes(String(body.paymentMethod || '').toLowerCase()) ? String(body.paymentMethod).toLowerCase() : 'unpaid';
+    payload.codFee = pm === 'cash' ? COD_SURCHARGE_SAR : 0;
     payload.paymentMethod = pm;
+
+    // 🔒 التسعير من السيرفر: نقرأ الأسعار من المنتجات نفسها ونتجاهل أي سعر أو إجمالي يجي من العميل
+    const ENFORCE_STOCK_AT_ORDER = true; // false = يقبل الطلب حتى لو الكمية أكبر من المخزون (تأكيد التوفر يدوي)
+    const badReq = (msg) => { const e = new Error(msg); e.status = 400; return e; };
+    const rawItems = Array.isArray(body.items) ? body.items : [];
+    if (rawItems.length === 0 || rawItems.length > 50) throw badReq('السلة فارغة أو غير صالحة');
+    const qtyBy = {}; const clientImg = {};
+    for (const it of rawItems) {
+      const pid = String((it && it.productId) || '').trim();
+      const qty = Math.floor(Number(it && it.quantity));
+      if (!pid || pid.includes('/') || !Number.isFinite(qty) || qty < 1 || qty > 100) throw badReq('بيانات المنتجات غير صالحة');
+      qtyBy[pid] = (qtyBy[pid] || 0) + qty;
+      if (!clientImg[pid]) clientImg[pid] = String((it && it.image) || '').slice(0, 500);
+    }
+    const pids = Object.keys(qtyBy);
+    const reservedStock = []; // للتراجع لو فشل إنشاء الطلب
+    const orderItems = await db.runTransaction(async (t) => {
+      reservedStock.length = 0; // الـ Transaction ممكن يُعاد تشغيله عند التزاحم
+      const snaps = [];
+      for (const pid of pids) snaps.push(await t.get(db.collection('products').doc(pid)));
+      const lines = [];
+      snaps.forEach((snap, idx) => {
+        const pid = pids[idx]; const qty = qtyBy[pid];
+        if (!snap.exists) throw badReq('أحد المنتجات لم يعد متوفراً في المتجر');
+        const d = snap.data() || {};
+        const base = Number(d.price); const dp = Number(d.discountPrice);
+        if (!Number.isFinite(base) || base <= 0) throw badReq('تعذر تحديد سعر أحد المنتجات');
+        const unit = (Number.isFinite(dp) && dp > 0 && dp < base) ? dp : base;
+        const stock = Number(d.stock);
+        if (d.stock != null && Number.isFinite(stock)) {
+          if (ENFORCE_STOCK_AT_ORDER && qty > stock) throw badReq('الكمية المطلوبة من "' + (d.name || 'المنتج') + '" غير متوفرة حالياً (المتوفر: ' + Math.max(0, stock) + ')');
+          t.update(snap.ref, { stock: Math.max(0, stock - qty) });
+          reservedStock.push({ ref: snap.ref, qty });
+        }
+        lines.push({ productId: pid, name: String(d.name || ''), price: unit, image: (Array.isArray(d.images) && d.images[0]) || d.image || clientImg[pid] || '', quantity: qty });
+      });
+      return lines;
+    });
+    const round2 = (n) => Math.round(n * 100) / 100;
+    const subTotal = round2(orderItems.reduce((a, l) => a + l.price * l.quantity, 0));
+    // 🔒 الكوبون يُتحقق منه ويُحسب من السيرفر
+    let discount = 0; let appliedCouponRef = null; let appliedCouponCode = null;
+    const rawCoupon = String(body.couponCode || '').toUpperCase().trim();
+    try {
+      if (rawCoupon) {
+        const cs = await db.collection('coupons').where('code', '==', rawCoupon).where('active', '==', true).limit(1).get();
+        if (cs.empty) throw badReq('الكوبون غير صالح');
+        const c = cs.docs[0].data();
+        if (c.expiresAt && new Date() > new Date(c.expiresAt)) throw badReq('انتهت صلاحية هذا الكوبون');
+        if (c.minOrder > 0 && subTotal < c.minOrder) throw badReq('الكوبون يشترط طلب لا يقل عن ' + c.minOrder + ' ر.س');
+        if (c.maxUses > 0 && c.usedCount >= c.maxUses) throw badReq('تم استنفاذ عدد مرات استخدام هذا الكوبون');
+        discount = c.type === 'percent' ? subTotal * (Number(c.value) / 100) : Number(c.value);
+        if (!Number.isFinite(discount) || discount < 0) discount = 0;
+        discount = round2(Math.min(discount, subTotal));
+        appliedCouponRef = cs.docs[0].ref; appliedCouponCode = rawCoupon;
+      }
+    } catch (ce) {
+      for (const r of reservedStock) { try { await r.ref.update({ stock: admin.firestore.FieldValue.increment(r.qty) }); } catch (_) {} }
+      throw ce;
+    }
+    payload.items = orderItems;
+    payload.subTotal = subTotal;
+    payload.discount = discount;
+    payload.couponCode = appliedCouponCode;
+    payload.total = round2(Math.max(0, subTotal - discount));
     // كل طلب جديد يبدأ تلقائياً بحالة "تأكيد التوفر + احتساب الشحن" بدون أي إجراء من الأدمن
     payload.status = 'confirming_availability';
     payload.isPaid = false;
     payload.date = admin.firestore.FieldValue.serverTimestamp();
     payload.statusTimeline = [{ status: payload.status, title: '\u062a\u0645 \u0627\u0633\u062a\u0644\u0627\u0645 \u0627\u0644\u0637\u0644\u0628', message: '\u0627\u0633\u062a\u0644\u0645\u0646\u0627 \u0637\u0644\u0628\u0643 \u0628\u0646\u062c\u0627\u062d.', source: 'system', at: new Date().toISOString() }];
-    payload.orderNumber = await getNextOrderNumber();
-    const ref = await db.collection('orders').add(payload);
+    let ref;
+    try {
+      payload.orderNumber = await getNextOrderNumber();
+      ref = await db.collection('orders').add(payload);
+    } catch (oe) {
+      for (const r of reservedStock) { try { await r.ref.update({ stock: admin.firestore.FieldValue.increment(r.qty) }); } catch (_) {} }
+      throw oe;
+    }
+    if (appliedCouponRef) { try { await appliedCouponRef.update({ usedCount: admin.firestore.FieldValue.increment(1) }); } catch (ue) { console.error('Coupon usage error:', ue.message); } }
     if (!payload.orderCode) { /* 🗑️ توليد orderCode أُلغي — رقم الطلب الحقيقي orderNumber (أعلاه) هو المرجع الوحيد المعروض للعميل من الآن */ }
-    try { for (const item of (payload.items || [])) { const qty = Number(item.quantity || 1); if (!item.productId) continue; const pd = await db.collection('products').doc(item.productId).get(); if (pd.exists) await pd.ref.update({ stock: Math.max(0, (pd.data().stock || 0) - qty) }); } } catch (se) { console.error('Stock error:', se.message); }
+    // (خصم المخزون صار داخل Transaction أعلاه)
     const doc = await ref.get();
     const order = Object.assign({ id: ref.id }, doc.data());
     try { const nr = await sendOrderCustomerNotification(order, { title: '\u062a\u0645 \u0627\u0633\u062a\u0644\u0627\u0645 \u0637\u0644\u0628\u0643' }); if (nr.sent) await ref.update({ customerNotifiedAt: new Date().toISOString() }); } catch (ne) { console.error('Notify error:', ne.message); }
     res.json(order);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { if (!err.status) console.error('Create order error:', err); res.status(err.status || 500).json({ error: err.status ? err.message : 'تعذر إنشاء الطلب، حاول مرة أخرى' }); }
 });
 app.put('/api/orders/:id', requireAdmin, async (req, res) => {
   try {
