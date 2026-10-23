@@ -2605,63 +2605,301 @@ document.addEventListener('DOMContentLoaded', () => {
 // BULK DISCOUNT
 // ============================================
 
+// ============================================
+// 🏷️ الخصم الجماعي: فلاتر + تحديد + معاينة + تأكيد + إزالة + تراجع
+// ============================================
+const bdState = { products: [], categories: [], selected: new Set(), mode: 'apply', rows: [] };
+
+function bdToday() { return new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10); }
+function bdPid(p) { return String(p.id || p._id || ''); }
+function bdCreatedDate(p) {
+    const c = p.createdAt; if (!c) return '';
+    const sec = c._seconds != null ? c._seconds : c.seconds;
+    if (sec == null) return '';
+    return new Date(sec * 1000 + 3 * 3600 * 1000).toISOString().slice(0, 10);
+}
+function bdDiscountState(p) {
+    const base = Number(p.price), dp = Number(p.discountPrice);
+    if (!Number.isFinite(dp) || dp <= 0 || !Number.isFinite(base) || dp >= base) return 'none';
+    const t = bdToday();
+    const s = p.discountStartDate ? String(p.discountStartDate).slice(0, 10) : '';
+    const e = p.discountEndDate ? String(p.discountEndDate).slice(0, 10) : '';
+    if (s && t < s) return 'scheduled';
+    if (e && t > e) return 'expired';
+    return 'active';
+}
+function bdComputePrice(price, type, value) {
+    price = Number(price); value = Number(value);
+    if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(value) || value <= 0) return null;
+    let dp;
+    if (type === 'percentage') dp = Math.round(price * (1 - value / 100));
+    else if (type === 'fixed') dp = Math.round((price - value) * 100) / 100;
+    else dp = Math.round(value * 100) / 100;
+    return (dp > 0 && dp < price) ? dp : null;
+}
+function bdCategoryIdsFor(catId) { // القسم + كل أقسامه الفرعية
+    const ids = new Set([String(catId)]);
+    let grew = true;
+    while (grew) {
+        grew = false;
+        bdState.categories.forEach(c => {
+            const id = String(c.id || c._id), parent = c.parentId ? String(c.parentId) : '';
+            if (parent && ids.has(parent) && !ids.has(id)) { ids.add(id); grew = true; }
+        });
+    }
+    return ids;
+}
+function bdCategoryNames(p) {
+    const ids = [].concat(p.categories || [], p.category ? [p.category] : []).map(String);
+    const names = ids.map(id => { const c = bdState.categories.find(x => String(x.id || x._id) === id); return c ? c.name : ''; }).filter(Boolean);
+    return Array.from(new Set(names)).join('، ');
+}
+
 async function loadBulkDiscountProducts() {
     try {
-        const products = await API.getProducts();
-        const container = document.getElementById('bulk-products-list');
-
-        if (!container) return;
-
-        if (products.length === 0) {
-            container.innerHTML = '<p class="text-gray-500 text-center py-4">لا توجد منتجات</p>';
-            return;
-        }
-
-        container.innerHTML = products.map(p => {
-            const productId = p._id || p.id;
-            return `
-            <label class="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                <input type="checkbox" value="${productId}" class="product-checkbox w-5 h-5 text-antika-pink rounded accent-antika-pink">
-                <img src="${p.images && p.images[0] ? p.images[0] : 'https://via.placeholder.com/800x800/D6C1A6/FFFFFF?text=Antika+Store'}" class="w-12 h-12 rounded object-cover">
-                <div class="flex-1">
-                    <div class="font-semibold">${p.name}</div>
-                    <div class="text-sm text-gray-500">${p.price} ر.س</div>
-                </div>
-            </label>
-            `;
-        }).join('');
+        const [products, categories] = await Promise.all([API.getProducts(), API.getCategories()]);
+        bdState.products = Array.isArray(products) ? products : [];
+        bdState.categories = Array.isArray(categories) ? categories : [];
+        // نحذف من التحديد أي منتج ما عاد موجود
+        const existing = new Set(bdState.products.map(bdPid));
+        bdState.selected.forEach(id => { if (!existing.has(id)) bdState.selected.delete(id); });
+        bdRenderCategoryOptions();
+        bdBindFilters();
+        bdRender();
+        bdRefreshLast();
     } catch (error) {
         console.error('Error loading bulk discount products:', error);
     }
 }
 
-async function applyBulkDiscount() {
-    const checkboxes = document.querySelectorAll('.product-checkbox:checked');
-    const productIds = Array.from(checkboxes).map(cb => cb.value);
+function bdRenderCategoryOptions() {
+    const sel = document.getElementById('bd-category');
+    if (!sel) return;
+    const keep = sel.value;
+    sel.innerHTML = '';
+    const add = (value, text) => { const o = document.createElement('option'); o.value = value; o.textContent = text; sel.appendChild(o); };
+    add('', 'كل الأقسام');
+    const byParent = {};
+    bdState.categories.forEach(c => { const k = c.parentId ? String(c.parentId) : ''; (byParent[k] = byParent[k] || []).push(c); });
+    const walk = (parent, depth) => (byParent[parent] || []).forEach(c => {
+        add(String(c.id || c._id), (depth ? '— '.repeat(depth) : '') + (c.name || ''));
+        walk(String(c.id || c._id), depth + 1);
+    });
+    walk('', 0);
+    sel.value = keep;
+}
 
-    if (productIds.length === 0) {
-        showNotification('الرجاء اختيار منتج واحد على الأقل!', 'error');
-        return;
+let bdBound = false;
+function bdBindFilters() {
+    if (bdBound) return; bdBound = true;
+    ['bd-search', 'bd-category', 'bd-added-from', 'bd-added-to', 'bd-price-min', 'bd-price-max', 'bd-stock', 'bd-has-discount'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.addEventListener('input', bdRender); el.addEventListener('change', bdRender); }
+    });
+    const list = document.getElementById('bd-list');
+    if (list) list.addEventListener('change', (e) => {
+        const cb = e.target.closest('input[data-bd-id]'); if (!cb) return;
+        if (cb.checked) bdState.selected.add(cb.dataset.bdId); else bdState.selected.delete(cb.dataset.bdId);
+        bdUpdateCount();
+    });
+}
+function bdVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+
+function bdFiltered() {
+    const q = bdVal('bd-search').trim().toLowerCase();
+    const cat = bdVal('bd-category');
+    const catIds = cat ? bdCategoryIdsFor(cat) : null;
+    const from = bdVal('bd-added-from'), to = bdVal('bd-added-to');
+    const pmin = bdVal('bd-price-min') === '' ? null : Number(bdVal('bd-price-min'));
+    const pmax = bdVal('bd-price-max') === '' ? null : Number(bdVal('bd-price-max'));
+    const stockF = bdVal('bd-stock'), discF = bdVal('bd-has-discount');
+    return bdState.products.filter(p => {
+        if (q && !(String(p.name || '').toLowerCase().includes(q) || String(p.sku || '').toLowerCase().includes(q))) return false;
+        if (catIds) {
+            const pc = [].concat(p.categories || [], p.category ? [p.category] : []).map(String);
+            if (!pc.some(id => catIds.has(id))) return false;
+        }
+        if (from || to) {
+            const d = bdCreatedDate(p);
+            if (!d || (from && d < from) || (to && d > to)) return false;
+        }
+        const price = Number(p.price);
+        if (pmin != null && !(price >= pmin)) return false;
+        if (pmax != null && !(price <= pmax)) return false;
+        if (stockF) {
+            const st = p.stock == null || p.stock === '' ? null : Number(p.stock);
+            if (stockF === 'available' && !(st == null || st > 0)) return false;
+            if (stockF === 'low' && !(st != null && st > 0 && st <= 5)) return false;
+            if (stockF === 'out' && !(st != null && st <= 0)) return false;
+        }
+        if (discF) {
+            const has = bdDiscountState(p) !== 'none';
+            if (discF === 'yes' && !has) return false;
+            if (discF === 'no' && has) return false;
+        }
+        return true;
+    });
+}
+
+function bdBadge(p) {
+    const st = bdDiscountState(p);
+    if (st === 'none') return '';
+    const label = { active: 'خصم ساري', scheduled: 'خصم مجدول', expired: 'خصم منتهي' }[st];
+    const color = { active: 'bg-green-100 text-green-700', scheduled: 'bg-blue-100 text-blue-700', expired: 'bg-gray-200 text-gray-600' }[st];
+    return `<span class="text-xs px-2 py-0.5 rounded-full ${color}">${label}: ${safeText(p.discountPrice)} ر.س</span>`;
+}
+
+function bdRender() {
+    const list = document.getElementById('bd-list');
+    if (!list) return;
+    const items = bdFiltered();
+    if (!items.length) { list.innerHTML = '<p class="text-gray-500 text-center py-4 col-span-full">لا توجد منتجات مطابقة للفلاتر</p>'; bdUpdateCount(items); return; }
+    list.innerHTML = items.map(p => {
+        const id = bdPid(p);
+        const img = p.images && p.images[0] ? `<img src="${safeText(p.images[0])}" class="w-12 h-12 rounded object-cover" loading="lazy">` : '<div class="w-12 h-12 rounded bg-gray-200"></div>';
+        const meta = [p.sku ? safeText(p.sku) : '', safeText(bdCategoryNames(p))].filter(Boolean).join(' · ');
+        return `
+        <label class="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+            <input type="checkbox" data-bd-id="${safeText(id)}" ${bdState.selected.has(id) ? 'checked' : ''} class="w-5 h-5 rounded accent-antika-pink">
+            ${img}
+            <div class="flex-1 min-w-0">
+                <div class="font-semibold truncate">${safeText(p.name)}</div>
+                <div class="text-xs text-gray-500">${safeText(p.price)} ر.س${meta ? ' · ' + meta : ''}</div>
+                ${bdBadge(p)}
+            </div>
+        </label>`;
+    }).join('');
+    bdUpdateCount(items);
+}
+
+function bdUpdateCount(items) {
+    const vis = items || bdFiltered();
+    const visSel = vis.filter(p => bdState.selected.has(bdPid(p))).length;
+    const el = document.getElementById('bd-count');
+    if (el) el.textContent = `المحدد: ${bdState.selected.size}  |  الظاهر: ${vis.length} (محدد منها ${visSel})`;
+}
+function bdSelectVisible(flag) {
+    bdFiltered().forEach(p => { const id = bdPid(p); if (flag) bdState.selected.add(id); else bdState.selected.delete(id); });
+    bdRender();
+}
+function bdClearSelection() { bdState.selected.clear(); bdRender(); }
+function bdResetFilters() {
+    ['bd-search', 'bd-category', 'bd-added-from', 'bd-added-to', 'bd-price-min', 'bd-price-max', 'bd-stock', 'bd-has-discount'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    bdRender();
+}
+
+// ---------- المعاينة ----------
+function bdPreview(mode) {
+    if (!bdState.selected.size) { showNotification('حدد منتجاً واحداً على الأقل أول', 'error'); return; }
+    const selected = bdState.products.filter(p => bdState.selected.has(bdPid(p)));
+    bdState.mode = mode;
+    const box = document.getElementById('bd-preview');
+    if (mode === 'remove') {
+        bdState.rows = selected.filter(p => bdDiscountState(p) !== 'none' || p.discountPrice).map(p => ({ id: bdPid(p), p, include: true }));
+        const noDisc = selected.length - bdState.rows.length;
+        if (!bdState.rows.length) { showNotification('ما فيه خصم على المنتجات المحددة عشان يُزال', 'error'); return; }
+        box.innerHTML = bdPreviewHeader('🗑 مراجعة إزالة الخصم', noDisc ? `${noDisc} منتج محدد ما عليه خصم وتم تجاهله` : '') +
+            `<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-gray-500 border-b"><th class="p-2"></th><th class="p-2 text-right">المنتج</th><th class="p-2">السعر</th><th class="p-2">الخصم الحالي</th><th class="p-2">بعد الإزالة</th></tr></thead><tbody>` +
+            bdState.rows.map((r, i) => `<tr class="border-b"><td class="p-2"><input type="checkbox" checked data-bd-row="${i}" class="w-4 h-4 accent-antika-pink"></td><td class="p-2">${safeText(r.p.name)}</td><td class="p-2 text-center">${safeText(r.p.price)}</td><td class="p-2 text-center text-red-600">${safeText(r.p.discountPrice)} ${bdBadge(r.p).includes('مجدول') ? '(مجدول)' : ''}</td><td class="p-2 text-center font-bold">${safeText(r.p.price)}</td></tr>`).join('') +
+            `</tbody></table></div>` + bdPreviewFooter('تأكيد الإزالة');
+    } else {
+        const type = bdVal('bd-type'), value = Number(bdVal('bd-value'));
+        const start = bdVal('bd-start'), end = bdVal('bd-end');
+        if (!Number.isFinite(value) || value <= 0) { showNotification('أدخل قيمة الخصم أول', 'error'); return; }
+        if (type === 'percentage' && (value < 1 || value > 95)) { showNotification('النسبة لازم تكون بين 1% و95%', 'error'); return; }
+        if (start && end && start > end) { showNotification('تاريخ البداية بعد تاريخ النهاية', 'error'); return; }
+        if (end && end < bdToday()) { showNotification('تاريخ الانتهاء في الماضي', 'error'); return; }
+        bdState.rows = selected.map(p => { const np = bdComputePrice(p.price, type, value); return { id: bdPid(p), p, computed: np, newPrice: np, include: np != null }; });
+        const skipped = bdState.rows.filter(r => r.computed == null).length;
+        const period = (start ? 'من ' + start : 'من الآن') + (end ? ' إلى ' + end : ' بدون تاريخ نهاية');
+        box.innerHTML = bdPreviewHeader('👁 مراجعة الخصم قبل التطبيق', `الفترة: ${period}` + (skipped ? ` — ${skipped} منتج لا ينطبق عليه الخصم (السعر ما ينخفض)` : '')) +
+            `<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-gray-500 border-b"><th class="p-2"></th><th class="p-2 text-right">المنتج</th><th class="p-2">السعر الحالي</th><th class="p-2">السعر بعد الخصم</th><th class="p-2">النسبة</th></tr></thead><tbody>` +
+            bdState.rows.map((r, i) => {
+                const ok = r.computed != null;
+                return `<tr class="border-b ${ok ? '' : 'opacity-50'}"><td class="p-2"><input type="checkbox" ${ok ? 'checked' : 'disabled'} data-bd-row="${i}" class="w-4 h-4 accent-antika-pink"></td><td class="p-2">${safeText(r.p.name)}</td><td class="p-2 text-center">${safeText(r.p.price)}</td><td class="p-2 text-center">${ok ? `<input type="number" step="any" min="0" value="${r.newPrice}" data-bd-price="${i}" class="w-24 border rounded px-2 py-1 text-center">` : '—'}</td><td class="p-2 text-center" id="bd-pct-${i}">${ok ? bdPctCell(r) : '—'}</td></tr>`;
+            }).join('') +
+            `</tbody></table></div>` + bdPreviewFooter('✅ تأكيد وتطبيق الخصم');
     }
+    box.classList.remove('hidden');
+    box.querySelectorAll('input[data-bd-row]').forEach(cb => cb.addEventListener('change', () => { bdState.rows[Number(cb.dataset.bdRow)].include = cb.checked; bdUpdatePreviewSummary(); }));
+    box.querySelectorAll('input[data-bd-price]').forEach(inp => inp.addEventListener('input', () => {
+        const i = Number(inp.dataset.bdPrice), r = bdState.rows[i]; const v = Number(inp.value);
+        const valid = Number.isFinite(v) && v > 0 && v < Number(r.p.price);
+        r.newPrice = valid ? Math.round(v * 100) / 100 : null;
+        inp.classList.toggle('border-red-500', !valid);
+        const cell = document.getElementById('bd-pct-' + i); if (cell) cell.innerHTML = valid ? bdPctCell(r) : '<span class="text-red-500">غير صالح</span>';
+        bdUpdatePreviewSummary();
+    }));
+    bdUpdatePreviewSummary();
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function bdPct(r) { return Math.round(((Number(r.p.price) - r.newPrice) / Number(r.p.price)) * 100); }
+function bdPctCell(r) { const pct = bdPct(r); return pct > 70 ? `<span class="text-orange-600 font-bold">⚠️ ${pct}%</span>` : `${pct}%`; }
+function bdPreviewHeader(title, note) {
+    return `<div class="flex items-center justify-between"><h3 class="font-bold text-lg text-antika-gold">${title}</h3><button type="button" onclick="bdCancelPreview()" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button></div>${note ? `<p class="text-sm text-gray-500">${safeText(note)}</p>` : ''}`;
+}
+function bdPreviewFooter(confirmText) {
+    return `<div class="flex flex-wrap items-center gap-3 pt-2"><span id="bd-preview-summary" class="font-bold text-antika-pink-dark ml-auto"></span><button type="button" onclick="bdCancelPreview()" class="bg-gray-100 text-gray-700 px-5 py-2 rounded-lg">إلغاء</button><button type="button" id="bd-confirm-btn" onclick="bdConfirm()" class="bg-antika-gold text-white px-6 py-2 rounded-lg font-bold">${confirmText}</button></div>`;
+}
+function bdValidRows() { return bdState.rows.filter(r => r.include && (bdState.mode === 'remove' || r.newPrice != null)); }
+function bdUpdatePreviewSummary() {
+    const rows = bdValidRows();
+    const warn = bdState.mode === 'apply' ? rows.filter(r => bdPct(r) > 70).length : 0;
+    const el = document.getElementById('bd-preview-summary');
+    if (el) el.textContent = (bdState.mode === 'remove' ? `سيُزال الخصم عن ${rows.length} منتج` : `سيتطبق الخصم على ${rows.length} منتج`) + (warn ? ` (⚠️ ${warn} فوق 70%)` : '');
+    const btn = document.getElementById('bd-confirm-btn'); if (btn) btn.disabled = rows.length === 0;
+}
+function bdCancelPreview() { const box = document.getElementById('bd-preview'); if (box) { box.classList.add('hidden'); box.innerHTML = ''; } bdState.rows = []; }
 
-    const discountType = document.getElementById('bulk-discount-type')?.value || 'percentage';
-    const discountValue = parseFloat(document.getElementById('bulk-discount-value')?.value) || 0;
-    const endDate = document.getElementById('bulk-discount-end')?.value || null;
-
-    if (!discountValue || discountValue <= 0) {
-        showNotification('الرجاء إدخال قيمة خصم صحيحة!', 'error');
-        return;
-    }
-
+async function bdConfirm() {
+    const rows = bdValidRows();
+    if (!rows.length) return;
+    const btn = document.getElementById('bd-confirm-btn');
     try {
-        await API.applyBulkDiscount(productIds, discountType, discountValue, endDate);
-        showNotification(`تم تطبيق الخصم على ${productIds.length} منتج بنجاح! 🎉`);
+        if (bdState.mode === 'remove') {
+            if (!confirm(`تأكيد إزالة الخصم عن ${rows.length} منتج؟`)) return;
+            if (btn) btn.disabled = true;
+            const r = await API.removeDiscount(rows.map(x => x.id));
+            showNotification(`تمت إزالة الخصم عن ${r.removed} منتج`);
+        } else {
+            const type = bdVal('bd-type'), value = Number(bdVal('bd-value'));
+            const big = rows.filter(r => bdPct(r) > 70).length;
+            if (big && !confirm(`${big} منتج خصمه فوق 70%. متأكد تكمل؟`)) return;
+            if (!confirm(`تأكيد تطبيق الخصم على ${rows.length} منتج؟`)) return;
+            if (btn) btn.disabled = true;
+            const items = rows.map(r => (r.newPrice !== r.computed ? { id: r.id, price: r.newPrice } : { id: r.id }));
+            const r = await API.applyDiscount(items, type, value, bdVal('bd-start') || null, bdVal('bd-end') || null);
+            showNotification(`تم تطبيق الخصم على ${r.applied} منتج بنجاح 🎉` + (r.skipped && r.skipped.length ? ` (تم تجاهل ${r.skipped.length})` : ''));
+        }
+        bdCancelPreview();
         await loadBulkDiscountProducts();
-        await loadAdminProducts();
+        if (typeof loadAdminProducts === 'function') { try { await loadAdminProducts(); } catch (e) {} }
     } catch (error) {
-        console.error('Error applying bulk discount:', error);
-        showNotification('حدث خطأ أثناء تطبيق الخصم', 'error');
+        console.error('Bulk discount error:', error);
+        showNotification(error.message || 'حدث خطأ أثناء تنفيذ العملية', 'error');
+        if (btn) btn.disabled = false;
     }
+}
+
+// ---------- التراجع ----------
+async function bdRefreshLast() {
+    const info = document.getElementById('bd-last-info'), btn = document.getElementById('bd-undo-btn');
+    if (!info || !btn) return;
+    try {
+        const last = await API.getLastDiscountBatch();
+        if (!last) { info.textContent = 'ما فيه عملية سابقة للتراجع عنها.'; btn.disabled = true; return; }
+        info.textContent = `آخر عملية: ${last.kind === 'remove' ? 'إزالة خصم عن' : 'تطبيق خصم على'} ${last.count} منتج. تقدر تتراجع عنها بضغطة وحدة.`;
+        btn.disabled = false;
+    } catch (e) { info.textContent = ''; btn.disabled = true; }
+}
+async function bdUndo() {
+    if (!confirm('تأكيد التراجع عن آخر عملية خصم؟ ترجع الأسعار كما كانت.')) return;
+    try {
+        const r = await API.undoLastDiscount();
+        showNotification(`تم التراجع، وأُعيدت حالة ${r.restored} منتج`);
+        await loadBulkDiscountProducts();
+        if (typeof loadAdminProducts === 'function') { try { await loadAdminProducts(); } catch (e) {} }
+    } catch (error) { showNotification(error.message || 'تعذر التراجع', 'error'); }
 }
 
 // ============================================

@@ -97,7 +97,7 @@ const API = {
             if (discount) params.append('discount', 'true');
             
             const queryString = params.toString() ? `?${params.toString()}` : '';
-            const response = await fetch(`${this.baseURL}/products${queryString}`);
+            const response = await fetch(`${this.baseURL}/products${queryString}`, { headers: this.getAuthHeaders() });
             
             if (!response.ok) throw new Error('Failed to fetch products');
             const data = await response.json();
@@ -115,7 +115,7 @@ const API = {
     async getProduct(id) {
         try {
             // Add timestamp to prevent browser caching
-            const response = await fetch(`${this.baseURL}/products/${id}?t=${Date.now()}`);
+            const response = await fetch(`${this.baseURL}/products/${id}?t=${Date.now()}`, { headers: this.getAuthHeaders() });
             if (!response.ok) throw new Error('Failed to fetch product');
             const product = await response.json();
             return this._normalizeProduct(product);
@@ -699,46 +699,24 @@ async getCart() {
     // BULK DISCOUNT
     // ============================================
 
-    async applyBulkDiscount(productIds, discountType, discountValue, endDate = null) {
-        try {
-            const products = await this.getProducts();
-            const updatePromises = productIds.map(async (productId) => {
-                const product = products.find(p => p.id === productId);
-                if (!product) return;
+    async _discountRequest(path, method, body) {
+        const response = await fetch(`${this.baseURL}/products/discount/${path}`, {
+            method,
+            headers: this.getAuthHeaders({ 'Content-Type': 'application/json' }),
+            body: body ? JSON.stringify(body) : undefined
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error((data && data.error) || 'تعذر تنفيذ العملية');
+        return data;
+    },
 
-                let discountPrice = product.price;
-                let discountPercentage = 0;
-
-                switch (discountType) {
-                    case 'percentage':
-                        discountPercentage = discountValue;
-                        discountPrice = Math.round(product.price * (1 - discountValue / 100));
-                        break;
-                    case 'fixed':
-                        discountPrice = Math.max(0, product.price - discountValue);
-                        discountPercentage = Math.round((discountValue / product.price) * 100);
-                        break;
-                    case 'newPrice':
-                        discountPrice = discountValue;
-                        discountPercentage = Math.round(((product.price - discountValue) / product.price) * 100);
-                        break;
-                }
-
-                return this.updateProduct(productId, {
-                    ...product,
-                    discountPrice: discountPrice,
-                    discountPercentage: discountPercentage,
-                    discountEndDate: endDate
-                });
-            });
-
-            await Promise.all(updatePromises);
-            return { success: true };
-        } catch (error) {
-            console.error('Error applying bulk discount:', error);
-            throw error;
-        }
-    }
+    // items: [{ id, price? }] — price اختياري لتخصيص سعر منتج معيّن، والسيرفر يتحقق ويحسب الباقي
+    applyDiscount(items, discountType, discountValue, startDate = null, endDate = null) {
+        return this._discountRequest('apply', 'POST', { items, discountType, discountValue, startDate, endDate });
+    },
+    removeDiscount(productIds) { return this._discountRequest('remove', 'POST', { productIds }); },
+    undoLastDiscount() { return this._discountRequest('undo', 'POST', {}); },
+    getLastDiscountBatch() { return this._discountRequest('last', 'GET'); }
     ,
     // ============================================
     // USERS / ADDRESSES (server sync)

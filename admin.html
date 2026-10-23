@@ -355,36 +355,70 @@
                 <section id="bulk-discount-section" class="hidden space-y-6">
                     <h2 class="text-2xl font-bold text-antika-gold">🎁 خصم جماعي</h2>
 
-                    <div class="bg-white rounded-2xl shadow-lg p-6">
-                        <div class="mb-6">
-                            <label class="block text-gray-700 font-bold mb-2">اختر المنتجات:</label>
-                            <div id="bulk-products-list" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto border-2 border-gray-200 rounded-lg p-4">
-                            </div>
+                    <!-- الخطوة 1: اختيار المنتجات -->
+                    <div class="bg-white rounded-2xl shadow-lg p-6 space-y-4">
+                        <h3 class="font-bold text-gray-700">1) اختر المنتجات</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                            <input type="text" id="bd-search" placeholder="بحث بالاسم أو الكود (SKU)" class="col-span-2 border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none">
+                            <select id="bd-category" class="col-span-2 border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none"></select>
+                            <label class="flex flex-col text-gray-500">أضيف من تاريخ
+                                <input type="date" id="bd-added-from" class="border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none text-gray-800"></label>
+                            <label class="flex flex-col text-gray-500">أضيف إلى تاريخ
+                                <input type="date" id="bd-added-to" class="border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none text-gray-800"></label>
+                            <input type="number" id="bd-price-min" min="0" placeholder="السعر من" class="border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none self-end">
+                            <input type="number" id="bd-price-max" min="0" placeholder="السعر إلى" class="border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none self-end">
+                            <select id="bd-stock" class="border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none">
+                                <option value="">كل المخزون</option>
+                                <option value="available">متوفر</option>
+                                <option value="low">كمية قليلة (5 أو أقل)</option>
+                                <option value="out">نفد</option>
+                            </select>
+                            <select id="bd-has-discount" class="border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none">
+                                <option value="">الكل (بخصم وبدون)</option>
+                                <option value="yes">عليه خصم حالياً</option>
+                                <option value="no">بدون خصم</option>
+                            </select>
+                            <button type="button" onclick="bdResetFilters()" class="col-span-2 bg-gray-100 text-gray-600 rounded-lg px-3 py-2 hover:bg-gray-200">مسح الفلاتر</button>
                         </div>
 
-                        <div class="grid md:grid-cols-3 gap-4 mb-6">
-                            <div>
-                                <label class="block text-gray-700 font-bold mb-2">نوع الخصم:</label>
-                                <select id="bulk-discount-type" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
-                                    <option value="percentage">نسبة %</option>
-                                    <option value="fixed">قيمة ثابتة</option>
-                                    <option value="newPrice">سعر جديد</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 font-bold mb-2">القيمة:</label>
-                                <input type="number" id="bulk-discount-value" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none" placeholder="مثال: 20">
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 font-bold mb-2">تاريخ الانتهاء:</label>
-                                <input type="date" id="bulk-discount-end" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-antika-pink focus:outline-none">
-                            </div>
+                        <div class="flex flex-wrap items-center gap-2 text-sm">
+                            <button type="button" onclick="bdSelectVisible(true)" class="bg-antika-gold text-white rounded-lg px-4 py-2 font-bold">✔ حدد الكل الظاهر</button>
+                            <button type="button" onclick="bdSelectVisible(false)" class="bg-gray-100 text-gray-700 rounded-lg px-4 py-2">إلغاء تحديد الظاهر</button>
+                            <button type="button" onclick="bdClearSelection()" class="bg-gray-100 text-gray-700 rounded-lg px-4 py-2">مسح كل التحديد</button>
+                            <span id="bd-count" class="mr-auto font-bold text-antika-pink-dark"></span>
                         </div>
 
-                        <button onclick="applyBulkDiscount()" class="w-full bg-antika-gold text-white py-4 rounded-lg font-bold hover:bg-antika-gold-dark transition text-lg">
-                            🚀 تطبيق الخصم
-                        </button>
+                        <div id="bd-list" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto border-2 border-gray-200 rounded-lg p-4"></div>
                     </div>
+
+                    <!-- الخطوة 2: إعدادات الخصم -->
+                    <div class="bg-white rounded-2xl shadow-lg p-6 space-y-4">
+                        <h3 class="font-bold text-gray-700">2) إعدادات الخصم</h3>
+                        <div class="grid md:grid-cols-4 gap-4">
+                            <label class="block text-gray-700 font-bold text-sm">نوع الخصم
+                                <select id="bd-type" class="mt-1 w-full border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none font-normal">
+                                    <option value="percentage">نسبة %</option>
+                                    <option value="fixed">قيمة ثابتة (ريال)</option>
+                                    <option value="newPrice">سعر جديد (ريال)</option>
+                                </select></label>
+                            <label class="block text-gray-700 font-bold text-sm">القيمة
+                                <input type="number" id="bd-value" min="0" step="any" placeholder="مثال: 20" class="mt-1 w-full border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none font-normal"></label>
+                            <label class="block text-gray-700 font-bold text-sm">يبدأ من (اختياري)
+                                <input type="date" id="bd-start" class="mt-1 w-full border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none font-normal"></label>
+                            <label class="block text-gray-700 font-bold text-sm">ينتهي في (اختياري)
+                                <input type="date" id="bd-end" class="mt-1 w-full border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-antika-pink focus:outline-none font-normal"></label>
+                        </div>
+                        <p class="text-xs text-gray-500">بدون تاريخ بداية يبدأ الخصم فوراً، وبدون تاريخ نهاية يبقى لين تلغيه. الخصم يبدأ وينتهي تلقائياً في المتجر بتوقيت السعودية.</p>
+                        <div class="flex flex-wrap gap-3">
+                            <button type="button" onclick="bdPreview('apply')" class="bg-antika-gold text-white px-6 py-3 rounded-lg font-bold hover:bg-antika-gold-dark transition">👁 معاينة الخصم</button>
+                            <button type="button" onclick="bdPreview('remove')" class="bg-red-50 text-red-600 border border-red-200 px-6 py-3 rounded-lg font-bold hover:bg-red-100 transition">🗑 إزالة الخصم عن المحدد</button>
+                            <button type="button" id="bd-undo-btn" onclick="bdUndo()" class="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg font-bold hover:bg-gray-200 transition disabled:opacity-40" disabled>↩ تراجع عن آخر عملية</button>
+                        </div>
+                        <p id="bd-last-info" class="text-xs text-gray-500"></p>
+                    </div>
+
+                    <!-- الخطوة 3: المراجعة والتأكيد -->
+                    <div id="bd-preview" class="hidden bg-white rounded-2xl shadow-lg p-6 space-y-4 border-2 border-antika-gold"></div>
                 </section>
 
                 <!-- Orders Section -->

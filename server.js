@@ -484,6 +484,8 @@ app.get('/api/products', async (req, res) => {
     const { category, search, featured, discount } = req.query;
     const snapshot = await db.collection('products').get();
     let products = docsToArr(snapshot);
+    const who = await identifyRequester(req);
+    if (!(who && who.isAdmin)) { const today = riyadhToday(); products = products.map(p => publicProductView(p, today)); }
     if (category) products = products.filter(p => (p.categories || []).includes(category) || p.category === category);
     if (featured === 'true') products = products.filter(p => p.isFeatured);
     if (discount === 'true') products = products.filter(p => p.discountPrice && p.discountPrice < p.price);
@@ -493,7 +495,13 @@ app.get('/api/products', async (req, res) => {
   } catch (err) { serverError(req, res, err); }
 });
 app.get('/api/products/:id', async (req, res) => {
-  try { const doc = await db.collection('products').doc(req.params.id).get(); if (!doc.exists) return res.status(404).json({ error: 'Product not found' }); res.json(Object.assign({ id: doc.id }, doc.data())); }
+  try {
+    const doc = await db.collection('products').doc(req.params.id).get(); if (!doc.exists) return res.status(404).json({ error: 'Product not found' });
+    let prod = Object.assign({ id: doc.id }, doc.data());
+    const who = await identifyRequester(req);
+    if (!(who && who.isAdmin)) prod = publicProductView(prod, riyadhToday());
+    res.json(prod);
+  }
   catch (err) { serverError(req, res, err); }
 });
 app.post('/api/products', requireAdmin, async (req, res) => {
@@ -593,24 +601,147 @@ app.delete('/api/products', requireAdmin, async (req, res) => {
   try { const s = await db.collection('products').get(); const b = db.batch(); s.docs.forEach(d => b.delete(d.ref)); await b.commit(); res.json({ message: 'All products deleted', count: s.size }); }
   catch (err) { serverError(req, res, err); }
 });
-app.post('/api/products/bulk-discount', requireAdmin, async (req, res) => {
-  try {
-    const { productIds, discountType, discountValue } = req.body;
+// ============================================
+// 🏷️ الخصم الجماعي: تطبيق بعد المعاينة، تاريخ بداية/نهاية، إزالة جماعية، وتراجع عن آخر عملية
+// ============================================
+const DISCOUNT_MAX_ITEMS = 400;
+const DISCOUNT_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function riyadhToday() { return new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10); }
+// هل الخصم المخزّن على المنتج ساري اليوم؟ (يراعي تاريخ البداية والنهاية بتوقيت السعودية)
+function discountIsActive(p, today) {
+  const base = Number(p && p.price); const dp = Number(p && p.discountPrice);
+  if (!Number.isFinite(base) || !Number.isFinite(dp) || dp <= 0 || dp >= base) return false;
+  const s = p.discountStartDate ? String(p.discountStartDate).slice(0, 10) : '';
+  const e = p.discountEndDate ? String(p.discountEndDate).slice(0, 10) : '';
+  if (s && today < s) return false;
+  if (e && today > e) return false;
+  return true;
+}
+// نسخة المنتج اللي يشوفها الزبون: الخصم غير الساري (لم يبدأ أو انتهى) يختفي تلقائياً
+function publicProductView(p, today) {
+  if (discountIsActive(p, today)) return p;
+  return Object.assign({}, p, { discountPrice: null, discountPercentage: 0 });
+}
+function computeDiscountPrice(price, type, value) {
+  price = Number(price); value = Number(value);
+  if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(value) || value <= 0) return null;
+  let dp;
+  if (type === 'percentage') dp = Math.round(price * (1 - value / 100));
+  else if (type === 'fixed') dp = Math.round((price - value) * 100) / 100;
+  else if (type === 'newPrice') dp = Math.round(value * 100) / 100;
+  else return null;
+  return (dp > 0 && dp < price) ? dp : null;
+}
+function discountBadRequest(msg) { const e = new Error(msg); e.status = 400; return e; }
+function discountErr(req, res, err) { return err && err.status === 400 ? res.status(400).json({ error: err.message }) : serverError(req, res, err); }
+function prevDiscountState(p) {
+  return { discountPrice: p.discountPrice == null ? null : p.discountPrice, discountPercentage: p.discountPercentage == null ? null : p.discountPercentage, discountStartDate: p.discountStartDate || null, discountEndDate: p.discountEndDate || null };
+}
+async function commitDiscountUpdates(updates) { // updates: [{ref, data}] — دفعات آمنة تحت حد 500
+  for (let i = 0; i < updates.length; i += 400) {
     const batch = db.batch();
-    for (const id of productIds) {
-      const doc = await db.collection('products').doc(id).get();
-      if (!doc.exists) continue;
-      const p = doc.data();
-      let dp = p.price, pct = 0;
-      if (discountType === 'percentage') { dp = Math.round(p.price * (1 - discountValue / 100)); pct = discountValue; }
-      else if (discountType === 'fixed') { dp = Math.max(0, p.price - discountValue); pct = Math.round((discountValue / p.price) * 100); }
-      else if (discountType === 'newPrice') { dp = discountValue; pct = Math.round(((p.price - discountValue) / p.price) * 100); }
-      batch.update(doc.ref, { discountPrice: dp, discountPercentage: pct, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
-    }
+    updates.slice(i, i + 400).forEach(u => batch.update(u.ref, Object.assign({ updatedAt: admin.firestore.FieldValue.serverTimestamp() }, u.data)));
     await batch.commit();
-    res.json({ message: 'Bulk discount applied' });
+  }
+}
+async function loadProductsByIds(ids) {
+  const refs = ids.map(id => db.collection('products').doc(id));
+  const snaps = refs.length ? await db.getAll(...refs) : [];
+  return snaps.filter(s => s.exists);
+}
+function cleanIds(arr) {
+  const ids = Array.from(new Set((Array.isArray(arr) ? arr : []).map(x => String(x || '').trim()).filter(x => x && !x.includes('/'))));
+  if (!ids.length) throw discountBadRequest('اختر منتجاً واحداً على الأقل');
+  if (ids.length > DISCOUNT_MAX_ITEMS) throw discountBadRequest('الحد الأقصى ' + DISCOUNT_MAX_ITEMS + ' منتج في العملية الواحدة');
+  return ids;
+}
+
+app.post('/api/products/discount/apply', requireAdmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const type = String(b.discountType || '');
+    if (!['percentage', 'fixed', 'newPrice'].includes(type)) throw discountBadRequest('نوع الخصم غير صحيح');
+    const value = Number(b.discountValue);
+    const rawItems = Array.isArray(b.items) ? b.items : [];
+    const overrides = {}; const ids = cleanIds(rawItems.map(it => it && it.id));
+    rawItems.forEach(it => { if (it && it.id && it.price != null && it.price !== '') overrides[String(it.id)] = Number(it.price); });
+    if (!Object.keys(overrides).length || ids.some(id => overrides[id] === undefined)) {
+      if (!Number.isFinite(value) || value <= 0) throw discountBadRequest('أدخل قيمة خصم صحيحة');
+    }
+    if (type === 'percentage' && Number.isFinite(value) && (value < 1 || value > 95)) throw discountBadRequest('نسبة الخصم لازم تكون بين 1% و95%');
+    const start = b.startDate ? String(b.startDate).slice(0, 10) : '';
+    const end = b.endDate ? String(b.endDate).slice(0, 10) : '';
+    if ((start && !DISCOUNT_DATE_RE.test(start)) || (end && !DISCOUNT_DATE_RE.test(end))) throw discountBadRequest('صيغة التاريخ غير صحيحة');
+    if (start && end && start > end) throw discountBadRequest('تاريخ البداية بعد تاريخ النهاية');
+    if (end && end < riyadhToday()) throw discountBadRequest('تاريخ الانتهاء في الماضي');
+
+    const snaps = await loadProductsByIds(ids);
+    const updates = []; const skipped = []; const prevItems = [];
+    snaps.forEach(snap => {
+      const p = snap.data() || {};
+      const price = Number(p.price);
+      let dp;
+      if (overrides[snap.id] !== undefined) {
+        const o = Math.round(overrides[snap.id] * 100) / 100;
+        dp = (Number.isFinite(o) && o > 0 && o < price) ? o : null;
+      } else dp = computeDiscountPrice(price, type, value);
+      if (dp == null) { skipped.push({ id: snap.id, name: String(p.name || ''), reason: 'الخصم لا يخفّض السعر أو السعر غير صالح' }); return; }
+      prevItems.push({ id: snap.id, name: String(p.name || '').slice(0, 80), prev: prevDiscountState(p) });
+      updates.push({ ref: snap.ref, data: { discountPrice: dp, discountPercentage: Math.round(((price - dp) / price) * 100), discountStartDate: start || null, discountEndDate: end || null } });
+    });
+    ids.forEach(id => { if (!snaps.some(s => s.id === id)) skipped.push({ id, name: '', reason: 'المنتج غير موجود' }); });
+    if (!updates.length) return res.json({ applied: 0, skipped, batchId: null });
+    const batchRef = await db.collection('discount_batches').add({ kind: 'apply', count: updates.length, items: prevItems, params: { type, value: Number.isFinite(value) ? value : null, start: start || null, end: end || null }, undone: false, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+    await commitDiscountUpdates(updates);
+    res.json({ applied: updates.length, skipped, batchId: batchRef.id });
+  } catch (err) { discountErr(req, res, err); }
+});
+
+app.post('/api/products/discount/remove', requireAdmin, async (req, res) => {
+  try {
+    const ids = cleanIds(req.body && req.body.productIds);
+    const snaps = await loadProductsByIds(ids);
+    const updates = []; const prevItems = [];
+    snaps.forEach(snap => {
+      const p = snap.data() || {};
+      if (p.discountPrice == null && p.discountPercentage == null && !p.discountStartDate && !p.discountEndDate) return;
+      prevItems.push({ id: snap.id, name: String(p.name || '').slice(0, 80), prev: prevDiscountState(p) });
+      updates.push({ ref: snap.ref, data: { discountPrice: null, discountPercentage: 0, discountStartDate: null, discountEndDate: null } });
+    });
+    if (!updates.length) return res.json({ removed: 0, batchId: null });
+    const batchRef = await db.collection('discount_batches').add({ kind: 'remove', count: updates.length, items: prevItems, undone: false, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+    await commitDiscountUpdates(updates);
+    res.json({ removed: updates.length, batchId: batchRef.id });
+  } catch (err) { discountErr(req, res, err); }
+});
+
+async function findLastDiscountBatch() {
+  const s = await db.collection('discount_batches').orderBy('createdAt', 'desc').limit(10).get();
+  const d = s.docs.find(x => !(x.data() || {}).undone);
+  return d || null;
+}
+app.get('/api/products/discount/last', requireAdmin, async (req, res) => {
+  try {
+    const d = await findLastDiscountBatch();
+    if (!d) return res.json(null);
+    const x = d.data();
+    res.json({ id: d.id, kind: x.kind, count: x.count, createdAt: x.createdAt || null });
   } catch (err) { serverError(req, res, err); }
 });
+app.post('/api/products/discount/undo', requireAdmin, async (req, res) => {
+  try {
+    const d = await findLastDiscountBatch();
+    if (!d) return res.status(404).json({ error: 'لا توجد عملية للتراجع عنها' });
+    const x = d.data(); const items = Array.isArray(x.items) ? x.items : [];
+    const snaps = await loadProductsByIds(items.map(i => i.id));
+    const byId = {}; items.forEach(i => { byId[i.id] = i.prev || {}; });
+    const updates = snaps.map(s => ({ ref: s.ref, data: byId[s.id] }));
+    await commitDiscountUpdates(updates);
+    await d.ref.update({ undone: true, undoneAt: admin.firestore.FieldValue.serverTimestamp() });
+    res.json({ restored: updates.length, kind: x.kind });
+  } catch (err) { serverError(req, res, err); }
+});
+
 app.get('/api/users/stats', requireAdmin, (req, res) => res.json({ genderStats: { male: 0, female: 0, unknown: 0 }, ageStats: { under18: 0, age18to25: 0, age26to35: 0, age36to50: 0, over50: 0, unknown: 0 }, totalUsers: 0 }));
 
 // CATEGORIES
@@ -978,7 +1109,7 @@ app.post('/api/orders', orderCreateLimiter, async (req, res) => {
         const d = snap.data() || {};
         const base = Number(d.price); const dp = Number(d.discountPrice);
         if (!Number.isFinite(base) || base <= 0) throw badReq('تعذر تحديد سعر أحد المنتجات');
-        const unit = (Number.isFinite(dp) && dp > 0 && dp < base) ? dp : base;
+        const unit = discountIsActive(d, riyadhToday()) ? dp : base;
         const stock = Number(d.stock);
         if (d.stock != null && Number.isFinite(stock)) {
           if (ENFORCE_STOCK_AT_ORDER && qty > stock) throw badReq('الكمية المطلوبة من "' + (d.name || 'المنتج') + '" غير متوفرة حالياً (المتوفر: ' + Math.max(0, stock) + ')');
@@ -1886,7 +2017,7 @@ async function getAiCatalog() {
     const base = Number(p.price);
     if (!p.name || !Number.isFinite(base) || base <= 0) return;
     const dp = Number(p.discountPrice);
-    const price = (Number.isFinite(dp) && dp > 0 && dp < base) ? dp : base;
+    const price = discountIsActive(p, riyadhToday()) ? dp : base;
     const stock = Number(p.stock);
     const cats = [].concat(p.categories || [], p.category || []).map(c => catName[c] || String(c)).filter(Boolean);
     let image = (Array.isArray(p.images) && p.images[0]) || p.image || '';
