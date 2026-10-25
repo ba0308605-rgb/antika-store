@@ -1673,6 +1673,226 @@ app.get('/api/admin/user-info/:email', requireAdmin, async (req, res) => {
   } catch (err) { serverError(req, res, err); }
 });
 
+// ============================================
+// 💬 آراء العملاء والملاحظات (تقييم / اقتراح / شكوى / سؤال)
+// تقييمات المتجر العامة — بديل تقييم كل منتج. المجموعة: feedback
+// حالات التقييم: pending (بانتظار المراجعة) / published (منشور) / hidden (مخفي)
+// حالات باقي الأنواع: new (جديد) / read (مقروء) / resolved (تمت المعالجة)
+// ============================================
+const feedbackLimiter = makeLimiter(60 * 60 * 1000, 8, 'رسائل كثيرة من نفس الشبكة، حاول لاحقاً');
+const FEEDBACK_TYPES = ['review', 'suggestion', 'complaint', 'question'];
+const FEEDBACK_STATUSES = ['pending', 'published', 'hidden', 'new', 'read', 'resolved'];
+const FEEDBACK_SOURCES = ['site', 'whatsapp', 'snapchat', 'instagram', 'x', 'email', 'other'];
+const FEEDBACK_MAX_LEN = 1000;
+function fbClean(v, max) { return String(v == null ? '' : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').replace(/[<>]/g, '').trim().slice(0, max); }
+function fbFirstName(n) { return fbClean(n, 40).split(/\s+/)[0] || 'عميل'; }
+function fbIso(v) {
+  try {
+    if (!v) return null;
+    if (typeof v.toDate === 'function') return v.toDate().toISOString();
+    if (v._seconds) return new Date(v._seconds * 1000).toISOString();
+    const d = new Date(v); return isNaN(d.getTime()) ? null : d.toISOString();
+  } catch (_) { return null; }
+}
+function fbPublicShape(x) {
+  return { id: x.id, name: x.name || 'عميل', city: x.city || '', rating: Number(x.rating) || 0, message: x.message || '', verified: !!x.verifiedOrder, featured: !!x.featured, createdAt: fbIso(x.createdAt) };
+}
+
+// العميل يرسل (تقييم / اقتراح / شكوى / سؤال)
+app.post('/api/feedback', feedbackLimiter, requireUser, async (req, res) => {
+  try {
+    if (!req.user) return res.status(403).json({ error: 'أرسل الرسالة من حساب العميل' });
+    const email = req.user.email;
+    const b = req.body || {};
+    const type = String(b.type || '');
+    if (!FEEDBACK_TYPES.includes(type)) return res.status(400).json({ error: 'نوع الرسالة غير صحيح' });
+    const message = fbClean(b.message, FEEDBACK_MAX_LEN);
+    if (message.length < 3) return res.status(400).json({ error: 'اكتب رسالتك أول' });
+    let rating = null;
+    if (type === 'review') {
+      rating = Math.round(Number(b.rating));
+      if (!(rating >= 1 && rating <= 5)) return res.status(400).json({ error: 'اختر عدد النجوم' });
+    }
+    const orderId = String(b.orderId || '').trim();
+    if ((type === 'review' || type === 'complaint') && !orderId) return res.status(400).json({ error: 'اختر رقم الطلب' });
+    let order = null;
+    if (orderId) {
+      const od = await db.collection('orders').doc(orderId).get();
+      if (!od.exists || String(od.data().customerEmail || '').trim().toLowerCase() !== email) return res.status(404).json({ error: 'الطلب غير موجود' });
+      order = Object.assign({ id: od.id }, od.data());
+      if (type === 'review' && order.status !== 'delivered') return res.status(400).json({ error: 'تقدر تقيّم الطلب بعد استلامه' });
+    }
+    if (type === 'review') {
+      const ex = await db.collection('feedback').where('orderId', '==', orderId).where('type', '==', 'review').limit(1).get();
+      if (!ex.empty) return res.status(400).json({ error: 'قيّمت هذا الطلب من قبل' });
+    }
+    // حماية من الإزعاج: حد أقصى 10 رسائل لكل عميل خلال 24 ساعة
+    const mine = await db.collection('feedback').where('userEmail', '==', email).get();
+    const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    const recent = mine.docs.filter(d => { const t = fbIso(d.data().createdAt); return t && new Date(t).getTime() > dayAgo; }).length;
+    if (recent >= 10) return res.status(429).json({ error: 'وصلت الحد اليومي للرسائل، حاول بكرة' });
+    const doc = {
+      type, rating, message,
+      name: fbFirstName(order ? order.customerName : b.name),
+      city: fbClean(order ? (order.customerCity || order.shippingCity) : b.city, 40),
+      userEmail: email,
+      orderId: order ? order.id : '',
+      orderNumber: (order && order.orderNumber != null) ? order.orderNumber : null,
+      verifiedOrder: !!order,
+      consentPublish: type === 'review' && b.consentPublish === true,
+      status: type === 'review' ? 'pending' : 'new',
+      featured: false, source: 'site', adminNote: '',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+    const ref = await db.collection('feedback').add(doc);
+    res.json({ success: true, id: ref.id, type, status: doc.status });
+  } catch (err) { serverError(req, res, err); }
+});
+
+// رسائل العميل نفسه (عشان الفرونت يعرف أي طلب تم تقييمه)
+app.get('/api/feedback/mine', requireUser, async (req, res) => {
+  try {
+    if (!req.user) return res.json({ items: [] });
+    const s = await db.collection('feedback').where('userEmail', '==', req.user.email).get();
+    const items = docsToArr(s).map(x => ({ id: x.id, type: x.type, orderId: x.orderId || '', rating: x.rating || null, status: x.status, createdAt: fbIso(x.createdAt) }));
+    items.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    res.json({ items });
+  } catch (err) { serverError(req, res, err); }
+});
+
+// عام: التقييمات المنشورة فقط (بدون إيميل أو جوال). ?limit=12 &random=1 &featured=1
+app.get('/api/feedback/public', async (req, res) => {
+  try {
+    const s = await db.collection('feedback').where('status', '==', 'published').get();
+    let items = docsToArr(s).filter(x => x.type === 'review' && x.consentPublish === true);
+    if (String(req.query.featured || '') === '1') items = items.filter(x => x.featured);
+    const total = items.length;
+    if (String(req.query.random || '') === '1') {
+      for (let i = items.length - 1; i > 0; i--) { const j = crypto.randomInt(i + 1); const t = items[i]; items[i] = items[j]; items[j] = t; }
+    } else {
+      items.sort((a, b) => String(fbIso(b.createdAt) || '').localeCompare(String(fbIso(a.createdAt) || '')));
+    }
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 12));
+    res.set('Cache-Control', 'no-store');
+    res.json({ items: items.slice(0, limit).map(fbPublicShape), count: total });
+  } catch (err) { serverError(req, res, err); }
+});
+
+// ===== الأدمن =====
+app.get('/api/admin/feedback', requireAdmin, async (req, res) => {
+  try {
+    const s = await db.collection('feedback').get();
+    let items = docsToArr(s).map(x => Object.assign({}, x, { createdAt: fbIso(x.createdAt), updatedAt: fbIso(x.updatedAt) }));
+    items.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    const counts = {
+      total: items.length,
+      pendingReviews: items.filter(x => x.type === 'review' && x.status === 'pending').length,
+      newMessages: items.filter(x => x.type !== 'review' && x.status === 'new').length,
+      published: items.filter(x => x.type === 'review' && x.status === 'published').length
+    };
+    const type = String(req.query.type || ''), status = String(req.query.status || '');
+    if (type) items = items.filter(x => x.type === type);
+    if (status) items = items.filter(x => x.status === status);
+    res.json({ items, counts });
+  } catch (err) { serverError(req, res, err); }
+});
+
+// إضافة يدوية (تعليق وصل بالواتس/سناب... وعميل وافق على نشره)
+app.post('/api/admin/feedback', requireAdmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const type = FEEDBACK_TYPES.includes(String(b.type)) ? String(b.type) : 'review';
+    const message = fbClean(b.message, FEEDBACK_MAX_LEN);
+    if (message.length < 3) return res.status(400).json({ error: 'نص التعليق مطلوب' });
+    let rating = null;
+    if (type === 'review') {
+      rating = Math.round(Number(b.rating));
+      if (!(rating >= 1 && rating <= 5)) return res.status(400).json({ error: 'التقييم لازم يكون من 1 إلى 5' });
+    }
+    const consentPublish = b.consentPublish === true;
+    let status;
+    if (type === 'review') {
+      status = ['published', 'hidden', 'pending'].includes(String(b.status)) ? String(b.status) : (consentPublish ? 'published' : 'hidden');
+      if (status === 'published' && !consentPublish) return res.status(400).json({ error: 'لازم تأكد إنك استأذنت العميل قبل النشر' });
+    } else {
+      status = ['new', 'read', 'resolved'].includes(String(b.status)) ? String(b.status) : 'new';
+    }
+    let orderId = '', orderNumber = null, verifiedOrder = false;
+    const n = Number(b.orderNumber);
+    if (Number.isFinite(n) && n > 0) {
+      orderNumber = n;
+      const q = await db.collection('orders').where('orderNumber', '==', n).limit(1).get();
+      if (!q.empty) { orderId = q.docs[0].id; verifiedOrder = true; }
+    }
+    const doc = {
+      type, rating, message,
+      name: fbClean(b.name, 40) || 'عميل',
+      city: fbClean(b.city, 40),
+      userEmail: '', orderId, orderNumber, verifiedOrder,
+      consentPublish, status,
+      featured: b.featured === true,
+      source: FEEDBACK_SOURCES.includes(String(b.source)) ? String(b.source) : 'other',
+      adminNote: fbClean(b.adminNote, 500),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+    const ref = await db.collection('feedback').add(doc);
+    const saved = await ref.get();
+    res.json({ success: true, item: Object.assign({ id: ref.id }, saved.data(), { createdAt: fbIso(saved.data().createdAt), updatedAt: fbIso(saved.data().updatedAt) }) });
+  } catch (err) { serverError(req, res, err); }
+});
+
+// تعديل (نص، اسم، مدينة، تقييم، حالة، تمييز، ملاحظة داخلية، موافقة النشر)
+app.put('/api/admin/feedback/:id', requireAdmin, async (req, res) => {
+  try {
+    const ref = db.collection('feedback').doc(req.params.id);
+    const cur = await ref.get();
+    if (!cur.exists) return res.status(404).json({ error: 'غير موجود' });
+    const old = cur.data();
+    const b = req.body || {};
+    const u = {};
+    if (b.name !== undefined) u.name = fbClean(b.name, 40) || 'عميل';
+    if (b.city !== undefined) u.city = fbClean(b.city, 40);
+    if (b.message !== undefined) {
+      const m = fbClean(b.message, FEEDBACK_MAX_LEN);
+      if (m.length < 3) return res.status(400).json({ error: 'النص قصير' });
+      u.message = m;
+    }
+    if (b.rating !== undefined && old.type === 'review') {
+      const r = Math.round(Number(b.rating));
+      if (!(r >= 1 && r <= 5)) return res.status(400).json({ error: 'التقييم لازم يكون من 1 إلى 5' });
+      u.rating = r;
+    }
+    if (b.status !== undefined) {
+      if (!FEEDBACK_STATUSES.includes(String(b.status))) return res.status(400).json({ error: 'حالة غير صحيحة' });
+      u.status = String(b.status);
+    }
+    if (b.featured !== undefined) u.featured = b.featured === true;
+    if (b.consentPublish !== undefined && old.type === 'review') u.consentPublish = b.consentPublish === true;
+    if (b.adminNote !== undefined) u.adminNote = fbClean(b.adminNote, 500);
+    if (b.source !== undefined && FEEDBACK_SOURCES.includes(String(b.source))) u.source = String(b.source);
+    const next = Object.assign({}, old, u);
+    if (next.type === 'review' && next.status === 'published' && next.consentPublish !== true) {
+      return res.status(400).json({ error: 'ما تقدر تنشر تقييم بدون موافقة العميل' });
+    }
+    u.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+    await ref.update(u);
+    const saved = await ref.get();
+    res.json({ success: true, item: Object.assign({ id: ref.id }, saved.data(), { createdAt: fbIso(saved.data().createdAt), updatedAt: fbIso(saved.data().updatedAt) }) });
+  } catch (err) { serverError(req, res, err); }
+});
+
+app.delete('/api/admin/feedback/:id', requireAdmin, async (req, res) => {
+  try {
+    const ref = db.collection('feedback').doc(req.params.id);
+    const cur = await ref.get();
+    if (!cur.exists) return res.status(404).json({ error: 'غير موجود' });
+    await ref.delete();
+    res.json({ success: true });
+  } catch (err) { serverError(req, res, err); }
+});
+
 // REVIEWS
 app.get('/api/products/:id/reviews', async (req, res) => {
   try {
