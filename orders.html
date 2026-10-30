@@ -96,6 +96,10 @@
                             <i class="fas fa-map-marker-alt"></i>
                             <span>عناويني</span>
                         </a>
+                        <a href="feedback.html" class="sidebar-item">
+                            <i class="fas fa-star"></i>
+                            <span>ملاحظاتك</span>
+                        </a>
                         <a href="settings.html" class="sidebar-item">
                             <i class="fas fa-cog"></i>
                             <span>الإعدادات</span>
@@ -129,6 +133,29 @@
             </div>
         </div>
     </main>
+
+    <!-- Review Modal (تقييم الطلب بعد التسليم) -->
+    <div id="review-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[3000] hidden p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-star ml-2 text-yellow-400"></i>قيّم تجربتك</h3>
+                <button onclick="closeReviewModal()" class="w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-100 text-xl flex items-center justify-center">&times;</button>
+            </div>
+            <p id="review-modal-order" class="text-xs text-gray-500 mb-3"></p>
+            <div id="review-modal-stars" class="flex justify-center gap-1 text-4xl mb-1" style="direction:ltr"></div>
+            <p id="review-modal-stars-label" class="text-center text-sm text-gray-500 mb-3 min-h-[20px]"></p>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">وش رأيك بتجربتك؟ <span class="text-red-500">*</span></label>
+            <textarea id="review-modal-text" rows="4" maxlength="1000" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-antika-pink focus:outline-none" placeholder="اكتب تجربتك مع المنتج والتغليف والتوصيل"></textarea>
+            <label class="flex items-start gap-2 text-sm text-gray-700 mt-3 cursor-pointer">
+                <input type="checkbox" id="review-modal-consent" class="mt-1">
+                <span>أوافق على نشر تعليقي باسمي الأول ومدينتي بقسم آراء العملاء</span>
+            </label>
+            <p id="review-modal-error" class="text-sm text-red-600 mt-2 min-h-[20px]"></p>
+            <button id="review-modal-submit" onclick="submitReviewModal()" class="w-full bg-antika-pink-dark hover:opacity-90 text-white font-bold py-2.5 rounded-lg text-sm mt-1">أرسل التقييم</button>
+            <p class="text-xs text-gray-400 mt-3 text-center">تقييمك يوصل الإدارة للمراجعة، وما ينشر إلا بعد موافقتك وموافقتنا.</p>
+            <p class="text-xs text-center mt-2"><a id="review-modal-complaint-link" href="feedback.html" class="text-antika-gold-dark hover:underline">عندك شكوى أو اقتراح؟ اكتبها هنا</a></p>
+        </div>
+    </div>
 
     <!-- Cancel Order Reason Modal -->
     <div id="cancel-order-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[3000] hidden p-4">
@@ -564,6 +591,7 @@
                                     </button>
                                 </div>` : ''}
                                 ${order.status === 'delivered' ? buildReturnSection(order) : ''}
+                                ${order.status === 'delivered' ? buildReviewPrompt(order) : ''}
                             </div>
                             </div>
                         </div>
@@ -696,6 +724,83 @@
             }).catch(() => { alert(text); });
         }
         // 🗂️ حالة القائمة الكاملة بعد آخر تحميل — تُستخدم لتطبيق فلتر الحالة (الكل/نشطة/ملغية) بدون إعادة الطلب من السيرفر
+        // ⭐ تقييم الطلب بعد التسليم (آراء العملاء)
+        let _reviewedOrderIds = new Set();
+        let _reviewOrderId = '';
+        let _reviewRating = 0;
+        const REVIEW_LABELS = ['', 'سيئة', 'مقبولة', 'جيدة', 'ممتازة', 'رائعة'];
+
+        function buildReviewPrompt(order) {
+            const id = String(order.id);
+            if (_reviewedOrderIds.has(id)) {
+                return '<div id="review-box-' + id + '" class="mt-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700"><i class="fas fa-circle-check ml-1"></i>شكراً لتقييمك لهذا الطلب</div>';
+            }
+            let stars = '';
+            for (let n = 1; n <= 5; n++) {
+                stars += '<button type="button" aria-label="' + n + '" style="color:#D1D5DB" onmouseover="paintReviewBoxStars(this,' + n + ')" onmouseout="paintReviewBoxStars(this,0)" onclick="event.stopPropagation(); openReviewModal(\'' + id + '\', ' + n + ')" class="transition">★</button>';
+            }
+            return '<div id="review-box-' + id + '" class="mt-4 p-4 bg-gradient-to-l from-antika-pink/10 to-yellow-50 border border-antika-pink/40 rounded-xl text-center">'
+                + '<p class="text-sm font-bold text-gray-800 mb-2">كيف كانت تجربتك مع هذا الطلب؟</p>'
+                + '<div class="flex justify-center gap-1 text-3xl" style="direction:ltr">' + stars + '</div>'
+                + '<p class="text-xs text-gray-500 mt-2">اضغط على النجوم لتقييم طلبك</p></div>';
+        }
+
+        function paintReviewBoxStars(btn, n) {
+            Array.from(btn.parentElement.children).forEach(function (b, i) { b.style.color = i < n ? '#FBBF24' : '#D1D5DB'; });
+        }
+
+        function paintReviewModalStars() {
+            const wrap = document.getElementById('review-modal-stars');
+            wrap.innerHTML = '';
+            for (let n = 1; n <= 5; n++) {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.textContent = '★';
+                b.style.color = n <= _reviewRating ? '#FBBF24' : '#D1D5DB';
+                b.onclick = function () { _reviewRating = n; paintReviewModalStars(); };
+                wrap.appendChild(b);
+            }
+            document.getElementById('review-modal-stars-label').textContent = REVIEW_LABELS[_reviewRating] || '';
+        }
+
+        function openReviewModal(orderId, rating) {
+            const order = (_lastAllOrders || []).find(function (o) { return String(o.id) === String(orderId); });
+            _reviewOrderId = String(orderId);
+            _reviewRating = Number(rating) || 0;
+            const num = order ? (order.orderNumber || '') : '';
+            document.getElementById('review-modal-order').textContent = num ? 'الطلب رقم #' + num : '';
+            document.getElementById('review-modal-text').value = '';
+            document.getElementById('review-modal-consent').checked = false;
+            document.getElementById('review-modal-error').textContent = '';
+            document.getElementById('review-modal-complaint-link').href = 'feedback.html?type=complaint&order=' + encodeURIComponent(_reviewOrderId);
+            paintReviewModalStars();
+            document.getElementById('review-modal').classList.remove('hidden');
+        }
+
+        function closeReviewModal() { document.getElementById('review-modal').classList.add('hidden'); }
+
+        async function submitReviewModal() {
+            const err = document.getElementById('review-modal-error');
+            const btn = document.getElementById('review-modal-submit');
+            const message = document.getElementById('review-modal-text').value.trim();
+            if (!_reviewRating) { err.textContent = 'اختر عدد النجوم'; return; }
+            if (message.length < 3) { err.textContent = 'اكتب رأيك بكلمات بسيطة'; return; }
+            err.textContent = '';
+            btn.disabled = true; btn.textContent = 'جارٍ الإرسال...';
+            try {
+                await FeedbackAPI.submit({ type: 'review', orderId: _reviewOrderId, rating: _reviewRating, message: message, consentPublish: document.getElementById('review-modal-consent').checked });
+                _reviewedOrderIds.add(_reviewOrderId);
+                const box = document.getElementById('review-box-' + _reviewOrderId);
+                if (box) box.outerHTML = buildReviewPrompt({ id: _reviewOrderId });
+                closeReviewModal();
+                alert('وصل تقييمك، شكراً لك 💗');
+            } catch (e) {
+                err.textContent = e.message || 'تعذر إرسال التقييم، حاول مرة ثانية';
+            } finally {
+                btn.disabled = false; btn.textContent = 'أرسل التقييم';
+            }
+        }
+
         let _lastAllOrders = [];
         let _lastSeqMap = {};
         let _lastUnreadOrderIds = new Set();
@@ -797,6 +902,15 @@
                         (notifData.notifications || []).forEach(n => { if (n.type === 'order' && !n.read && n.orderId) unreadOrderIds.add(n.orderId); });
                     }
                 } catch (ne) { console.warn('Could not load notifications:', ne); }
+
+                // ⭐ الطلبات اللي قيّمها العميل (عشان نخفي زر التقييم عنها)
+                try {
+                    const fbRes = await fetch('/api/feedback/mine');
+                    if (fbRes.ok) {
+                        const fbData = await fbRes.json();
+                        _reviewedOrderIds = new Set((fbData.items || []).filter(i => i.type === 'review' && i.orderId).map(i => String(i.orderId)));
+                    }
+                } catch (fe) { console.warn('Could not load feedback:', fe); }
 
                 // 🔒 إزالة استبعاد customerCancelled: الطلب اللي يلغيه العميل يبقى ظاهراً بحالة "ملغي" (زي إلغاء الأدمن تماماً)
                 // ولا يختفي إلا لو العميل حذفه صراحة من قائمته (customerHidden) عبر hideOrderForCustomer/deleteAllCancelledForCustomer

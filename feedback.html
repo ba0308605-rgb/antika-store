@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ملاحظاتك - انتيكا ستور</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'antika-pink': '#FFB6C1',
+                        'antika-pink-dark': '#FF69B4',
+                        'antika-gold': '#D6C1A6',
+                        'antika-gold-dark': '#C4AC8E'
+                    },
+                    fontFamily: {
+                        'tajawal': ['Tajawal', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html { overflow-y: scroll; }
+        body { font-family: 'Tajawal', sans-serif; }
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            color: #4b5563;
+            transition: all 0.2s;
+            border-radius: 8px;
+            margin-bottom: 4px;
+        }
+        .sidebar-item:hover {
+            background-color: #f9fafb;
+            color: #D6C1A6;
+        }
+        .sidebar-item.active {
+            background-color: #f3f4f6;
+            color: #D6C1A6;
+            font-weight: 600;
+        }
+        .sidebar-item i { width: 20px; text-align: center; }
+        .fb-type-btn { padding: 6px 18px; border-radius: 9999px; font-size: 14px; font-weight: 600; border: 2px solid #e5e7eb; color: #4b5563; background: #fff; transition: all 0.2s; }
+        .fb-type-btn:hover { border-color: #D6C1A6; }
+        .fb-type-btn.active { background: #FF69B4; border-color: #FF69B4; color: #fff; }
+        #fb-stars button { font-size: 34px; line-height: 1; transition: color 0.15s; }
+    </style>
+    <style id="antika-reset">
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <antika-header></antika-header>
+
+    <main>
+        <nav class="bg-white border-b py-3">
+            <div class="container mx-auto px-4">
+                <div class="flex items-center text-sm">
+                    <a href="index.html" class="text-antika-gold font-semibold">الرئيسية</a>
+                    <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
+                    <a href="account.html" class="text-antika-gold font-semibold">حسابي</a>
+                    <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
+                    <span class="text-gray-600">ملاحظاتك</span>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container mx-auto px-4 py-8">
+            <div class="flex flex-col lg:flex-row gap-6">
+                <aside class="w-full lg:w-64 flex-shrink-0">
+                    <div class="bg-white rounded-xl shadow-sm border p-4">
+                        <a href="notifications.html" class="sidebar-item">
+                            <i class="fas fa-bell"></i>
+                            <span>الإشعارات</span>
+                        </a>
+                        <a href="orders.html" class="sidebar-item">
+                            <i class="fas fa-shopping-bag"></i>
+                            <span>طلباتي</span>
+                        </a>
+                        <a href="wishlist.html" class="sidebar-item">
+                            <i class="fas fa-heart"></i>
+                            <span>المفضلة</span>
+                        </a>
+                        <a href="account.html" class="sidebar-item">
+                            <i class="fas fa-user-circle"></i>
+                            <span>حسابي</span>
+                        </a>
+                        <a href="addresses.html" class="sidebar-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>عناويني</span>
+                        </a>
+                        <a href="feedback.html" class="sidebar-item active">
+                            <i class="fas fa-star"></i>
+                            <span>ملاحظاتك</span>
+                        </a>
+                        <a href="settings.html" class="sidebar-item">
+                            <i class="fas fa-cog"></i>
+                            <span>الإعدادات</span>
+                        </a>
+                        <div class="border-t my-3"></div>
+                        <button onclick="logout()" class="sidebar-item w-full text-right text-red-500 hover:bg-red-50 hover:text-red-600">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>تسجيل الخروج</span>
+                        </button>
+                    </div>
+                </aside>
+
+                <div class="flex-1 space-y-6">
+                    <!-- زائر غير مسجّل -->
+                    <div id="fb-guest" class="hidden bg-white rounded-xl shadow-sm border p-10 text-center">
+                        <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-user-lock text-3xl text-gray-300"></i>
+                        </div>
+                        <h2 class="text-lg font-bold text-gray-800 mb-2">سجّل دخولك أول</h2>
+                        <p class="text-gray-500 text-sm mb-5">عشان نربط رسالتك بطلبك ونقدر نتواصل معك</p>
+                        <a href="login.html" class="inline-block bg-antika-pink-dark text-white font-bold px-8 py-2.5 rounded-lg hover:opacity-90 transition">تسجيل الدخول</a>
+                    </div>
+
+                    <!-- النموذج -->
+                    <div id="fb-form-card" class="hidden bg-white rounded-xl shadow-sm border p-5 md:p-6">
+                        <h1 class="text-xl font-bold text-gray-800 mb-1">ملاحظاتك تهمنا</h1>
+                        <p class="text-sm text-gray-500 mb-4">اختر نوع رسالتك وتوصل للإدارة مباشرة</p>
+
+                        <div id="fb-types" class="flex flex-wrap gap-2 mb-5"></div>
+
+                        <div id="fb-order-box" class="mb-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">رقم الطلب <span id="fb-order-req" class="text-xs font-normal text-gray-400"></span></label>
+                            <select id="fb-order" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-antika-pink focus:outline-none bg-white"></select>
+                            <p id="fb-order-note" class="text-xs text-amber-600 mt-1 hidden"></p>
+                        </div>
+
+                        <div id="fb-stars-box" class="mb-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">تقييمك للتجربة <span class="text-red-500">*</span></label>
+                            <div id="fb-stars" class="flex gap-1" style="direction:ltr;justify-content:flex-end"></div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label id="fb-msg-label" class="block text-sm font-semibold text-gray-700 mb-1"></label>
+                            <textarea id="fb-message" rows="5" maxlength="1000" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-antika-pink focus:outline-none"></textarea>
+                        </div>
+
+                        <label id="fb-consent-box" class="flex items-start gap-2 text-sm text-gray-700 mb-4 cursor-pointer">
+                            <input type="checkbox" id="fb-consent" class="mt-1">
+                            <span>أوافق على نشر تعليقي باسمي الأول ومدينتي بقسم آراء العملاء</span>
+                        </label>
+
+                        <p id="fb-error" class="text-sm text-red-600 mb-2 min-h-[20px]"></p>
+                        <button id="fb-submit" onclick="submitFeedback()" class="w-full bg-antika-pink-dark text-white font-bold py-3 rounded-lg hover:opacity-90 transition"></button>
+                        <div id="fb-done" class="hidden mt-3 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm"></div>
+                        <p id="fb-hint" class="text-xs text-gray-400 mt-3"></p>
+                    </div>
+
+                    <!-- رسائلك السابقة -->
+                    <div id="fb-mine-card" class="hidden bg-white rounded-xl shadow-sm border p-5 md:p-6">
+                        <h2 class="text-base font-bold text-gray-800 mb-3">رسائلك السابقة</h2>
+                        <div id="fb-mine" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/header.js"></script>
+    <script src="js/auth-sync.js"></script>
+    <script src="js/announcement-bar.js"></script>
+    <script src="js/footer.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', initFeedbackPage);
+
+        const FB_TYPES = {
+            review: { label: 'تقييم', stars: true, consent: true, orderReq: true, onlyDelivered: true, msgLabel: 'وش رأيك بتجربتك؟', ph: 'اكتب تجربتك مع المنتج والتغليف والتوصيل', btn: 'أرسل التقييم', hint: 'تقييمك يوصل الإدارة للمراجعة، وما ينشر إلا بعد موافقتك وموافقتنا.', ok: 'وصل تقييمك، شكراً لك' },
+            suggestion: { label: 'اقتراح', stars: false, consent: false, orderReq: false, msgLabel: 'وش تقترح علينا؟', ph: 'منتج تبغاه، أو شي نحسنه بالموقع', btn: 'أرسل الاقتراح', hint: 'اقتراحك يوصل الإدارة للقراءة فقط وما ينشر نهائياً.', ok: 'وصل اقتراحك، شكراً لك' },
+            complaint: { label: 'شكوى', stars: false, consent: false, orderReq: true, msgLabel: 'وش المشكلة؟', ph: 'اشرح لنا اللي صار وبنتواصل معك', btn: 'أرسل الشكوى', hint: 'توصل الإدارة كرسالة خاصة ومربوطة بالطلب، وما تنشر.', ok: 'وصلتنا شكواك وبنتواصل معك' },
+            question: { label: 'سؤال', stars: false, consent: false, orderReq: false, msgLabel: 'وش سؤالك؟', ph: 'اكتب سؤالك', btn: 'أرسل السؤال', hint: 'نقرأ كل رسالة بنفسنا ونرد عليها، وقت الرد يختلف حسب الضغط.', ok: 'وصل سؤالك وبنرد عليك' }
+        };
+        const RATE_LABELS = ['', 'سيئة', 'مقبولة', 'جيدة', 'ممتازة', 'رائعة'];
+
+        let fbCur = 'review';
+        let fbRate = 0;
+        let fbOrders = [];
+        let fbReviewed = new Set();
+        let fbSending = false;
+        let fbPresetOrder = '';
+
+        function fbEsc(v) {
+            return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function fbDate(v) {
+            const d = v ? new Date(v) : null;
+            if (!d || isNaN(d.getTime())) return '';
+            return d.toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+        function fbStatusText(status) { return status === 'delivered' ? 'تم التسليم' : (status === 'cancelled' ? 'ملغي' : 'قيد التنفيذ'); }
+
+        async function initFeedbackPage() {
+            const userRaw = localStorage.getItem('antika_user');
+            let email = '';
+            try { email = ((userRaw && JSON.parse(userRaw).email) || '').toLowerCase(); } catch (e) {}
+            if (!email) { document.getElementById('fb-guest').classList.remove('hidden'); return; }
+
+            const params = new URLSearchParams(window.location.search);
+            if (FB_TYPES[params.get('type')]) fbCur = params.get('type');
+            fbPresetOrder = params.get('order') || '';
+
+            document.getElementById('fb-form-card').classList.remove('hidden');
+            paintTypes();
+            applyType();
+
+            try {
+                const r = await fetch('/api/orders/customer?email=' + encodeURIComponent(email));
+                const all = r.ok ? await r.json() : [];
+                fbOrders = (Array.isArray(all) ? all : []).filter(o => !o.customerHidden).map(o => ({
+                    id: String(o.id || o._id), orderNumber: o.orderNumber, status: o.status || '', date: o.date || o.createdAt
+                }));
+            } catch (e) { fbOrders = []; }
+            await loadMine();
+            fillOrders();
+        }
+
+        async function loadMine() {
+            try {
+                const items = await FeedbackAPI.mine();
+                fbReviewed = new Set(items.filter(i => i.type === 'review' && i.orderId).map(i => String(i.orderId)));
+                renderMine(items);
+            } catch (e) { /* نتجاهل — النموذج يشتغل بدونها */ }
+        }
+
+        function renderMine(items) {
+            const card = document.getElementById('fb-mine-card');
+            const box = document.getElementById('fb-mine');
+            if (!items.length) { card.classList.add('hidden'); return; }
+            card.classList.remove('hidden');
+            box.innerHTML = items.map(function (i) {
+                const t = FB_TYPES[i.type] ? FB_TYPES[i.type].label : i.type;
+                const st = i.status === 'published' ? 'نُشر، شكراً لك' : ((i.status === 'pending' || i.status === 'new') ? 'وصلتنا' : 'تمت مراجعتها');
+                const stars = i.type === 'review' && i.rating ? '<span style="color:#FBBF24">' + '★'.repeat(i.rating) + '</span><span style="color:#D1D5DB">' + '★'.repeat(5 - i.rating) + '</span>' : '';
+                return '<div class="flex items-center justify-between gap-2 p-3 bg-gray-50 rounded-lg text-sm flex-wrap">'
+                    + '<div class="flex items-center gap-2"><span class="font-bold text-gray-800">' + fbEsc(t) + '</span>' + stars + '</div>'
+                    + '<div class="flex items-center gap-3 text-xs text-gray-500"><span>' + fbEsc(fbDate(i.createdAt)) + '</span><span class="px-2 py-0.5 rounded-full bg-white border">' + fbEsc(st) + '</span></div></div>';
+            }).join('');
+        }
+
+        function paintTypes() {
+            const el = document.getElementById('fb-types');
+            el.innerHTML = '';
+            Object.keys(FB_TYPES).forEach(function (k) {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'fb-type-btn' + (k === fbCur ? ' active' : '');
+                b.textContent = FB_TYPES[k].label;
+                b.onclick = function () { fbCur = k; fbRate = 0; paintTypes(); applyType(); fillOrders(); };
+                el.appendChild(b);
+            });
+        }
+
+        function paintStars() {
+            const el = document.getElementById('fb-stars');
+            el.innerHTML = '';
+            for (let n = 1; n <= 5; n++) {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.textContent = '★';
+                b.style.color = n <= fbRate ? '#FBBF24' : '#D1D5DB';
+                b.onclick = function () { fbRate = n; paintStars(); document.getElementById('fb-error').textContent = ''; };
+                el.appendChild(b);
+            }
+        }
+
+        function applyType() {
+            const c = FB_TYPES[fbCur];
+            document.getElementById('fb-stars-box').style.display = c.stars ? 'block' : 'none';
+            document.getElementById('fb-consent-box').style.display = c.consent ? 'flex' : 'none';
+            document.getElementById('fb-order-req').textContent = c.orderReq ? '(مطلوب)' : '(اختياري)';
+            document.getElementById('fb-msg-label').textContent = c.msgLabel;
+            document.getElementById('fb-message').placeholder = c.ph;
+            document.getElementById('fb-submit').textContent = c.btn;
+            document.getElementById('fb-hint').textContent = c.hint;
+            document.getElementById('fb-error').textContent = '';
+            document.getElementById('fb-done').classList.add('hidden');
+            paintStars();
+        }
+
+        function fillOrders() {
+            const c = FB_TYPES[fbCur];
+            const sel = document.getElementById('fb-order');
+            const note = document.getElementById('fb-order-note');
+            let list = fbOrders.slice();
+            if (c.onlyDelivered) list = list.filter(o => o.status === 'delivered' && !fbReviewed.has(o.id));
+            sel.innerHTML = '';
+            const first = document.createElement('option');
+            first.value = '';
+            first.textContent = c.orderReq ? 'اختر طلبك' : 'بدون ربط بطلب';
+            sel.appendChild(first);
+            list.forEach(function (o) {
+                const op = document.createElement('option');
+                op.value = o.id;
+                op.textContent = 'طلب #' + (o.orderNumber || '—') + ' - ' + fbDate(o.date) + ' - ' + fbStatusText(o.status);
+                sel.appendChild(op);
+            });
+            if (fbPresetOrder && list.some(o => o.id === fbPresetOrder)) sel.value = fbPresetOrder;
+            if (c.onlyDelivered && !list.length) {
+                note.textContent = 'ما عندك طلبات مستلمة تنتظر التقييم. تقدر تقيّم الطلب بعد استلامه.';
+                note.classList.remove('hidden');
+            } else if (c.orderReq && !list.length) {
+                note.textContent = 'ما عندك طلبات مرتبطة بحسابك.';
+                note.classList.remove('hidden');
+            } else { note.classList.add('hidden'); }
+        }
+
+        async function submitFeedback() {
+            if (fbSending) return;
+            const c = FB_TYPES[fbCur];
+            const err = document.getElementById('fb-error');
+            const btn = document.getElementById('fb-submit');
+            const orderId = document.getElementById('fb-order').value;
+            const message = document.getElementById('fb-message').value.trim();
+            if (c.orderReq && !orderId) { err.textContent = 'اختر رقم الطلب أول'; return; }
+            if (c.stars && !fbRate) { err.textContent = 'اختر عدد النجوم'; return; }
+            if (message.length < 3) { err.textContent = 'اكتب رسالتك أول'; return; }
+            err.textContent = '';
+            fbSending = true; btn.disabled = true; btn.textContent = 'جارٍ الإرسال...';
+            try {
+                await FeedbackAPI.submit({
+                    type: fbCur, orderId: orderId, message: message,
+                    rating: c.stars ? fbRate : undefined,
+                    consentPublish: c.consent ? document.getElementById('fb-consent').checked : false
+                });
+                const done = document.getElementById('fb-done');
+                done.textContent = c.ok;
+                done.classList.remove('hidden');
+                document.getElementById('fb-message').value = '';
+                document.getElementById('fb-consent').checked = false;
+                fbRate = 0; paintStars();
+                await loadMine();
+                fillOrders();
+            } catch (e) {
+                err.textContent = e.message || 'تعذر الإرسال، حاول مرة ثانية';
+            } finally {
+                fbSending = false; btn.disabled = false; btn.textContent = c.btn;
+            }
+        }
+
+        async function logout() {
+            try { if (window.Auth && typeof Auth.logout === 'function') await Auth.logout(); } catch (e) {}
+            localStorage.removeItem('antika_user');
+            localStorage.removeItem('antika_token');
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

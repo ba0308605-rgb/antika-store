@@ -10,7 +10,9 @@
         /^\/api\/users\//,
         /^\/api\/notifications/,
         /^\/api\/products\/[^/]+\/reviews$/,
-        /^\/api\/reviews\/[^/]+\/like$/
+        /^\/api\/reviews\/[^/]+\/like$/,
+        /^\/api\/feedback$/,
+        /^\/api\/feedback\/mine$/
     ];
     var origFetch = window.fetch.bind(window);
     var authReady = null;
@@ -940,6 +942,39 @@ const ReviewsAPI = {
   }
 };
 window.ReviewsAPI = ReviewsAPI;
+
+// ⭐ آراء العملاء (تقييم / اقتراح / شكوى / سؤال) — التوكن يُضاف تلقائياً من المعترض بأعلى الملف
+const FeedbackAPI = {
+  async submit(payload) {
+    const res = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {})
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'تعذر إرسال رسالتك، حاول مرة ثانية');
+    return data;
+  },
+  async mine() {
+    const res = await fetch('/api/feedback/mine');
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'تعذر جلب رسائلك');
+    return data.items || [];
+  },
+  // عام (بدون تسجيل دخول): التقييمات المنشورة فقط. opts: { limit, random, featured }
+  async publicList(opts) {
+    const o = opts || {};
+    const q = new URLSearchParams();
+    if (o.limit) q.set('limit', String(o.limit));
+    if (o.random) q.set('random', '1');
+    if (o.featured) q.set('featured', '1');
+    const res = await fetch('/api/feedback/public' + (q.toString() ? '?' + q.toString() : ''), { cache: 'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'تعذر جلب التقييمات');
+    return { items: data.items || [], count: data.count || 0 };
+  }
+};
+window.FeedbackAPI = FeedbackAPI;
 
 // Expose API globally for other scripts
 window.API = API;
