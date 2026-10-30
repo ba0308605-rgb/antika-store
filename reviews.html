@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تعليقات نفخر بها - انتيكا ستور</title>
+    <meta name="description" content="آراء وصلتنا من عملاء انتيكا ستور بعد تجربتهم، نشرناها بموافقتهم.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'antika-pink': '#FFB6C1',
+                        'antika-pink-dark': '#FF69B4',
+                        'antika-gold': '#D6C1A6',
+                        'antika-gold-dark': '#C4AC8E'
+                    },
+                    fontFamily: {
+                        'tajawal': ['Tajawal', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html { overflow-y: scroll; }
+        body { font-family: 'Tajawal', sans-serif; }
+    </style>
+    <style id="antika-reset">
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <antika-header></antika-header>
+
+    <main>
+        <nav class="bg-white border-b py-3">
+            <div class="container mx-auto px-4">
+                <div class="flex items-center text-sm">
+                    <a href="index.html" class="text-antika-gold font-semibold">الرئيسية</a>
+                    <i class="fas fa-chevron-left mx-2 text-gray-400 text-xs"></i>
+                    <span class="text-gray-600">تعليقات نفخر بها</span>
+                </div>
+            </div>
+        </nav>
+
+        <section class="py-8 md:py-12" style="background:linear-gradient(180deg,#ffffff 0%,#FFF0F5 100%)">
+            <div class="container mx-auto px-4">
+                <div class="text-center mb-8 md:mb-12">
+                    <h1 class="text-2xl md:text-4xl font-bold text-antika-gold">
+                        <span class="border-b-4 border-antika-pink pb-2">💬 تعليقات نفخر بها</span>
+                    </h1>
+                    <p id="reviews-sub" class="text-gray-500 text-sm md:text-base mt-4">آراء وصلتنا من عملائنا ونشرناها بموافقتهم</p>
+                </div>
+
+                <div id="reviews-grid"></div>
+
+                <div id="reviews-loading" class="text-center py-16 text-gray-400">
+                    <i class="fas fa-spinner fa-spin text-4xl mb-3 block"></i>جاري التحميل...
+                </div>
+
+                <div id="reviews-empty" class="hidden text-center py-16">
+                    <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-5 shadow-sm">
+                        <i class="fas fa-comments text-4xl text-gray-300"></i>
+                    </div>
+                    <h2 class="text-lg font-bold text-gray-800 mb-2">لا توجد تعليقات منشورة حالياً</h2>
+                    <p class="text-gray-500 text-sm mb-5">كن أول من يشاركنا تجربته بعد استلام طلبه</p>
+                    <a href="products.html" class="inline-block bg-antika-pink-dark text-white font-bold px-8 py-2.5 rounded-lg hover:opacity-90 transition">تصفح المنتجات</a>
+                </div>
+
+                <div id="reviews-cta" class="hidden max-w-xl mx-auto mt-10 bg-white rounded-2xl shadow-sm border p-6 text-center">
+                    <h2 class="text-base font-bold text-gray-800 mb-1">جربت منتجاتنا؟</h2>
+                    <p class="text-sm text-gray-500 mb-4">شاركنا رأيك بعد استلام طلبك، ويهمنا نسمع منك</p>
+                    <a href="feedback.html" class="inline-block border-2 border-antika-pink-dark text-antika-pink-dark font-bold px-6 py-2 rounded-lg hover:bg-antika-pink-dark hover:text-white transition">اكتب ملاحظتك</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <antika-footer></antika-footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/header.js"></script>
+    <script src="js/auth-sync.js"></script>
+    <script src="js/announcement-bar.js"></script>
+    <script src="js/footer.js"></script>
+    <script src="js/testimonials.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function () {
+            var loading = document.getElementById('reviews-loading');
+            try {
+                // الأحدث أولاً (بدون ترتيب عشوائي) — الحد الأقصى 100 تعليق
+                var data = await FeedbackAPI.publicList({ limit: 100 });
+                loading.classList.add('hidden');
+                if (!data.items.length) { document.getElementById('reviews-empty').classList.remove('hidden'); return; }
+                AntikaTestimonials.render(document.getElementById('reviews-grid'), data.items);
+                document.getElementById('reviews-sub').textContent = data.count + ' تعليق من عملائنا، نشرناها بموافقتهم';
+                document.getElementById('reviews-cta').classList.remove('hidden');
+            } catch (e) {
+                loading.classList.add('hidden');
+                document.getElementById('reviews-empty').classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

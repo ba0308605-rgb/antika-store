@@ -476,6 +476,21 @@
         </div>
     </section>
 
+    <!-- Testimonials - تعليقات نفخر بها (تظهر تلقائياً لما يصير فيه 3 تقييمات منشورة على الأقل) -->
+    <section id="testimonials-section" class="hidden pt-6 pb-8 md:py-16" style="background:linear-gradient(180deg,#ffffff 0%,#FFF0F5 100%)">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center mb-4 md:mb-10">
+                <h2 class="text-xl md:text-3xl font-bold text-antika-gold">
+                    <span class="border-b-4 border-antika-pink pb-2">💬 تعليقات نفخر بها</span>
+                </h2>
+                <a id="testimonials-all" href="reviews.html" class="hidden text-antika-gold hover:text-antika-pink-dark transition font-semibold text-sm md:text-base">
+                    عرض الكل ←
+                </a>
+            </div>
+            <div id="testimonials-grid"></div>
+        </div>
+    </section>
+
     <!-- Footer -->
     <antika-footer></antika-footer>
 
@@ -486,6 +501,7 @@
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
     <script src="js/product-card.js"></script>
+    <script src="js/testimonials.js"></script>
     
     <script>
         // Banner Slider
@@ -659,5 +675,17 @@
     <script src="js/auth-sync.js"></script>
     <script src="js/announcement-bar.js"></script>
     <script src="js/footer.js"></script>
+    <script>
+        // 💬 تعليقات نفخر بها: ترتيب عشوائي مع كل تحديث للصفحة، والقسم يختفي لو أقل من 3 تقييمات منشورة
+        (async function () {
+            try {
+                var data = await FeedbackAPI.publicList({ limit: 6, random: true });
+                if (!data || data.count < 3 || data.items.length < 3) return;
+                AntikaTestimonials.render(document.getElementById('testimonials-grid'), data.items);
+                document.getElementById('testimonials-section').classList.remove('hidden');
+                if (data.count > data.items.length) document.getElementById('testimonials-all').classList.remove('hidden');
+            } catch (e) { /* القسم يبقى مخفي */ }
+        })();
+    </script>
 </body>
 </html>
