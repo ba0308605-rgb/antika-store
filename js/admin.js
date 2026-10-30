@@ -133,6 +133,7 @@ async function initAdmin() {
         if (typeof loadAnnouncingSettings === 'function') await loadAnnouncingSettings();
         await loadOrders(); // تحميل الطلبات
         await loadDashboard(); // تحميل الداشبورد الجديد
+        if (typeof loadFeedbackBadge === 'function') loadFeedbackBadge(); // شارة آراء العملاء
         console.log('✅ Admin panel initialized');
     } catch (error) {
         console.error('Error initializing admin:', error);
@@ -173,6 +174,7 @@ function showSection(sectionName) {
     if (sectionName === 'bulk-discount') loadBulkDiscountProducts();
     if (sectionName === 'footer-pages') loadFooterPagesSettings();
     if (sectionName === 'orders') loadOrders();
+    if (sectionName === 'feedback') loadFeedback();
 }
 
 // ============================================
@@ -4235,4 +4237,245 @@ async function saveMaintenanceKey() {
 function copyMaintenanceLink() {
   const link = document.getElementById('maintenance-link').textContent;
   navigator.clipboard.writeText(link).then(() => showNotification('✅ تم نسخ الرابط'));
+}
+
+// ============================================
+// ⭐ آراء العملاء (تقييم / اقتراح / شكوى / سؤال)
+// ============================================
+let feedbackItems = [];
+let feedbackTypeFilter = '';
+let feedbackStatusFilter = '';
+const FB_TYPE_LABELS = { review: 'تقييم', suggestion: 'اقتراح', complaint: 'شكوى', question: 'سؤال' };
+const FB_TYPE_COLORS = { review: 'bg-pink-100 text-pink-700', suggestion: 'bg-blue-100 text-blue-700', complaint: 'bg-red-100 text-red-700', question: 'bg-purple-100 text-purple-700' };
+const FB_STATUS_LABELS = { pending: 'بانتظار المراجعة', published: 'منشور', hidden: 'مخفي', new: 'جديد', read: 'مقروء', resolved: 'تمت المعالجة' };
+const FB_STATUS_COLORS = { pending: 'bg-amber-100 text-amber-700', published: 'bg-green-100 text-green-700', hidden: 'bg-gray-100 text-gray-600', new: 'bg-blue-100 text-blue-700', read: 'bg-gray-100 text-gray-600', resolved: 'bg-green-100 text-green-700' };
+const FB_SOURCE_LABELS = { site: 'الموقع', whatsapp: 'واتساب', snapchat: 'سناب شات', instagram: 'انستغرام', x: 'إكس', email: 'إيميل', other: 'أخرى' };
+
+async function fbAdminRequest(path, method, body) {
+    const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+    const opts = { method: method || 'GET', headers: { 'Authorization': 'Bearer ' + token } };
+    if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+    const res = await fetch(path, opts);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'تعذر تنفيذ الطلب');
+    return data;
+}
+
+function updateFeedbackBadge(counts) {
+    const badge = document.getElementById('feedback-sidebar-badge');
+    if (!badge || !counts) return;
+    const total = (counts.pendingReviews || 0) + (counts.newMessages || 0);
+    if (total > 0) { badge.textContent = total > 99 ? '99+' : String(total); badge.classList.remove('hidden'); }
+    else badge.classList.add('hidden');
+}
+
+// يحدّث الشارة فقط (خفيف) — يُستدعى عند فتح اللوحة وكل 3 دقائق
+async function loadFeedbackBadge() {
+    try { const data = await fbAdminRequest('/api/admin/feedback'); updateFeedbackBadge(data.counts); } catch (e) {}
+}
+setInterval(function() {
+    const panel = document.getElementById('admin-panel');
+    if (panel && !panel.classList.contains('hidden') && localStorage.getItem(ADMIN_TOKEN_KEY)) loadFeedbackBadge();
+}, 3 * 60 * 1000);
+
+async function loadFeedback() {
+    const list = document.getElementById('feedback-list');
+    if (list && !feedbackItems.length) list.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-spinner fa-spin text-4xl mb-3 block"></i>جاري التحميل...</div>';
+    try {
+        const data = await fbAdminRequest('/api/admin/feedback');
+        feedbackItems = data.items || [];
+        updateFeedbackBadge(data.counts);
+        renderFeedbackStats(data.counts || {});
+        renderFeedbackTabs();
+        renderFeedbackList();
+    } catch (e) {
+        if (list) list.innerHTML = '<div class="text-center py-12 text-red-400">' + safeText(e.message) + '</div>';
+    }
+}
+
+function renderFeedbackStats(c) {
+    const el = document.getElementById('feedback-stats-row');
+    if (!el) return;
+    const card = function(label, val, color) {
+        return '<div class="bg-white rounded-2xl shadow p-4 text-center"><div class="text-2xl font-bold ' + color + '">' + (val || 0) + '</div><div class="text-xs text-gray-500 mt-1">' + label + '</div></div>';
+    };
+    el.innerHTML = card('تقييمات بانتظار المراجعة', c.pendingReviews, 'text-amber-600')
+        + card('تقييمات منشورة', c.published, 'text-green-600')
+        + card('رسائل جديدة', c.newMessages, 'text-blue-600')
+        + card('الإجمالي', c.total, 'text-gray-700');
+}
+
+function renderFeedbackTabs() {
+    const el = document.getElementById('feedback-type-tabs');
+    if (!el) return;
+    const tabs = [['', 'الكل'], ['review', 'تقييمات'], ['suggestion', 'اقتراحات'], ['complaint', 'شكاوى'], ['question', 'أسئلة']];
+    el.innerHTML = tabs.map(function(t) {
+        const n = t[0] ? feedbackItems.filter(function(x) { return x.type === t[0]; }).length : feedbackItems.length;
+        const active = feedbackTypeFilter === t[0];
+        return '<button onclick="setFeedbackTypeFilter(\'' + t[0] + '\')" class="px-4 py-1.5 rounded-full text-sm border-2 transition ' + (active ? 'bg-antika-pink-dark text-white border-antika-pink-dark' : 'border-gray-200 text-gray-600 hover:border-antika-gold') + '">' + t[1] + ' (' + n + ')</button>';
+    }).join('');
+}
+
+function setFeedbackTypeFilter(t) { feedbackTypeFilter = t; renderFeedbackTabs(); renderFeedbackList(); }
+function setFeedbackStatusFilter(s) { feedbackStatusFilter = s; renderFeedbackList(); }
+
+function renderFeedbackList() {
+    const list = document.getElementById('feedback-list');
+    if (!list) return;
+    let items = feedbackItems.slice();
+    if (feedbackTypeFilter) items = items.filter(function(x) { return x.type === feedbackTypeFilter; });
+    if (feedbackStatusFilter) items = items.filter(function(x) { return x.status === feedbackStatusFilter; });
+    if (!items.length) {
+        list.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-star text-5xl mb-3 block"></i>لا توجد رسائل</div>';
+        return;
+    }
+    list.innerHTML = items.map(renderFeedbackCard).join('');
+}
+
+function renderFeedbackCard(x) {
+    const id = safeText(x.id);
+    const isReview = x.type === 'review';
+    const needsAction = (isReview && x.status === 'pending') || (!isReview && x.status === 'new');
+    const border = needsAction ? (isReview ? 'border-amber-400' : 'border-blue-400') : 'border-transparent';
+    const date = x.createdAt ? new Date(x.createdAt).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+    const stars = isReview ? '<div class="text-lg leading-none mb-2" style="color:#FBBF24;direction:ltr;text-align:right">' + '★'.repeat(Number(x.rating) || 0) + '<span style="color:#D1D5DB">' + '★'.repeat(5 - (Number(x.rating) || 0)) + '</span></div>' : '';
+    let meta = [];
+    meta.push('<i class="fas fa-user ml-1"></i>' + safeText(x.name || 'عميل') + (x.city ? ' - ' + safeText(x.city) : ''));
+    if (x.orderNumber) meta.push('<i class="fas fa-receipt ml-1"></i>طلب #' + safeText(x.orderNumber));
+    if (x.source && x.source !== 'site') meta.push('<i class="fas fa-share-alt ml-1"></i>' + safeText(FB_SOURCE_LABELS[x.source] || x.source));
+    if (x.userEmail) meta.push('<i class="fas fa-envelope ml-1"></i><span dir="ltr">' + safeText(x.userEmail) + '</span>');
+    const badges = '<span class="px-2 py-0.5 rounded-full text-xs font-bold ' + (FB_TYPE_COLORS[x.type] || '') + '">' + safeText(FB_TYPE_LABELS[x.type] || x.type) + '</span>'
+        + '<span class="px-2 py-0.5 rounded-full text-xs font-bold ' + (FB_STATUS_COLORS[x.status] || '') + '">' + safeText(FB_STATUS_LABELS[x.status] || x.status) + '</span>'
+        + (x.verifiedOrder ? '<span class="px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700">طلب موثّق</span>' : '')
+        + (isReview ? (x.consentPublish ? '<span class="px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700">موافق على النشر</span>' : '<span class="px-2 py-0.5 rounded-full text-xs bg-red-50 text-red-600">ما وافق على النشر</span>') : '')
+        + (x.featured ? '<span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">⭐ مميز</span>' : '');
+    let actions = '';
+    if (isReview) {
+        if (x.status !== 'published') actions += '<button onclick="feedbackPublish(\'' + id + '\')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-500 text-white hover:opacity-90">نشر</button>';
+        if (x.status === 'published') actions += '<button onclick="feedbackSetStatus(\'' + id + '\',\'hidden\')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-500 text-white hover:opacity-90">إخفاء</button>';
+        if (x.status === 'pending') actions += '<button onclick="feedbackSetStatus(\'' + id + '\',\'hidden\')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-500 text-white hover:opacity-90">رفض / إخفاء</button>';
+        actions += '<button onclick="feedbackToggleFeatured(\'' + id + '\')" class="px-3 py-1.5 rounded-lg text-xs border-2 border-yellow-300 text-yellow-700 hover:bg-yellow-50">' + (x.featured ? 'إلغاء التمييز' : 'تمييز') + '</button>';
+        actions += '<button onclick="openFeedbackModal(\'' + id + '\')" class="px-3 py-1.5 rounded-lg text-xs border-2 border-gray-200 text-gray-600 hover:border-antika-gold">تعديل</button>';
+    } else {
+        if (x.status === 'new') actions += '<button onclick="feedbackSetStatus(\'' + id + '\',\'read\')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-500 text-white hover:opacity-90">تعليم كمقروء</button>';
+        if (x.status !== 'resolved') actions += '<button onclick="feedbackSetStatus(\'' + id + '\',\'resolved\')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-500 text-white hover:opacity-90">تمت المعالجة</button>';
+        else actions += '<button onclick="feedbackSetStatus(\'' + id + '\',\'new\')" class="px-3 py-1.5 rounded-lg text-xs border-2 border-gray-200 text-gray-600 hover:border-antika-gold">إعادة فتح</button>';
+        actions += '<button onclick="feedbackEditNote(\'' + id + '\')" class="px-3 py-1.5 rounded-lg text-xs border-2 border-gray-200 text-gray-600 hover:border-antika-gold">ملاحظة</button>';
+    }
+    actions += '<button onclick="feedbackDelete(\'' + id + '\')" class="px-3 py-1.5 rounded-lg text-xs border-2 border-red-200 text-red-500 hover:bg-red-50 mr-auto">حذف</button>';
+    return '<div class="bg-white rounded-2xl shadow p-4 border-r-4 ' + border + '">'
+        + '<div class="flex flex-wrap items-center gap-2 mb-2">' + badges + '<span class="text-xs text-gray-400 mr-auto">' + safeText(date) + '</span></div>'
+        + stars
+        + '<p class="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">' + safeText(x.message) + '</p>'
+        + '<div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mt-3">' + meta.map(function(m) { return '<span>' + m + '</span>'; }).join('') + '</div>'
+        + (x.adminNote ? '<div class="mt-2 text-xs bg-amber-50 text-amber-800 rounded-lg px-3 py-2">ملاحظتك: ' + safeText(x.adminNote) + '</div>' : '')
+        + '<div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100">' + actions + '</div>'
+        + '</div>';
+}
+
+function feedbackFind(id) { return feedbackItems.find(function(x) { return x.id === id; }); }
+
+async function feedbackUpdate(id, patch, okMsg) {
+    try {
+        await fbAdminRequest('/api/admin/feedback/' + encodeURIComponent(id), 'PUT', patch);
+        if (okMsg) showNotification(okMsg);
+        await loadFeedback();
+        return true;
+    } catch (e) { showNotification(e.message, 'error'); return false; }
+}
+
+function feedbackSetStatus(id, status) {
+    const msgs = { hidden: 'تم الإخفاء', read: 'تم التعليم كمقروء', resolved: 'تمت المعالجة', new: 'أعيد فتحها', pending: 'أعيد للمراجعة' };
+    return feedbackUpdate(id, { status: status }, msgs[status] || 'تم');
+}
+
+async function feedbackPublish(id) {
+    const x = feedbackFind(id);
+    if (!x) return;
+    const patch = { status: 'published' };
+    if (!x.consentPublish) {
+        if (!confirm('العميل ما وافق على النشر من النموذج. هل استأذنته بطريقة ثانية (واتساب مثلاً) وهو موافق؟')) return;
+        patch.consentPublish = true;
+    }
+    feedbackUpdate(id, patch, 'تم النشر بالموقع');
+}
+
+function feedbackToggleFeatured(id) {
+    const x = feedbackFind(id);
+    if (!x) return;
+    feedbackUpdate(id, { featured: !x.featured }, x.featured ? 'أُلغي التمييز' : 'تم التمييز');
+}
+
+function feedbackEditNote(id) {
+    const x = feedbackFind(id);
+    if (!x) return;
+    const v = prompt('ملاحظتك الداخلية (ما تظهر للعميل):', x.adminNote || '');
+    if (v === null) return;
+    feedbackUpdate(id, { adminNote: v }, 'تم حفظ الملاحظة');
+}
+
+async function feedbackDelete(id) {
+    if (!confirm('تأكيد الحذف النهائي؟ ما يمكن التراجع.')) return;
+    try {
+        await fbAdminRequest('/api/admin/feedback/' + encodeURIComponent(id), 'DELETE');
+        showNotification('تم الحذف');
+        await loadFeedback();
+    } catch (e) { showNotification(e.message, 'error'); }
+}
+
+function openFeedbackModal(id) {
+    const x = id ? feedbackFind(id) : null;
+    const set = function(k, v) { const el = document.getElementById(k); if (el) el.value = v; };
+    document.getElementById('feedback-modal-title').textContent = x ? 'تعديل التعليق' : 'إضافة تعليق يدوي';
+    set('fb-id', x ? x.id : '');
+    set('fb-name', x ? (x.name || '') : '');
+    set('fb-city', x ? (x.city || '') : '');
+    set('fb-rating', x ? String(x.rating || 5) : '5');
+    set('fb-source', x ? (x.source || 'other') : 'whatsapp');
+    set('fb-message', x ? (x.message || '') : '');
+    set('fb-order', x && x.orderNumber ? x.orderNumber : '');
+    set('fb-note', x ? (x.adminNote || '') : '');
+    set('fb-status', x ? (['published', 'hidden', 'pending'].includes(x.status) ? x.status : 'hidden') : 'published');
+    document.getElementById('fb-consent').checked = x ? !!x.consentPublish : false;
+    document.getElementById('fb-featured').checked = x ? !!x.featured : false;
+    document.getElementById('fb-order-row').style.display = x ? 'none' : 'block';
+    document.getElementById('feedback-modal').classList.remove('hidden');
+}
+
+function closeFeedbackModal() { document.getElementById('feedback-modal').classList.add('hidden'); }
+
+async function saveFeedbackModal() {
+    const id = document.getElementById('fb-id').value;
+    const consent = document.getElementById('fb-consent').checked;
+    const status = document.getElementById('fb-status').value;
+    const message = document.getElementById('fb-message').value.trim();
+    if (message.length < 3) { showNotification('اكتب نص التعليق', 'error'); return; }
+    if (status === 'published' && !consent) { showNotification('لازم تأكد إن العميل وافق على النشر', 'error'); return; }
+    const body = {
+        name: document.getElementById('fb-name').value.trim(),
+        city: document.getElementById('fb-city').value.trim(),
+        rating: Number(document.getElementById('fb-rating').value),
+        source: document.getElementById('fb-source').value,
+        message: message,
+        adminNote: document.getElementById('fb-note').value.trim(),
+        consentPublish: consent,
+        featured: document.getElementById('fb-featured').checked,
+        status: status
+    };
+    const btn = document.getElementById('fb-save-btn');
+    if (btn) btn.disabled = true;
+    try {
+        if (id) {
+            await fbAdminRequest('/api/admin/feedback/' + encodeURIComponent(id), 'PUT', body);
+        } else {
+            body.type = 'review';
+            const on = document.getElementById('fb-order').value;
+            if (on) body.orderNumber = Number(on);
+            await fbAdminRequest('/api/admin/feedback', 'POST', body);
+        }
+        showNotification('تم الحفظ');
+        closeFeedbackModal();
+        await loadFeedback();
+    } catch (e) { showNotification(e.message, 'error'); }
+    finally { if (btn) btn.disabled = false; }
 }

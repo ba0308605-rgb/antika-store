@@ -188,6 +188,11 @@
                         <i class="fas fa-comments w-6"></i>
                         <span>التعليقات</span>
                     </button>
+                    <button onclick="showSection('feedback')" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
+                        <i class="fas fa-star w-6"></i>
+                        <span>آراء العملاء</span>
+                        <span id="feedback-sidebar-badge" class="hidden ms-auto bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center" title="تقييمات بانتظار المراجعة ورسائل جديدة"></span>
+                    </button>
                     <button onclick="showSection('maintenance'); loadMaintenanceSettings(); loadInvoiceSettings();" class="sidebar-item w-full text-right px-4 py-3 rounded-lg flex items-center gap-3 text-gray-700 hover:text-antika-gold transition whitespace-nowrap">
                         <i class="fas fa-tools w-6"></i>
                         <span>وضع الصيانة</span>
@@ -729,6 +734,113 @@
                         </div>
                     </div>
                 </section>
+
+                <!-- Customer Feedback Section (آراء العملاء) -->
+                <section id="feedback-section" class="hidden space-y-6">
+                    <div class="flex justify-between items-center flex-wrap gap-3">
+                        <h2 class="text-2xl font-bold text-antika-gold">⭐ آراء العملاء</h2>
+                        <div class="flex gap-2 flex-wrap">
+                            <button onclick="loadFeedback()" class="border-2 border-gray-200 text-gray-600 px-4 py-2 rounded-lg text-sm hover:border-antika-gold transition"><i class="fas fa-sync-alt ml-1"></i>تحديث</button>
+                            <button onclick="openFeedbackModal(null)" class="bg-antika-pink-dark text-white px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90 transition"><i class="fas fa-plus ml-1"></i>إضافة تعليق يدوي</button>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-500">التقييمات تظهر بالموقع فقط بعد موافقتك وموافقة العميل على النشر. الشكاوى والاقتراحات والأسئلة تبقى خاصة بك ولا تنشر أبداً.</p>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="feedback-stats-row"></div>
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <div id="feedback-type-tabs" class="flex flex-wrap gap-2"></div>
+                        <select id="feedback-status-filter" onchange="setFeedbackStatusFilter(this.value)" class="border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-antika-pink focus:outline-none mr-auto">
+                            <option value="">كل الحالات</option>
+                            <option value="pending">بانتظار المراجعة</option>
+                            <option value="published">منشور</option>
+                            <option value="hidden">مخفي</option>
+                            <option value="new">جديد</option>
+                            <option value="read">مقروء</option>
+                            <option value="resolved">تمت المعالجة</option>
+                        </select>
+                    </div>
+                    <div id="feedback-list" class="space-y-3">
+                        <div class="text-center py-12 text-gray-400"><i class="fas fa-star text-5xl mb-3 block"></i>جاري التحميل...</div>
+                    </div>
+                </section>
+
+                <!-- Feedback Add/Edit Modal -->
+                <div id="feedback-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden p-4">
+                    <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-y-auto" style="max-height:90vh">
+                        <div class="p-6 space-y-3">
+                            <div class="flex justify-between items-center">
+                                <h3 id="feedback-modal-title" class="text-lg font-bold text-gray-800">إضافة تعليق</h3>
+                                <button onclick="closeFeedbackModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                            </div>
+                            <input type="hidden" id="fb-id">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">الاسم (مثال: سمر)</label>
+                                    <input id="fb-name" type="text" maxlength="40" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-antika-pink focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">المدينة</label>
+                                    <input id="fb-city" type="text" maxlength="40" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-antika-pink focus:outline-none">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">التقييم</label>
+                                    <select id="fb-rating" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-antika-pink focus:outline-none">
+                                        <option value="5">5 نجوم</option>
+                                        <option value="4">4 نجوم</option>
+                                        <option value="3">3 نجوم</option>
+                                        <option value="2">نجمتان</option>
+                                        <option value="1">نجمة</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">المصدر</label>
+                                    <select id="fb-source" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-antika-pink focus:outline-none">
+                                        <option value="whatsapp">واتساب</option>
+                                        <option value="snapchat">سناب شات</option>
+                                        <option value="instagram">انستغرام</option>
+                                        <option value="x">إكس</option>
+                                        <option value="email">إيميل</option>
+                                        <option value="site">الموقع</option>
+                                        <option value="other">أخرى</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">نص التعليق</label>
+                                <textarea id="fb-message" rows="4" maxlength="1000" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-antika-pink focus:outline-none"></textarea>
+                            </div>
+                            <div id="fb-order-row">
+                                <label class="block text-xs text-gray-500 mb-1">رقم الطلب (اختياري، لو صحيح تطلع شارة "طلب موثّق")</label>
+                                <input id="fb-order" type="number" min="1" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-antika-pink focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">ملاحظة داخلية (ما تظهر للعميل)</label>
+                                <input id="fb-note" type="text" maxlength="500" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-antika-pink focus:outline-none">
+                            </div>
+                            <label class="flex items-start gap-2 text-sm cursor-pointer">
+                                <input type="checkbox" id="fb-consent" class="mt-1">
+                                <span>العميل وافق على نشر تعليقه (استأذنته)</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                <input type="checkbox" id="fb-featured">
+                                <span>تعليق مميز</span>
+                            </label>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">الحالة</label>
+                                <select id="fb-status" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-antika-pink focus:outline-none">
+                                    <option value="published">منشور</option>
+                                    <option value="hidden">مخفي</option>
+                                    <option value="pending">بانتظار المراجعة</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-2 pt-2">
+                                <button id="fb-save-btn" onclick="saveFeedbackModal()" class="flex-1 bg-antika-pink-dark text-white py-2.5 rounded-lg font-bold hover:opacity-90 transition">حفظ</button>
+                                <button onclick="closeFeedbackModal()" class="px-5 border-2 border-gray-200 rounded-lg text-gray-600 hover:border-gray-300 transition">إلغاء</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Review Detail Modal -->
                 <div id="review-detail-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden p-4">
